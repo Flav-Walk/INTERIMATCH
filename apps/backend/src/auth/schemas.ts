@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { sectorValues } from "../domain/reference.js";
 const text = z.string().trim().min(1).max(120);
 export const loginSchema = z
   .object({
@@ -12,8 +13,9 @@ export const loginSchema = z
 export const registerSchema = loginSchema.extend({
   password: z.string().min(12).max(128),
 });
-export const roleSchema = z
-  .object({ role: z.enum(["worker", "company"]) })
+// La visite guidée ; 0 la relance. Le rôle n'est jamais accepté depuis le client.
+export const tourSchema = z
+  .object({ version: z.number().int().min(0).max(1000) })
   .strict();
 const identity = { first_name: text, last_name: text };
 const location = {
@@ -73,7 +75,7 @@ export const companySchema = z
     ...location,
     legal_name: text,
     establishment_name: text,
-    sector: z.enum(["restaurant", "hotel", "brasserie", "traiteur"]),
+    sector: z.enum(sectorValues),
     address: z.string().trim().min(3).max(250),
     phone: z
       .string()
@@ -89,11 +91,13 @@ export interface Profile {
   id: string;
   auth_user_id: string | null;
   email: string;
-  role: Role | null;
+  // Toujours défini : le serveur attribue le rôle à la création du compte.
+  role: Role;
   first_name: string;
   last_name: string;
   avatar_url: string | null;
   onboarding_completed: boolean;
   active: boolean;
   demo: boolean;
+  tour_version: number;
 }

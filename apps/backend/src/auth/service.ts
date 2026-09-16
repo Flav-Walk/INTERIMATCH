@@ -2,7 +2,7 @@ import { hash, verify, argon2id } from "argon2";
 import { createHash, randomBytes } from "node:crypto";
 import type { Db } from "../db.js";
 import { HttpError } from "../errors.js";
-import type { Profile, Role, WorkerInput, CompanyInput } from "./schemas.js";
+import type { Profile, WorkerInput, CompanyInput } from "./schemas.js";
 export const digest = (token: string) =>
   createHash("sha256").update(token).digest("hex");
 export const passwordHash = (password: string) =>
@@ -29,6 +29,14 @@ export class AccountService {
       [profileId, digest(access), digest(refresh)],
     );
     return { access_token: access, refresh_token: refresh, expires_in: 900 };
+  }
+  // The role is decided by the server: worker by default, company when the address is
+  // listed in company_accounts. Adding a company is a row, never a code change.
+  private async applyCompanyAllowlist(db: Db, profileId: string) {
+    await db.query(
+      "UPDATE profiles p SET role='company',updated_at=now() WHERE p.id=$1 AND p.role<>'company' AND p.role<>'admin' AND EXISTS(SELECT 1 FROM company_accounts c WHERE c.email=p.email)",
+      [profileId],
+    );
   }
   async register(email: string, password: string) {
     const encoded = await passwordHash(password);
@@ -75,6 +83,8 @@ export class AccountService {
         "INVALID_CREDENTIALS",
         "Email ou mot de passe incorrect.",
       );
+    // An address added to company_accounts after signup takes effect at the next login.
+    await this.applyCompanyAllowlist(this.db, p.id);
     return this.issue(this.db, p.id);
   }
   async google(jwt: string) {
@@ -117,6 +127,7 @@ export class AccountService {
       }
       if (!p.active)
         throw new HttpError(403, "ACCOUNT_INACTIVE", "Compte inactif.");
+      await this.applyCompanyAllowlist(db, p.id);
       return this.issue(db, p.id);
     });
   }
@@ -194,13 +205,15 @@ export class AccountService {
         ).rows[0] ?? {};
     return { ...p, profile: detail };
   }
-  async chooseRole(id: string, role: Exclude<Role, "admin">) {
+  // Guided tour progress. Storing the highest completed version lets a later tour be
+  // shown again to existing accounts by raising CURRENT_TOUR_VERSION; 0 replays it.
+  async setTourVersion(id: string, version: number) {
     const { rows } = await this.db.query<Profile>(
-      "UPDATE profiles SET role=$2,updated_at=now() WHERE id=$1 AND (role IS NULL OR role=$2) RETURNING *",
-      [id, role],
+      "UPDATE profiles SET tour_version=$2,updated_at=now() WHERE id=$1 RETURNING *",
+      [id, version],
     );
     if (!rows[0])
-      throw new HttpError(409, "ROLE_LOCKED", "Le rôle a déjà été choisi.");
+      throw new HttpError(404, "PROFILE_NOT_FOUND", "Compte introuvable.");
     return this.me(rows[0]);
   }
   async onboardWorker(id: string, input: WorkerInput) {

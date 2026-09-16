@@ -1,6 +1,6 @@
 import { beforeAll, afterAll, describe, it, expect } from "vitest";
 import { PGlite } from "@electric-sql/pglite";
-import { readFile } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import request from "supertest";
 import { createApp } from "../app.js";
 import { readConfig } from "../config.js";
@@ -30,7 +30,10 @@ let workerId = "";
 const auth = (r: request.Test, t = worker) =>
   r.set("Authorization", "Bearer " + t);
 beforeAll(async () => {
-  await pg.exec(await readFile("migrations/001_accounts.sql", "utf8"));
+  for (const name of (await readdir("migrations"))
+    .filter((n) => n.endsWith(".sql"))
+    .sort())
+    await pg.exec(await readFile("migrations/" + name, "utf8"));
 }, 20000);
 afterAll(() => pg.close());
 describe("auth and onboarding with real SQL engine", () => {
@@ -76,11 +79,12 @@ describe("auth and onboarding with real SQL engine", () => {
     expect(c.rows[0].password_hash).toMatch(/^\$argon2id\$/);
     expect(c.rows[0].password_hash).not.toBe(password);
   });
-  it("returns me with null role before onboarding", async () => {
+  it("assigns the worker role at signup without asking the user", async () => {
     const r = await auth(request(app).get("/api/v1/me"));
     expect(r.status).toBe(200);
-    expect(r.body.role).toBeNull();
+    expect(r.body.role).toBe("worker");
     expect(r.body.onboarding_completed).toBe(false);
+    expect(r.body.tour_version).toBe(0);
     workerId = r.body.id;
   });
   it("rejects duplicate registration atomically", async () => {
@@ -111,24 +115,43 @@ describe("auth and onboarding with real SQL engine", () => {
       .send({ email: "worker@example.test", password });
     expect(r.status).toBe(200);
   });
-  it("forbids admin self assignment", async () => {
-    expect(
-      (await auth(request(app).put("/api/v1/me/role")).send({ role: "admin" }))
-        .status,
-    ).toBe(400);
+  it("exposes no endpoint for choosing or escalating a role", async () => {
+    for (const role of ["company", "admin"])
+      expect(
+        (await auth(request(app).put("/api/v1/me/role")).send({ role })).status,
+      ).toBe(404);
+    // The role also cannot be smuggled through an update that does exist.
+    expect((await auth(request(app).get("/api/v1/me"))).body.role).toBe(
+      "worker",
+    );
   });
-  it("selects worker role and locks it", async () => {
+  it("records guided tour progress and allows replaying it", async () => {
     expect(
-      (await auth(request(app).put("/api/v1/me/role")).send({ role: "worker" }))
-        .status,
-    ).toBe(200);
+      (await auth(request(app).put("/api/v1/me/tour")).send({ version: 1 }))
+        .body.tour_version,
+    ).toBe(1);
+    expect((await auth(request(app).get("/api/v1/me"))).body.tour_version).toBe(
+      1,
+    );
     expect(
-      (
-        await auth(request(app).put("/api/v1/me/role")).send({
-          role: "company",
-        })
-      ).status,
-    ).toBe(409);
+      (await auth(request(app).put("/api/v1/me/tour")).send({ version: 0 }))
+        .body.tour_version,
+    ).toBe(0);
+    for (const version of [-1, 1.5, "1", 9999])
+      expect(
+        (await auth(request(app).put("/api/v1/me/tour")).send({ version }))
+          .status,
+      ).toBe(400);
+    await auth(request(app).put("/api/v1/me/tour")).send({ version: 1 });
+  });
+  it("serves the business vocabulary so the interface never hardcodes it", async () => {
+    const r = await auth(request(app).get("/api/v1/reference"));
+    expect(r.status).toBe(200);
+    expect(r.body.sectors.map((s: { value: string }) => s.value)).toContain(
+      "brasserie",
+    );
+    expect(r.body.mission_statuses.length).toBeGreaterThan(0);
+    expect(r.body.application_statuses.length).toBeGreaterThan(0);
   });
   it("worker allowed and company forbidden", async () => {
     expect((await auth(request(app).get("/api/v1/workers/me"))).status).toBe(
@@ -207,16 +230,23 @@ describe("auth and onboarding with real SQL engine", () => {
     worker = r.body.access_token;
     expect((await auth(request(app).get("/api/v1/me"))).status).toBe(200);
   });
-  it("company allowed and worker forbidden", async () => {
+  it("ships the production company address in the allowlist", async () => {
+    // La migration 002 est la seule configuration du compte entreprise de référence.
+    const { rows } = await db.query(
+      "SELECT email FROM company_accounts WHERE email=$1",
+      ["neotravel257@gmail.com"],
+    );
+    expect(rows).toHaveLength(1);
+  });
+  it("grants the company space only to an allowlisted address", async () => {
+    // A row in company_accounts is the whole configuration: no code path, no email test.
+    await db.query("INSERT INTO company_accounts(email,label) VALUES($1,$2)", [
+      "company@example.test",
+      "Test",
+    ]);
     company = (await service.register("company@example.test", password))
       .access_token;
-    expect(
-      (
-        await auth(request(app).put("/api/v1/me/role"), company).send({
-          role: "company",
-        })
-      ).status,
-    ).toBe(200);
+    expect((await service.authenticate(company)).role).toBe("company");
     expect(
       (await auth(request(app).get("/api/v1/companies/me"), company)).status,
     ).toBe(200);
@@ -309,8 +339,8 @@ describe("auth and onboarding with real SQL engine", () => {
     const profile = await google.authenticate(first.access_token);
     expect(profile.auth_user_id).toBe(identity.id);
     expect(profile.email).toBe("google.user@example.test");
-    // Google accounts start without a role: they join the same onboarding funnel.
-    expect(profile.role).toBeNull();
+    // Google accounts get the same server-assigned default as password accounts.
+    expect(profile.role).toBe("worker");
     expect(profile.onboarding_completed).toBe(false);
     const second = await google.google("another-provider-token");
     expect((await google.authenticate(second.access_token)).id).toBe(
@@ -332,25 +362,51 @@ describe("auth and onboarding with real SQL engine", () => {
       ).rows,
     ).toHaveLength(0);
   });
-  it("converges a Google account onto the same role and onboarding rules", async () => {
+  it("converges a Google account onto the same default role", async () => {
     const google = new AccountService(db, async () => ({
       id: "00000000-0000-4000-8000-00000000000a",
       email: "google.user@example.test",
     }));
     const token = (await google.google("provider-token")).access_token;
+    expect((await google.authenticate(token)).role).toBe("worker");
     expect(
       (await auth(request(app).get("/api/v1/workers/me"), token)).status,
-    ).toBe(403);
-    expect(
-      (
-        await auth(request(app).put("/api/v1/me/role"), token).send({
-          role: "company",
-        })
-      ).status,
     ).toBe(200);
     expect(
       (await auth(request(app).get("/api/v1/companies/me"), token)).status,
+    ).toBe(403);
+  });
+  it("promotes an existing account when its address joins the allowlist", async () => {
+    const email = "late.company@example.test";
+    await service.register(email, password);
+    expect(
+      (
+        await service.authenticate(
+          (await service.login(email, password)).access_token,
+        )
+      ).role,
+    ).toBe("worker");
+    await db.query("INSERT INTO company_accounts(email,label) VALUES($1,'')", [
+      email,
+    ]);
+    // No deploy, no code change: the next sign-in applies the new row.
+    const token = (await service.login(email, password)).access_token;
+    expect((await service.authenticate(token)).role).toBe("company");
+    expect(
+      (await auth(request(app).get("/api/v1/companies/me"), token)).status,
     ).toBe(200);
+  });
+  it("applies the allowlist to a Google account too", async () => {
+    const email = "google.company@example.test";
+    await db.query("INSERT INTO company_accounts(email,label) VALUES($1,'')", [
+      email,
+    ]);
+    const google = new AccountService(db, async () => ({
+      id: "00000000-0000-4000-8000-00000000000b",
+      email,
+    }));
+    const token = (await google.google("provider-token")).access_token;
+    expect((await google.authenticate(token)).role).toBe("company");
   });
   it("refuses a deactivated account on both entry points", async () => {
     const closed = await service.register("closed@example.test", password);

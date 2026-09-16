@@ -7,12 +7,17 @@ import { AccountService } from "./service.js";
 import {
   loginSchema,
   registerSchema,
-  roleSchema,
+  tourSchema,
   workerSchema,
   companySchema,
   type Profile,
   type Role,
 } from "./schemas.js";
+import {
+  sectors,
+  missionStatuses,
+  applicationStatuses,
+} from "../domain/reference.js";
 export const requireAuth =
   (service: AccountService): RequestHandler =>
   async (req, res, next) => {
@@ -32,7 +37,7 @@ export const requireRole =
     const p = res.locals.profile as Profile | undefined;
     if (!p)
       return next(new HttpError(401, "UNAUTHORIZED", "Connexion requise."));
-    if (!p.role || !roles.includes(p.role))
+    if (!roles.includes(p.role))
       return next(
         new HttpError(
           403,
@@ -116,14 +121,22 @@ export function accountRouter(config: Config, service: AccountService) {
   router.get("/me", async (_req, res) =>
     res.json(await service.me(res.locals.profile as Profile)),
   );
-  router.put("/me/role", async (req, res) =>
+  router.put("/me/tour", async (req, res) =>
     res.json(
-      await service.chooseRole(
+      await service.setTourVersion(
         (res.locals.profile as Profile).id,
-        roleSchema.parse(req.body).role,
+        tourSchema.parse(req.body).version,
       ),
     ),
   );
+  // Vocabulaire métier servi par le backend pour que l'interface ne le redéclare pas.
+  router.get("/reference", (_req, res) => {
+    res.json({
+      sectors,
+      mission_statuses: missionStatuses,
+      application_statuses: applicationStatuses,
+    });
+  });
   router.get("/skills", async (_req, res) =>
     res.json(
       (await service.db.query("SELECT id,name FROM skills ORDER BY name")).rows,
