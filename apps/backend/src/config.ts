@@ -21,10 +21,9 @@ export const environmentSchema = z.object({
     (v) => (v === undefined ? true : v === true || v === "true"),
     z.boolean(),
   ),
-  // Supabase serves the pooler with its own authority: supply that CA to keep
-  // certificate verification enabled. DB_SSL_INSECURE is a local-only fallback.
+  // Optionnel : certificat d'autorité Supabase. Fourni, la vérification du certificat
+  // est active ; absent, la connexion reste chiffrée mais non vérifiée.
   DB_SSL_CA_PATH: optional,
-  DB_SSL_INSECURE: z.preprocess((v) => v === true || v === "true", z.boolean()),
   DATABASE_URL: optional,
   MONGODB_URI: optional,
   BREVO_API_KEY: optional,
@@ -46,9 +45,5 @@ export function readConfig(env: NodeJS.ProcessEnv): Config {
   const config = result.data;
   if (new URL(config.FRONTEND_URL).origin !== config.FRONTEND_URL)
     throw new Error("FRONTEND_URL doit être une origine sans chemin");
-  if (config.DB_SSL_INSECURE && config.NODE_ENV === "production")
-    throw new Error(
-      "DB_SSL_INSECURE est interdit en production : fournir DB_SSL_CA_PATH",
-    );
   return config;
 }

@@ -1,4 +1,8 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
+import { writeFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { randomUUID } from "node:crypto";
 import request from "supertest";
 import { createApp } from "./app.js";
 import { readConfig } from "./config.js";
@@ -67,23 +71,51 @@ describe("API foundation", () => {
       readConfig({ FRONTEND_URL: "https://site.test/path" }),
     ).toThrow("origine");
   });
-  it("keeps database certificate verification on by default", () => {
-    expect(sslOptions(config)).toEqual({ rejectUnauthorized: true });
+  it("keeps TLS on without requiring a certificate authority", () => {
+    // Render fournit DATABASE_URL sans CA : la connexion doit rester chiffrée.
+    expect(sslOptions(config)).toEqual({ rejectUnauthorized: false });
+    expect(
+      sslOptions(
+        readConfig({
+          NODE_ENV: "production",
+          FRONTEND_URL: "https://interimatch.example",
+        }),
+      ),
+    ).toEqual({ rejectUnauthorized: false });
+  });
+  it("disables TLS only when explicitly asked", () => {
     expect(
       sslOptions(readConfig({ NODE_ENV: "test", DB_SSL: "false" })),
     ).toBeUndefined();
   });
-  it("allows relaxed verification only outside production", () => {
+  it("verifies the certificate when a readable authority is supplied", () => {
+    const path = join(tmpdir(), `interimatch-ca-${randomUUID()}.crt`);
+    writeFileSync(path, "-----BEGIN CERTIFICATE-----\ntest\n");
+    try {
+      expect(
+        sslOptions(readConfig({ NODE_ENV: "test", DB_SSL_CA_PATH: path })),
+      ).toEqual({
+        ca: "-----BEGIN CERTIFICATE-----\ntest\n",
+        rejectUnauthorized: true,
+      });
+    } finally {
+      rmSync(path);
+    }
+  });
+  it("starts anyway when the configured authority file is missing", () => {
+    // Le cas Render : DB_SSL_CA_PATH pointe un Secret File absent. Ne jamais planter.
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     expect(
-      sslOptions(readConfig({ NODE_ENV: "test", DB_SSL_INSECURE: "true" })),
+      sslOptions(
+        readConfig({
+          NODE_ENV: "production",
+          FRONTEND_URL: "https://interimatch.example",
+          DB_SSL_CA_PATH: "/etc/secrets/supabase-ca.crt",
+        }),
+      ),
     ).toEqual({ rejectUnauthorized: false });
-    expect(() =>
-      readConfig({
-        NODE_ENV: "production",
-        DB_SSL_INSECURE: "true",
-        FRONTEND_URL: "https://interimatch.example",
-      }),
-    ).toThrow("DB_SSL_CA_PATH");
+    expect(warn).toHaveBeenCalled();
+    warn.mockRestore();
   });
   it("fails explicitly for unconfigured integrations", () => {
     expect(() => createSupabaseAdmin(config)).toThrow("non configuré");

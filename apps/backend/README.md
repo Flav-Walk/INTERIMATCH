@@ -33,6 +33,8 @@ Les tests d'auth s'exécutent sur un vrai moteur PostgreSQL éphémère (PGlite)
 
 ## Environnement
 
-Noms dans `.env.example`. Aucun secret ne doit être versionné ni écrit dans un log. `DB_SSL_INSECURE` est un repli de développement : le démarrage échoue si elle est vraie avec `NODE_ENV=production`.
+Noms dans `.env.example`. Aucun secret ne doit être versionné ni écrit dans un log.
+
+TLS de la base : `DB_SSL=true` suffit et la connexion est chiffrée, sans exiger de certificat. `DB_SSL_CA_PATH` est facultatif — fourni et lisible, il active en plus la vérification du certificat ; illisible, il est signalé et ignoré, sans empêcher le démarrage.
 
 Documentation commune dans le worktree voisin `Piscine Epitech/docs`. Les commits et les push sont réalisés par Flavien seul.
