@@ -22,6 +22,16 @@ describe("API foundation", () => {
     expect(res.headers["x-powered-by"]).toBeUndefined();
     expect(res.headers["x-request-id"]).toBeTruthy();
   });
+  it("never leaks internal detail in the error envelope", async () => {
+    // Le champ `detail` d'une HttpError sert aux logs : il ne doit jamais sortir.
+    const res = await request(createApp(config)).get("/missing");
+    expect(Object.keys(res.body)).toEqual(["error"]);
+    expect(Object.keys(res.body.error).sort()).toEqual([
+      "code",
+      "message",
+      "request_id",
+    ]);
+  });
   it("returns structured 404", async () => {
     const res = await request(createApp(config)).get("/missing");
     expect(res.status).toBe(404);
@@ -64,6 +74,44 @@ describe("API foundation", () => {
     const res = await request(app).get("/api/v1/health");
     expect(res.status).toBe(429);
     expect(res.body.error.code).toBe("RATE_LIMITED");
+  });
+  it("trusts exactly one proxy hop in production and none elsewhere", () => {
+    // Render place un seul proxy devant le service. Jamais `true` : cela permettrait
+    // à n'importe qui d'usurper son IP et de contourner le rate limiting.
+    expect(
+      readConfig({
+        NODE_ENV: "production",
+        FRONTEND_URL: "https://interimatch.example",
+      }).TRUST_PROXY,
+    ).toBe(1);
+    expect(readConfig({ NODE_ENV: "test" }).TRUST_PROXY).toBe(0);
+    expect(readConfig({ NODE_ENV: "test", TRUST_PROXY: "2" }).TRUST_PROXY).toBe(
+      2,
+    );
+    expect(() => readConfig({ TRUST_PROXY: "-1" })).toThrow("TRUST_PROXY");
+    expect(() => readConfig({ TRUST_PROXY: "true" })).toThrow("TRUST_PROXY");
+  });
+  it("leaves Express untrusting when no proxy is declared", () => {
+    // Laisser la valeur par défaut (false) permet à express-rate-limit de continuer
+    // à signaler un X-Forwarded-For inattendu si la topologie change.
+    expect(createApp(config).get("trust proxy")).toBe(false);
+    expect(
+      createApp(
+        readConfig({
+          NODE_ENV: "production",
+          FRONTEND_URL: "https://interimatch.example",
+        }),
+      ).get("trust proxy"),
+    ).toBe(1);
+  });
+  it("rate limits each client behind the proxy, not everyone together", async () => {
+    const app = createApp(readConfig({ NODE_ENV: "test", TRUST_PROXY: "1" }));
+    const call = (client: string) =>
+      request(app).get("/api/v1/health").set("X-Forwarded-For", client);
+    for (let i = 0; i < 100; i++) await call("203.0.113.10");
+    expect((await call("203.0.113.10")).status).toBe(429);
+    // Sans trust proxy, ce second client partagerait le compteur du premier.
+    expect((await call("203.0.113.99")).status).toBe(200);
   });
   it("validates config without exposing values", () => {
     expect(() => readConfig({ PORT: "bad" })).toThrow("PORT");

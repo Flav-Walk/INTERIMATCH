@@ -3,30 +3,25 @@ import { createApp } from "./app.js";
 import { readConfig } from "./config.js";
 import { createDatabase } from "./db.js";
 import { AccountService } from "./auth/service.js";
-import { createSupabaseAdmin } from "./integrations/clients.js";
-import { HttpError } from "./errors.js";
+import { createGoogleBridge } from "./auth/google.js";
 const config = readConfig(process.env);
 const db = config.DATABASE_URL ? createDatabase(config) : null;
-const accounts = db
-  ? new AccountService(db, async (jwt) => {
-      const { data, error } =
-        await createSupabaseAdmin(config).auth.getUser(jwt);
-      if (
-        error ||
-        !data.user?.email ||
-        !data.user.email_confirmed_at ||
-        !data.user.identities?.some((i) => i.provider === "google")
-      )
-        throw new HttpError(
-          401,
-          "INVALID_GOOGLE_TOKEN",
-          "Connexion Google invalide.",
-        );
-      return { id: data.user.id, email: data.user.email };
-    })
-  : undefined;
+const google = createGoogleBridge(config);
+const accounts = db ? new AccountService(db, google) : undefined;
 const server = createApp(config, accounts).listen(config.PORT, () =>
-  console.info(JSON.stringify({ event: "server_started", port: config.PORT })),
+  // Capacités réellement actives : une variable manquante se voit ici, au boot,
+  // et non au moment où un utilisateur clique. Aucune valeur secrète n'est journalisée.
+  console.info(
+    JSON.stringify({
+      event: "server_started",
+      port: config.PORT,
+      environment: config.NODE_ENV,
+      database: Boolean(db),
+      google: Boolean(google),
+      trust_proxy: config.TRUST_PROXY,
+      frontend_url: config.FRONTEND_URL,
+    }),
+  ),
 );
 for (const signal of ["SIGINT", "SIGTERM"])
   process.on(signal, () => {

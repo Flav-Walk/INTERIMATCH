@@ -17,7 +17,11 @@ export function createApp(config: Config, accounts?: AccountService) {
     level: config.NODE_ENV === "test" ? "silent" : "info",
   });
   app.disable("x-powered-by");
-  // No proxy trust by default; deployment must explicitly review its topology.
+  // Doit être posé avant tout middleware dépendant de l'IP cliente — le limiteur en
+  // premier — car req.ip en dépend. On ne pose le réglage que s'il y a réellement un
+  // proxy : laisser la valeur Express par défaut (false) permet à express-rate-limit
+  // de continuer à signaler un X-Forwarded-For inattendu si la topologie change.
+  if (config.TRUST_PROXY > 0) app.set("trust proxy", config.TRUST_PROXY);
   app.use((req, res, next) => {
     const requestId = randomUUID();
     res.locals.requestId = requestId;
@@ -74,7 +78,7 @@ export function createApp(config: Config, accounts?: AccountService) {
       },
     });
   });
-  const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
+  const errorHandler: ErrorRequestHandler = (err, req, res, _next) => {
     void _next; // Express identifies error middleware by its four arguments.
     const malformed =
       err instanceof SyntaxError && "status" in err && err.status === 400;
@@ -91,17 +95,33 @@ export function createApp(config: Config, accounts?: AccountService) {
           : malformed || err instanceof ZodError
             ? 400
             : 500;
-    logger.error({ requestId: res.locals.requestId, status }, "request_failed");
+    const code =
+      err instanceof HttpError
+        ? err.code
+        : status === 413
+          ? "PAYLOAD_TOO_LARGE"
+          : status === 400
+            ? "INVALID_REQUEST"
+            : "INTERNAL_ERROR";
+    // Le code et l'origine rendent un refus diagnosticable depuis les logs de
+    // production sans exposer de corps, d'en-tête d'autorisation ni de secret.
+    // Une 500 reste anormale : on garde le nom de l'erreur, jamais sa pile.
+    logger.error(
+      {
+        requestId: res.locals.requestId,
+        status,
+        code,
+        method: req.method,
+        path: req.originalUrl,
+        origin: req.headers.origin,
+        detail: err instanceof HttpError ? err.detail : undefined,
+        cause: status === 500 && err instanceof Error ? err.name : undefined,
+      },
+      "request_failed",
+    );
     res.status(status).json({
       error: {
-        code:
-          err instanceof HttpError
-            ? err.code
-            : status === 413
-              ? "PAYLOAD_TOO_LARGE"
-              : status === 400
-                ? "INVALID_REQUEST"
-                : "INTERNAL_ERROR",
+        code,
         message:
           err instanceof HttpError
             ? err.message

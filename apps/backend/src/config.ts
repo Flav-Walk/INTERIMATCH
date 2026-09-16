@@ -14,6 +14,11 @@ export const environmentSchema = z.object({
     .default("development"),
   PORT: z.coerce.number().int().min(1).max(65535).default(3000),
   FRONTEND_URL: z.url().default("http://localhost:5173"),
+  // Nombre de proxies de confiance devant l'application. 0 = aucun (Express ignore
+  // X-Forwarded-For et utilise l'IP de la socket). Render place exactement un proxy
+  // devant le service, d'où la valeur 1 par défaut en production. Jamais `true` :
+  // cela laisserait n'importe qui usurper son IP et contourner le rate limiting.
+  TRUST_PROXY: z.coerce.number().int().min(0).max(10).optional(),
   SUPABASE_URL: optionalUrl,
   SUPABASE_SERVICE_ROLE_KEY: optional,
   SUPABASE_SECRET_KEY: optional,
@@ -33,7 +38,9 @@ export const environmentSchema = z.object({
   N8N_WEBHOOK_SECRET: optional,
   WEBHOOK_SIGNING_SECRET: optional,
 });
-export type Config = z.infer<typeof environmentSchema>;
+export type Config = z.infer<typeof environmentSchema> & {
+  TRUST_PROXY: number;
+};
 export function readConfig(env: NodeJS.ProcessEnv): Config {
   const result = environmentSchema.safeParse(
     Object.fromEntries(Object.entries(env).filter(([, value]) => value !== "")),
@@ -45,5 +52,9 @@ export function readConfig(env: NodeJS.ProcessEnv): Config {
   const config = result.data;
   if (new URL(config.FRONTEND_URL).origin !== config.FRONTEND_URL)
     throw new Error("FRONTEND_URL doit être une origine sans chemin");
-  return config;
+  return {
+    ...config,
+    TRUST_PROXY:
+      config.TRUST_PROXY ?? (config.NODE_ENV === "production" ? 1 : 0),
+  };
 }
