@@ -116,6 +116,17 @@ export function createApp(config: Config, accounts?: AccountService) {
         origin: req.headers.origin,
         detail: err instanceof HttpError ? err.detail : undefined,
         cause: status === 500 && err instanceof Error ? err.name : undefined,
+        errorMessage:
+  status === 500 && err instanceof Error ? err.message : undefined,
+errorCode:
+  status === 500 &&
+  typeof err === "object" &&
+  err !== null &&
+  "code" in err
+    ? String(err.code)
+    : undefined,
+stack:
+  status === 500 && err instanceof Error ? err.stack : undefined,
       },
       "request_failed",
     );
