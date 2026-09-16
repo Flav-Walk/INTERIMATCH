@@ -7,10 +7,12 @@ import { ProtectedRoute, PublicRoute } from "./components/Guards";
 import { Home } from "./pages/Home";
 import { Login } from "./pages/Login";
 import { Callback } from "./pages/Callback";
-import { RoleSelection } from "./pages/RoleSelection";
-import { Onboarding } from "./pages/Onboarding";
 import { Dashboard } from "./pages/Dashboard";
+import { ProfileForm } from "./pages/ProfileForm";
+import { Missions } from "./pages/Missions";
+import { Candidates } from "./pages/Candidates";
 import "./styles/global.css";
+
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <BrowserRouter>
@@ -23,26 +25,27 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
               <Route path="register" element={<Login register />} />
             </Route>
             <Route path="auth/callback" element={<Callback />} />
-            <Route element={<ProtectedRoute onboarding />}>
-              <Route path="onboarding/role" element={<RoleSelection />} />
+
+            <Route element={<ProtectedRoute role="worker" />}>
+              <Route path="worker">
+                <Route index element={<Dashboard />} />
+                <Route path="profile" element={<ProfileForm role="worker" />} />
+                <Route path="missions" element={<Missions />} />
+              </Route>
             </Route>
-            {(["worker", "company"] as const).map((role) => (
-              <React.Fragment key={role}>
-                <Route element={<ProtectedRoute role={role} onboarding />}>
-                  <Route
-                    path={"onboarding/" + role}
-                    element={<Onboarding role={role} />}
-                  />
-                </Route>
-                <Route element={<ProtectedRoute role={role} />}>
-                  <Route path={role} element={<Dashboard />} />
-                  <Route
-                    path={role + "/profile"}
-                    element={<Dashboard profilePage />}
-                  />
-                </Route>
-              </React.Fragment>
-            ))}
+
+            <Route element={<ProtectedRoute role="company" />}>
+              <Route path="company">
+                <Route index element={<Dashboard />} />
+                <Route
+                  path="profile"
+                  element={<ProfileForm role="company" />}
+                />
+                <Route path="missions" element={<Missions />} />
+                <Route path="candidates" element={<Candidates />} />
+              </Route>
+            </Route>
+
             <Route
               path="connexion"
               element={<Navigate to="/login" replace />}

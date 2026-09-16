@@ -1,13 +1,12 @@
 import { Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { destination } from "../services/session";
-export function ProtectedRoute({
-  role,
-  onboarding = false,
-}: {
-  role?: "worker" | "company";
-  onboarding?: boolean;
-}) {
+
+/**
+ * Confort d'interface uniquement : l'autorisation réelle est refaite par le backend
+ * à chaque requête, qui relit le rôle en base et répond 403 pour un espace étranger.
+ */
+export function ProtectedRoute({ role }: { role?: "worker" | "company" }) {
   const { user, loading, loadError } = useAuth();
   if (loading) return <p role="status">Chargement de votre espace…</p>;
   if (loadError)
@@ -21,12 +20,9 @@ export function ProtectedRoute({
   if (!user) return <Navigate to="/login" replace />;
   if (role && user.role !== role)
     return <Navigate to={destination(user)} replace />;
-  if (!onboarding && !user.onboarding_completed)
-    return <Navigate to={destination(user)} replace />;
-  if (onboarding && user.onboarding_completed)
-    return <Navigate to={destination(user)} replace />;
   return <Outlet />;
 }
+
 export function PublicRoute() {
   const { user, loading } = useAuth();
   if (loading) return <p role="status">Chargement…</p>;

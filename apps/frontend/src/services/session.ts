@@ -4,13 +4,21 @@ export interface Skill {
   id: string;
   name: string;
 }
+/** Vocabulaire métier servi par le backend : jamais redéclaré dans les écrans. */
+export interface ReferenceValue {
+  value: string;
+  label: string;
+}
+export type Role = "worker" | "company" | "admin";
 export interface User {
   id: string;
   email: string;
-  role: "worker" | "company" | "admin" | null;
+  // Toujours défini : le serveur attribue le rôle à la création du compte.
+  role: Role;
   first_name: string;
   last_name: string;
   onboarding_completed: boolean;
+  tour_version: number;
   demo: boolean;
   profile: {
     city?: string;
@@ -74,12 +82,10 @@ export async function api<T>(
     throw error;
   }
 }
+// Un compte connecté a toujours un espace : le profil se complète depuis l'espace,
+// il ne conditionne plus l'accès.
 export function destination(user: User) {
-  if (!user.role) return "/onboarding/role";
-  if (user.role === "admin") return "/";
-  return user.onboarding_completed
-    ? "/" + user.role
-    : "/onboarding/" + user.role;
+  return user.role === "admin" ? "/" : "/" + user.role;
 }
 export const errorMessage = (e: unknown) =>
   e instanceof ApiError

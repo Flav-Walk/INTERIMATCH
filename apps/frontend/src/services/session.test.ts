@@ -6,34 +6,30 @@ const user = (over: Partial<User>): User =>
   ({
     id: "id",
     email: "person@example.test",
-    role: null,
+    role: "worker",
     first_name: "",
     last_name: "",
     onboarding_completed: false,
+    tour_version: 0,
     demo: false,
     profile: {},
     ...over,
   }) as User;
 describe("session routing", () => {
-  it("sends an account without a role to the role choice", () => {
-    expect(destination(user({ role: null }))).toBe("/onboarding/role");
+  it("sends an intérimaire to the worker space", () => {
+    expect(destination(user({ role: "worker" }))).toBe("/worker");
   });
-  it("keeps an unfinished profile inside its own onboarding", () => {
-    expect(destination(user({ role: "worker" }))).toBe("/onboarding/worker");
-    expect(destination(user({ role: "company" }))).toBe("/onboarding/company");
+  it("sends a company to the company space", () => {
+    expect(destination(user({ role: "company" }))).toBe("/company");
   });
-  it("opens the workspace once onboarding is complete", () => {
+  it("does not gate the space on profile completion", () => {
+    // The profile is completed from inside the space, never before entering it.
     expect(
       destination(user({ role: "worker", onboarding_completed: true })),
-    ).toBe("/worker");
-    expect(
-      destination(user({ role: "company", onboarding_completed: true })),
-    ).toBe("/company");
+    ).toBe(destination(user({ role: "worker", onboarding_completed: false })));
   });
   it("does not invent an admin space", () => {
-    expect(
-      destination(user({ role: "admin", onboarding_completed: true })),
-    ).toBe("/");
+    expect(destination(user({ role: "admin" }))).toBe("/");
   });
 });
 describe("error messages", () => {
