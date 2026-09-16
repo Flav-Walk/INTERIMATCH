@@ -2,6 +2,12 @@
 
 Prévision proposée, pas un relevé du temps déjà passé. Les 11 jours sont ceux du sujet ; les dates réelles du groupe restent à reporter.
 
+## Avancement réel
+
+**Lot 0 terminé.** **Lot 1 terminé** : auth classique Argon2id, sessions opaques révocables, Google via Supabase convergeant vers le même profil, rôles verrouillés, onboarding transactionnel des deux espaces, migration appliquée sur Supabase, comptes de démonstration, 42 + 17 + 8 tests réussis. Détail dans [TESTING.md](TESTING.md).
+
+Prochain lot : **Lot 2 — profils et disponibilités**. Les lots 2 à 9 restent à faire.
+
 | Lot | Livrable | Budget initial proposé (heures-personne) |
 | --- | --- | --- |
 | 0 | Audit, branches, socles et contrats | 14 |

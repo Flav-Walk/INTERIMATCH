@@ -1,6 +1,6 @@
-# Décisions du Lot 0
+# Décisions
 
-Statut : socles implémentés au Lot 0 ; décisions métier pour les lots suivants.
+Statut : Lots 0 et 1 implémentés. D01 à D07 datent du Lot 0 ; D08 à D10 ont été prises au Lot 1 et sont marquées comme telles.
 
 ## D01 — Auth classique obligatoire
 
@@ -41,3 +41,27 @@ Consigne actualisée : opérations Git locales autorisées, commits/push/PR/publ
 ## D07 — Référence UI et conformité
 
 La maquette est la référence Intérimaire ; l’Entreprise aura ses propres contenus et actions. Messagerie, urgence et documents sont différés. Conserver les couleurs de la référence plutôt qu’une palette aléatoire. Le sitemap public demandé par le PDF est à livrer, même si le cahier le rend optionnel. Tests, sécurité et accessibilité commencent dès les fondations, le Lot 8 consolide leurs preuves.
+
+## D08 — Connexion PostgreSQL par le Session Pooler (Lot 1)
+
+L'hôte direct `db.<ref>.supabase.co` ne publie qu'un enregistrement AAAA. Vérifié depuis deux environnements de développement : la résolution IPv4 renvoie ENODATA et `pg` échoue en ENOTFOUND, faute de route IPv6 utilisable. Ce n'est pas une erreur de configuration mais une propriété de l'infrastructure Supabase.
+
+Retenir le **Session Pooler** (port 5432, utilisateur `postgres.<ref>`), joignable en IPv4. Le Transaction Pooler (6543) est écarté : le code utilise `pg_advisory_xact_lock`, `SELECT … FOR UPDATE` et des transactions multi-requêtes, que le mode transaction ne garantit pas.
+
+Le pooler présente un certificat signé par l'autorité Supabase, absent des magasins système : `rejectUnauthorized: true` échoue en `SELF_SIGNED_CERT_IN_CHAIN`. Plutôt que de désactiver la vérification globalement, la configuration devient explicite :
+
+- `DB_SSL` — activer TLS, vrai par défaut ;
+- `DB_SSL_CA_PATH` — chemin du certificat d'autorité Supabase ; s'il est fourni, la vérification est **active** ;
+- `DB_SSL_INSECURE` — repli local uniquement, refusé au démarrage si `NODE_ENV=production`.
+
+Le développement local tourne avec `DB_SSL_INSECURE=true`. Avant tout déploiement Render, télécharger le certificat depuis Supabase (Settings → Database → SSL Configuration), le fournir par `DB_SSL_CA_PATH` et laisser `DB_SSL_INSECURE` vide. Le refus en production est testé.
+
+## D09 — Portée du coverage (Lot 1)
+
+Les points d'entrée qui s'exécutent à l'import — `server.ts`, `scripts/**` — sont hors du périmètre Vitest et vérifiés par exécution réelle. Côté frontend, Vitest mesure `src/services/**` et les vues React sont couvertes par Playwright. Les deux mesures sont rapportées séparément : un pourcentage unique mélangeant tests unitaires et parcours navigateur ne signifierait rien. Aucun test ne doit exister uniquement pour augmenter un pourcentage.
+
+## D10 — Comptes de démonstration (Lot 1)
+
+Deux comptes applicatifs distincts, `jimmy.worker@example.test` et `jimmy.company@example.test`, marqués `demo=true` en base et signalés dans l'interface par un bandeau « DEVELOPMENT / DEMO DATA ». Le domaine `.test` est réservé par la RFC 2606 : aucun email réel ne peut être atteint par erreur.
+
+Le mot de passe n'est jamais dans Git : `scripts/seed.ts` lit `DEMO_PASSWORD` depuis l'environnement local, exige 12 caractères minimum, exige `ALLOW_DEMO_SEED=true`, et refuse de s'exécuter si `NODE_ENV=production`. Le script refuse également de modifier un compte dont `demo` est faux, et révoque toutes les sessions existantes du compte à chaque réinitialisation du mot de passe. Il est idempotent : deux exécutions successives laissent exactement les mêmes lignes.

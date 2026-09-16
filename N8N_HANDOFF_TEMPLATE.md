@@ -7,6 +7,37 @@
 > implémentée une route, un payload ou une automatisation qui n'existe
 > pas encore.
 
+## 0. État d'avancement — mis à jour au Lot 1
+
+Le document vivant, rempli à partir du code réel, est **`docs/N8N_HANDOFF.md`**.
+Le gabarit ci-dessous reste la structure cible à compléter workflow par workflow.
+
+| Élément | État au Lot 1 |
+| --- | --- |
+| Enveloppe d'événement versionnée | **Disponible et testée** — `apps/backend/src/events/business-event.ts` |
+| Liste des `event_type` | **Figée** — 10 types validés par le schéma |
+| Émission réelle d'un événement | **Aucune** |
+| Contenu de `data` par événement | **Non figé** |
+| Tables de comptes migrées | **Disponibles** — migration 001 appliquée et vérifiée |
+| Identifiants métier des comptes | **Disponibles** — `profiles.id` |
+| Tables missions / propositions / attributions | **Inexistantes** |
+| Moteur de matching | **Inexistant** — poids et seuils figés, sans calcul |
+| Outbox transactionnelle | **Inexistante** |
+| Dispatcher vers n8n | **Inexistant** |
+| Webhook entrant n8n → backend | **Inexistant** |
+| Authentification machine-à-machine | **Inexistante** |
+| Signature HMAC, anti-rejeu, retry | **Inexistants** |
+| EmailService / Brevo | **Inexistant** — aucun email envoyé à ce jour |
+| Variables d'environnement | **Noms figés**, aucune utilisée par du code |
+| Workflow A (proposition) | **À implémenter** |
+| Workflow B (acceptation) | **À implémenter** |
+
+Prérequis backend avant toute construction de workflow : missions, propositions
+et attributions en base ; matching déterministe ; outbox écrite dans la même
+transaction que le changement métier ; dispatcher signé avec retry borné ;
+authentification machine-à-machine ; contenu de `data` figé par `event_type`.
+Le détail est en §7 de `docs/N8N_HANDOFF.md`.
+
 ## 1. Architecture
 
 -   Frontend : React + TypeScript
