@@ -4,9 +4,11 @@ Prévision proposée, pas un relevé du temps déjà passé. Les 11 jours sont c
 
 ## Avancement réel
 
-**Lot 0 terminé.** **Lot 1 terminé** : auth classique Argon2id, sessions opaques révocables, Google via Supabase convergeant vers le même profil, rôles verrouillés, onboarding transactionnel des deux espaces, migration appliquée sur Supabase, comptes de démonstration, 42 + 17 + 8 tests réussis. Détail dans [TESTING.md](TESTING.md).
+**Lot 0 terminé.** **Lot 1 terminé** : auth classique Argon2id, sessions opaques révocables, Google via Supabase convergeant vers le même profil, onboarding transactionnel des deux espaces, migration appliquée sur Supabase, comptes de démonstration.
 
-Prochain lot : **Lot 2 — profils et disponibilités**. Les lots 2 à 9 restent à faire.
+**Lot 2 terminé** : rôle attribué par le serveur via `company_accounts` (plus aucune sélection de rôle), espaces Intérimaire et Entreprise cloisonnés et navigables, visite guidée visuelle par rôle persistée et versionnée en base, vocabulaire métier servi par l'API. 46 + 25 + 10 tests réussis. Détail dans [TESTING.md](TESTING.md).
+
+Prochain lot : **Lot 3 — questionnaire intérimaire et disponibilités multiples**, socle de données du matching. Les lots 3 à 9 restent à faire.
 
 | Lot | Livrable | Budget initial proposé (heures-personne) |
 | --- | --- | --- |

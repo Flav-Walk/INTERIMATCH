@@ -65,3 +65,46 @@ Les points d'entrée qui s'exécutent à l'import — `server.ts`, `scripts/**` 
 Deux comptes applicatifs distincts, `jimmy.worker@example.test` et `jimmy.company@example.test`, marqués `demo=true` en base et signalés dans l'interface par un bandeau « DEVELOPMENT / DEMO DATA ». Le domaine `.test` est réservé par la RFC 2606 : aucun email réel ne peut être atteint par erreur.
 
 Le mot de passe n'est jamais dans Git : `scripts/seed.ts` lit `DEMO_PASSWORD` depuis l'environnement local, exige 12 caractères minimum, exige `ALLOW_DEMO_SEED=true`, et refuse de s'exécuter si `NODE_ENV=production`. Le script refuse également de modifier un compte dont `demo` est faux, et révoque toutes les sessions existantes du compte à chaque réinitialisation du mot de passe. Il est idempotent : deux exécutions successives laissent exactement les mêmes lignes.
+
+## D11 — Le rôle est attribué par le serveur, jamais choisi (Lot 2)
+
+La sélection libre du rôle à l'inscription est supprimée. Tout nouveau compte est
+`worker`. L'accès à l'espace Entreprise est décidé par la table `company_accounts` :
+un déclencheur `BEFORE INSERT` sur `profiles` attribue `company` si l'adresse y figure,
+et `login`/`google` réappliquent la règle pour qu'une adresse ajoutée après coup prenne
+effet à la connexion suivante.
+
+Ce choix répond à deux exigences en même temps. D'abord la sécurité : un contrôle
+`if (email === "…")` côté navigateur n'est pas une autorisation, et une valeur de rôle
+envoyée par le client ne doit jamais être acceptée — les schémas Zod stricts rejettent
+d'ailleurs tout champ non déclaré, y compris `role`. Ensuite l'extensibilité : ajouter
+une entreprise est un `INSERT`, pas un déploiement.
+
+`profiles.role` devient `NOT NULL`. L'endpoint `PUT /me/role` est supprimé ; aucune
+route ne permet plus de choisir ou changer un rôle. `admin` reste hors de portée.
+
+## D12 — Visite guidée versionnée plutôt que formulaire bloquant (Lot 2)
+
+L'onboarding n'est plus un formulaire obligatoire placé avant l'espace : un compte
+accède immédiatement à son espace, et découvre l'interface par une visite guidée
+(surbrillance d'une zone réelle, bulle explicative, étapes, Passer/Précédent/Suivant).
+Le profil se complète depuis l'espace, et son état est rappelé sur le tableau de bord.
+
+La progression est en base, pas dans `localStorage` : `profiles.tour_version` conserve
+la version la plus haute réellement terminée, ce qui la rend valable sur tout appareil
+et lisible par le serveur. La constante `CURRENT_TOUR_VERSION` décide de ce qui est
+diffusé : l'augmenter rejoue la visite pour tout le monde, y compris les comptes
+existants, ce qui est le mécanisme prévu pour présenter une nouveauté. Écrire `0`
+relance la visite pour un compte : c'est ce que fait « Revoir la visite ».
+
+Les étapes ne pointent que des zones réellement rendues, et la visite ne démarre que
+sur le tableau de bord, pour qu'aucune étape ne désigne un élément absent. Un test
+vérifie que chaque cible correspond à un attribut `data-tour` existant.
+
+## D13 — Vocabulaire métier servi par le backend (Lot 2)
+
+Secteurs, statuts de mission et statuts de candidature sont déclarés une seule fois
+dans `src/domain/reference.ts` et exposés par `GET /api/v1/reference`. Les écrans ne
+redéclarent aucune de ces listes. Les statuts ATS sont volontairement déclarés avant
+d'être implémentés — ils décrivent le suivi à venir — mais aucune transition n'existe,
+et la documentation le dit explicitement partout où ils apparaissent.

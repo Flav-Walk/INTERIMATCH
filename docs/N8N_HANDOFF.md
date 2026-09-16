@@ -1,4 +1,4 @@
-# Passation n8n — état au Lot 1
+# Passation n8n — état au Lot 2
 
 Basé sur `N8N_HANDOFF_TEMPLATE.md`.
 
@@ -25,7 +25,8 @@ Le contrat complet est dans [API_CONTRACT.md](API_CONTRACT.md). Résumé utile a
 | POST | `/api/v1/auth/refresh` | cookie `im_refresh` | — |
 | POST | `/api/v1/auth/logout` | cookie + bearer | — |
 | GET | `/api/v1/me` | bearer | tout rôle |
-| PUT | `/api/v1/me/role` | bearer | rôle non encore choisi |
+| PUT | `/api/v1/me/tour` | bearer | tout rôle |
+| GET | `/api/v1/reference` | bearer | tout rôle |
 | GET | `/api/v1/skills` | bearer | tout rôle |
 | GET | `/api/v1/workers/me` | bearer | `worker` |
 | GET | `/api/v1/companies/me` | bearer | `company` |
@@ -36,11 +37,12 @@ Le contrat complet est dans [API_CONTRACT.md](API_CONTRACT.md). Résumé utile a
 
 ### Tables migrées — disponible
 
-`migrations/001_accounts.sql`, appliquée et vérifiée sur le projet Supabase.
+`migrations/001_accounts.sql` et `migrations/002_roles_and_tour.sql`, appliquées et vérifiées sur le projet Supabase.
 
 | Table | Rôle | Colonnes utiles à n8n |
 | --- | --- | --- |
-| `profiles` | Identité applicative, source des IDs métier | `id` (uuid, **l'identifiant métier à utiliser partout**), `email`, `role`, `first_name`, `last_name`, `onboarding_completed`, `active`, `demo`, `created_at`, `updated_at` |
+| `profiles` | Identité applicative, source des IDs métier | `id` (uuid, **l'identifiant métier à utiliser partout**), `email`, `role` (`worker`/`company`/`admin`, **jamais nul**), `first_name`, `last_name`, `onboarding_completed`, `tour_version`, `active`, `demo`, `created_at`, `updated_at` |
+| `company_accounts` | Adresses autorisées à l'espace Entreprise ; un `INSERT` suffit à ajouter une entreprise | `email`, `label`, `created_at` |
 | `credentials` | Hash Argon2id de l'auth classique | `profile_id` — **ne jamais lire ni transmettre** |
 | `sessions` | Sessions opaques | hashes uniquement — **ne jamais lire ni transmettre** |
 | `worker_profiles` | Profil intérimaire | `profile_id`, `city`, `postal_code`, `latitude`, `longitude`, `mobility_radius_km`, `main_job` |
@@ -134,3 +136,5 @@ Aucun secours backend pour les emails métier sans décision explicite transfér
 - [ ] Aucun secret ni donnée personnelle réelle dans la passation.
 
 Acquis au Lot 1 : enveloppe versionnée et testée, identifiants métier des comptes, tables de comptes migrées et vérifiées, noms de variables figés, contrat d'API des comptes documenté depuis le code.
+
+Acquis au Lot 2 : rôle fiable et non falsifiable sur chaque compte (utile pour router une notification vers l'intérimaire ou l'entreprise), table `company_accounts` comme source des destinataires entreprise, et **vocabulaire de suivi figé et servi par l'API** (`GET /api/v1/reference`) — `mission_statuses` et `application_statuses` sont les valeurs que les workflows devront manipuler. Ces statuts sont déclarés, pas implémentés : aucune transition n'existe encore.

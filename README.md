@@ -1,6 +1,6 @@
-# InteriMatch — Lot 1 terminé
+# InteriMatch — Lot 2 terminé
 
-POC EPITECH hôtellerie-restauration. Un compte peut désormais être créé, se connecter, choisir son espace, remplir son onboarding et retrouver sa session. Aucune mission, aucun matching, aucune automatisation.
+POC EPITECH hôtellerie-restauration. Un compte peut être créé, se connecter, entrer directement dans l'espace de son rôle, découvrir l'interface par une visite guidée et compléter son profil. Aucune mission, aucun matching, aucune automatisation.
 
 ## Organisation
 
@@ -48,11 +48,17 @@ Exemples d'environnement dans chaque application et dans `config/`. Aucun secret
 
 Dans chaque application : `npm run typecheck`, `npm run lint`, `npx prettier --check .`, `npm test`, `npm run test:coverage`, `npm run build`. Frontend : `npx playwright install chromium` puis `npm run test:e2e`.
 
-Dernière exécution complète : backend 42 tests, frontend 17 tests, navigateur 8 tests, tous réussis. Détail et portée dans [TESTING.md](docs/TESTING.md).
+Dernière exécution complète : backend 46 tests, frontend 25 tests, navigateur 10 tests, tous réussis. Détail et portée dans [TESTING.md](docs/TESTING.md).
 
-## Ce qui fonctionne au Lot 1
+## Ce qui fonctionne au Lot 2
 
-Inscription et connexion classiques (Argon2id, sessions opaques révocables), connexion Google via Supabase convergeant vers le **même** profil applicatif, renouvellement silencieux de session par cookie HttpOnly, déconnexion révoquant réellement la session, choix du rôle verrouillé, onboarding transactionnel Intérimaire et Entreprise, routes protégées côté serveur et côté navigateur, isolation stricte entre les deux espaces, comptes de démonstration Jimmy.
+Inscription et connexion classiques (Argon2id, sessions opaques révocables), connexion Google via Supabase convergeant vers le **même** profil applicatif, renouvellement silencieux de session par cookie HttpOnly, déconnexion révoquant réellement la session.
+
+**Rôles.** Tout nouveau compte est intérimaire. L'accès à l'espace Entreprise est décidé par la table `company_accounts`, pas par du code : ajouter une entreprise est un `INSERT`. Aucun endpoint ne permet de choisir ou de changer un rôle, et l'autorisation est refaite côté serveur à chaque requête.
+
+**Deux espaces cloisonnés.** Intérimaire (`/worker`) : tableau de bord, profil, missions. Entreprise (`/company`) : tableau de bord, établissement, missions, candidats. Un intérimaire qui saisit `/company` n'obtient rien.
+
+**Visite guidée.** À la première ouverture de l'espace, une visite met en surbrillance les zones réelles de l'interface, avec bulle explicative, étapes, Passer/Précédent/Suivant, navigation clavier et repli en bas d'écran sur mobile. Une visite par rôle. La progression est en base et versionnée : augmenter `CURRENT_TOUR_VERSION` la rejoue pour tout le monde, et « Revoir la visite » la relance à la demande.
 
 ## Ce qui n'existe pas encore
 
@@ -73,4 +79,4 @@ Le PDF prime sur le cahier des charges. `image.png` est la référence de direct
 - [Référence visuelle](docs/UI_REFERENCE.md)
 - [Roadmap](docs/ROADMAP.md)
 
-Lot suivant : profils et disponibilités complets, puis missions.
+Lot suivant : questionnaire intérimaire complet et disponibilités multiples, puis missions.

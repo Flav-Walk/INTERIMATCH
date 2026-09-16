@@ -1,4 +1,4 @@
-# API réelle — Lot 1
+# API réelle — Lot 2
 
 Toutes les routes listées ici existent dans `apps/backend/src`. Rien n'est anticipé : une route absente de ce document n'est pas implémentée.
 
@@ -16,8 +16,28 @@ Préfixe : `/api/v1`. Local : `http://localhost:3000/api/v1`. Production prévue
 | Renouvellement | Cookie `im_refresh`, HttpOnly, `path=/api/v1/auth`, validité 7 jours, `SameSite=Lax` en développement et `Secure; SameSite=None` en production |
 | Stockage serveur | Seuls les SHA-256 des jetons sont en base (`sessions.access_hash`, `sessions.refresh_hash`) ; les jetons en clair n'existent que dans la réponse |
 | En-tête Origin | Obligatoire et strictement égal à `FRONTEND_URL` sur toutes les routes `/auth/*`, sinon 403 INVALID_ORIGIN |
-| Rôle | Lu en base à chaque requête, jamais accepté depuis le corps, l'URL ou un jeton client |
+| Rôle | Attribué par le serveur à la création du compte, relu en base à chaque requête, jamais accepté depuis le corps, l'URL ou un jeton client. Aucun endpoint ne permet de le choisir ou de le changer |
 | Corps | JSON, 100 Ko maximum, schémas Zod stricts : tout champ non déclaré est refusé |
+
+## Modèle de rôle
+
+Trois rôles existent : `worker` (intérimaire), `company` (entreprise), `admin` (non
+utilisé). **Le rôle n'est jamais une entrée utilisateur.**
+
+| Étape | Règle |
+| --- | --- |
+| Création du compte | Un déclencheur `BEFORE INSERT` sur `profiles` lit la table `company_accounts` : adresse présente → `company`, sinon → `worker` |
+| Connexion suivante | `login` et `google` réappliquent la règle : une adresse ajoutée à `company_accounts` après l'inscription devient entreprise à sa prochaine connexion |
+| Requête | `requireAuth` relit le rôle en base, `requireRole` refuse l'espace qui ne correspond pas |
+
+Ajouter une entreprise est donc une ligne de données :
+
+```sql
+INSERT INTO company_accounts(email, label) VALUES ('contact@exemple.fr', 'Nom');
+```
+
+Aucune modification de code, aucun redéploiement, aucun test d'adresse écrit en dur
+dans l'application. La migration 002 inscrit `neotravel257@gmail.com`.
 
 ## Public
 
@@ -39,7 +59,11 @@ Corps `{ "email": string, "password": string }`. Mot de passe : 12 à 128 caract
 
 201 : `{ "access_token": "...", "expires_in": 900 }` + cookie `im_refresh`.
 
-Le compte est créé sans rôle et sans onboarding : `role` vaut `null`, `onboarding_completed` vaut `false`.
+**Le rôle est décidé par le serveur, jamais par le client.** Un déclencheur PostgreSQL
+attribue `worker` par défaut, ou `company` si l'adresse figure dans la table
+`company_accounts`. Le compte est créé avec `onboarding_completed = false` et
+`tour_version = 0` ; il accède immédiatement à son espace, le profil se complétant
+depuis l'espace.
 
 Erreurs : 400 INVALID_REQUEST ; 409 ACCOUNT_UNAVAILABLE (email déjà pris — message volontairement identique quel que soit le mode de création du compte existant, pour ne pas énumérer les comptes) ; 429 AUTH_RATE_LIMIT.
 
@@ -91,6 +115,7 @@ Révoque la ligne de session correspondant au cookie et celle correspondant au b
   "onboarding_completed": true,
   "active": true,
   "demo": true,
+  "tour_version": 1,
   "created_at": "…Z",
   "updated_at": "…Z",
   "profile": {
@@ -114,15 +139,33 @@ Révoque la ligne de session correspondant au cookie et celle correspondant au b
 
 `profile` est `{}` tant que l'onboarding n'a pas eu lieu. Pour un rôle `company`, `profile` contient la ligne `company_profiles` : `profile_id`, `legal_name`, `establishment_name`, `sector`, `address`, `city`, `postal_code`, `latitude`, `longitude`, `phone`, `description` — et aucune liste.
 
-Les clés de premier niveau retournées sont exactement : `id`, `auth_user_id`, `role`, `first_name`, `last_name`, `email`, `avatar_url`, `onboarding_completed`, `active`, `demo`, `created_at`, `updated_at`, `profile`. Aucun hash, aucun jeton et aucune donnée de session ne sortent de l'API.
+Les clés de premier niveau retournées sont exactement : `id`, `auth_user_id`, `role`, `first_name`, `last_name`, `email`, `avatar_url`, `onboarding_completed`, `active`, `demo`, `tour_version`, `created_at`, `updated_at`, `profile`. Aucun hash, aucun jeton et aucune donnée de session ne sortent de l'API.
 
-### PUT /me/role
+### PUT /me/tour
 
-Corps `{ "role": "worker" | "company" }`. 200 : la même charge utile que `GET /me`.
+Corps `{ "version": entier de 0 à 1000 }`. Enregistre la version de visite guidée
+terminée par le compte. `0` relance la visite à la prochaine ouverture de l'espace.
 
-Le rôle ne peut être posé qu'une fois : la mise à jour n'écrit que si `role IS NULL` ou si le rôle demandé est identique.
+200 : la même charge utile que `GET /me`, `tour_version` à jour.
 
-Erreurs : 400 INVALID_REQUEST (`admin` est refusé par le schéma, aucune auto-attribution possible) ; 409 ROLE_LOCKED.
+Erreurs : 400 INVALID_REQUEST (version négative, non entière ou hors bornes).
+
+### GET /reference
+
+Vocabulaire métier servi par le backend pour que l'interface ne le redéclare jamais.
+
+```json
+{
+  "sectors": [{ "value": "restaurant", "label": "Restaurant" }],
+  "mission_statuses": [{ "value": "draft", "label": "Brouillon" }],
+  "application_statuses": [{ "value": "proposed", "label": "Proposée" }]
+}
+```
+
+Les statuts de mission et de candidature sont **déclarés et extensibles**, mais aucune
+transition n'est implémentée : ils décrivent le suivi ATS à venir, pas un comportement
+existant. Ajouter une valeur dans `src/domain/reference.ts` la rend disponible côté
+navigateur sans modifier un écran.
 
 ### GET /skills
 
@@ -214,7 +257,6 @@ Toutes les erreurs partagent la même forme, et l'en-tête `X-Request-Id` est pr
 | 404 | NOT_FOUND | Route inexistante |
 | 409 | ACCOUNT_UNAVAILABLE | Email déjà utilisé à l'inscription |
 | 409 | IDENTITY_CONFLICT | Email déjà lié à une autre méthode de connexion |
-| 409 | ROLE_LOCKED | Rôle déjà choisi |
 | 413 | PAYLOAD_TOO_LARGE | Corps au-delà de 100 Ko |
 | 429 | RATE_LIMITED | Plus de 100 requêtes/minute/IP |
 | 429 | AUTH_RATE_LIMIT | Plus de 30 tentatives/15 minutes/IP sur register, login ou google |
@@ -236,4 +278,4 @@ curl.exe -i http://localhost:3000/api/v1/me -H "Authorization: Bearer <access_to
 
 ## Absent du Lot 1
 
-Aucune route missions, matching, propositions, attribution, n8n, webhook, email, administration ni réinitialisation de mot de passe. Aucun événement métier n'est émis : `events/business-event.ts` ne fournit que l'enveloppe validée.
+Aucune route missions, matching, propositions, attribution, n8n, webhook, email, administration ni réinitialisation de mot de passe. `GET /reference` expose le vocabulaire de ces objets, pas les objets eux-mêmes. Aucun événement métier n'est émis : `events/business-event.ts` ne fournit que l'enveloppe validée.

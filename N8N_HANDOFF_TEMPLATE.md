@@ -7,7 +7,7 @@
 > implémentée une route, un payload ou une automatisation qui n'existe
 > pas encore.
 
-## 0. État d'avancement — mis à jour au Lot 1
+## 0. État d'avancement — mis à jour au Lot 2
 
 Le document vivant, rempli à partir du code réel, est **`docs/N8N_HANDOFF.md`**.
 Le gabarit ci-dessous reste la structure cible à compléter workflow par workflow.
@@ -18,8 +18,11 @@ Le gabarit ci-dessous reste la structure cible à compléter workflow par workfl
 | Liste des `event_type` | **Figée** — 10 types validés par le schéma |
 | Émission réelle d'un événement | **Aucune** |
 | Contenu de `data` par événement | **Non figé** |
-| Tables de comptes migrées | **Disponibles** — migration 001 appliquée et vérifiée |
+| Tables de comptes migrées | **Disponibles** — migrations 001 et 002 appliquées et vérifiées |
 | Identifiants métier des comptes | **Disponibles** — `profiles.id` |
+| Rôle fiable par compte | **Disponible** — `profiles.role`, attribué par le serveur, non falsifiable |
+| Destinataires entreprise | **Disponibles** — table `company_accounts` |
+| Vocabulaire des statuts ATS | **Figé et servi** — `GET /api/v1/reference` ; aucune transition implémentée |
 | Tables missions / propositions / attributions | **Inexistantes** |
 | Moteur de matching | **Inexistant** — poids et seuils figés, sans calcul |
 | Outbox transactionnelle | **Inexistante** |
