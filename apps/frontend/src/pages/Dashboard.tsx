@@ -1,11 +1,51 @@
 import { Link } from "react-router-dom";
-import { CalendarDays, MapPin, Check, BriefcaseBusiness } from "lucide-react";
+import {
+  CalendarDays,
+  MapPin,
+  Check,
+  BriefcaseBusiness,
+  Users,
+  ArrowRight,
+} from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
-export function Dashboard({ profilePage = false }: { profilePage?: boolean }) {
+
+function ProfileStatus({
+  complete,
+  to,
+  done,
+  todo,
+}: {
+  complete: boolean;
+  to: string;
+  done: string;
+  todo: string;
+}) {
+  return (
+    <section className="section side-panel" data-tour="profile-status">
+      <h2>{complete ? "Votre profil" : "Complétez votre profil"}</h2>
+      <p>{complete ? done : todo}</p>
+      <Link className={complete ? "secondary-button inline" : "button"} to={to}>
+        {complete ? "Voir mon profil" : "Compléter mon profil"}
+        <ArrowRight size={16} aria-hidden="true" />
+      </Link>
+      {complete && (
+        <p className="welcome-note ink">
+          <Check size={16} aria-hidden="true" />
+          Profil complété
+        </p>
+      )}
+    </section>
+  );
+}
+
+export function Dashboard() {
   const { user } = useAuth();
-  if (!user) return null;
+  if (!user || user.role === "admin") return null;
   const worker = user.role === "worker",
-    p = user.profile;
+    p = user.profile,
+    complete = user.onboarding_completed;
+  const name = user.first_name || (worker ? "à vous" : "à votre équipe");
+
   return (
     <>
       {user.demo && (
@@ -15,35 +55,49 @@ export function Dashboard({ profilePage = false }: { profilePage?: boolean }) {
         <section className="primary">
           <div className="welcome">
             <span className="eyeline">
-              {worker ? p.main_job : p.establishment_name}
+              {complete
+                ? worker
+                  ? p.main_job
+                  : p.establishment_name
+                : worker
+                  ? "Espace intérimaire"
+                  : "Espace entreprise"}
             </span>
             <h1>
-              {profilePage
-                ? "Votre profil professionnel"
-                : `Bonjour ${user.first_name},`}
+              {user.first_name ? `Bonjour ${user.first_name},` : "Bienvenue,"}
             </h1>
             <p>
               {worker
-                ? "Prêt pour votre prochain service ? Votre profil est en place."
-                : "Votre établissement est prêt pour ses prochains recrutements."}
+                ? complete
+                  ? "Prêt pour votre prochain service ? Votre profil est en place."
+                  : "Renseignez votre métier, vos compétences et vos disponibilités pour recevoir des missions adaptées."
+                : complete
+                  ? "Votre établissement est prêt pour ses prochains recrutements."
+                  : "Présentez votre établissement pour préparer vos premiers recrutements."}
             </p>
-            {!profilePage ? (
-              <Link className="button" to={"/" + user.role + "/profile"}>
-                Voir mon profil
-              </Link>
-            ) : (
-              <Link className="button" to={"/" + user.role}>
-                Revenir à mon espace
-              </Link>
-            )}
-            <div className="welcome-note">
-              <Check size={16} />
-              Profil complété
-            </div>
           </div>
-          <section className="section">
+
+          <ProfileStatus
+            complete={complete}
+            to={"/" + user.role + "/profile"}
+            done={
+              worker
+                ? "Métier, compétences, mobilité et disponibilités sont enregistrés. Vous pouvez les modifier à tout moment."
+                : "Les informations de votre établissement sont enregistrées. Vous pouvez les modifier à tout moment."
+            }
+            todo={
+              worker
+                ? `Ces informations décident des missions qui vous seront proposées : sans elles, ${name} ne recevrez rien.`
+                : "Secteur, adresse et description : les intérimaires verront ces informations avant de répondre à vos missions."
+            }
+          />
+
+          <section className="section" data-tour="missions">
             <div className="section-heading">
               <h2>{worker ? "Vos propositions de mission" : "Vos missions"}</h2>
+              <Link className="quiet" to={"/" + user.role + "/missions"}>
+                Tout voir
+              </Link>
             </div>
             <div className="empty">
               <BriefcaseBusiness aria-hidden="true" />
@@ -54,110 +108,79 @@ export function Dashboard({ profilePage = false }: { profilePage?: boolean }) {
               </h3>
               <p>
                 {worker
-                  ? "Vous retrouverez ici vos propositions dès que la recherche de missions sera disponible."
+                  ? "Vos propositions apparaîtront ici dès que la recherche de missions sera disponible."
                   : "La création et la gestion des missions seront disponibles au prochain lot."}
               </p>
-              {!worker && (
-                <button
-                  className="button"
-                  disabled
-                  title="Disponible au prochain lot"
-                >
-                  Créer une mission
-                </button>
-              )}
             </div>
           </section>
-          <section className="section side-panel">
-            <h2>{worker ? "Vos compétences" : "Votre établissement"}</h2>
-            {worker ? (
-              <div className="skill-options">
-                {p.skills?.map((s) => (
-                  <span className="badge" key={s.id}>
-                    {s.name}
-                  </span>
-                ))}
-              </div>
-            ) : (
-              <>
-                <p>
-                  {p.legal_name} · {p.sector}
-                </p>
-                <p>{p.description}</p>
-                <p>
-                  {p.address}, {p.postal_code} {p.city}
-                </p>
-              </>
-            )}
-            {profilePage && (
-              <>
-                <h3 className="section">Contact</h3>
-                <p>
-                  {user.first_name} {user.last_name}
-                  <br />
-                  {user.email}
-                  {p.phone && (
-                    <>
-                      <br />
-                      {p.phone}
-                    </>
-                  )}
-                </p>
-                {worker && (
-                  <>
-                    <h3>Expériences</h3>
-                    {p.experiences?.length ? (
-                      p.experiences.map((e, i) => (
-                        <p key={i}>
-                          {e.job_title} · {e.employer} · {e.years} ans
-                        </p>
-                      ))
-                    ) : (
-                      <p>Premières expériences à venir.</p>
-                    )}
-                  </>
-                )}
-              </>
-            )}
-          </section>
         </section>
+
         <aside className="secondary">
-          <section className="side-panel">
-            <MapPin aria-hidden="true" />
-            <h2>{p.city}</h2>
-            <p>
-              {worker
-                ? `Rayon de mobilité : ${p.mobility_radius_km} km`
-                : p.address}
-            </p>
-          </section>
-          <section className="side-panel pale">
-            <CalendarDays aria-hidden="true" />
-            <h2>{worker ? "Vos disponibilités" : "Votre planning"}</h2>
-            {worker ? (
-              p.availabilities?.map((a) => (
-                <p key={a.id}>
-                  <strong>
-                    {new Date(a.starts_at).toLocaleDateString("fr-FR")}
-                  </strong>
-                  <br />
-                  {new Date(a.starts_at).toLocaleTimeString("fr-FR", {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}{" "}
-                  –{" "}
-                  {new Date(a.ends_at).toLocaleString("fr-FR", {
-                    day: "2-digit",
-                    month: "2-digit",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
+          {worker ? (
+            <>
+              <section className="side-panel" data-tour="availability">
+                <CalendarDays aria-hidden="true" />
+                <h2>Vos disponibilités</h2>
+                {p.availabilities?.length ? (
+                  p.availabilities.map((a) => (
+                    <p key={a.id}>
+                      <strong>
+                        {new Date(a.starts_at).toLocaleDateString("fr-FR")}
+                      </strong>
+                      <br />
+                      {new Date(a.starts_at).toLocaleTimeString("fr-FR", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                      {" – "}
+                      {new Date(a.ends_at).toLocaleTimeString("fr-FR", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </p>
+                  ))
+                ) : (
+                  <p>
+                    Aucun créneau enregistré. Vos disponibilités se renseignent
+                    depuis votre profil.
+                  </p>
+                )}
+              </section>
+              <section className="side-panel pale">
+                <MapPin aria-hidden="true" />
+                <h2>{p.city ?? "Votre mobilité"}</h2>
+                <p>
+                  {p.mobility_radius_km != null
+                    ? `Rayon de mobilité : ${p.mobility_radius_km} km`
+                    : "Votre ville et votre rayon de mobilité restent à renseigner."}
                 </p>
-              ))
-            ) : (
-              <p>Aucune mission planifiée pour le moment.</p>
-            )}
-          </section>
+              </section>
+            </>
+          ) : (
+            <>
+              <section className="side-panel" data-tour="candidates">
+                <Users aria-hidden="true" />
+                <h2>Candidats compatibles</h2>
+                <p>
+                  Les profils seront classés par score de compatibilité, avec le
+                  détail des critères et la possibilité d’élargir au-delà de
+                  votre zone.
+                </p>
+                <Link className="quiet" to="/company/candidates">
+                  Ouvrir les candidats
+                </Link>
+              </section>
+              <section className="side-panel pale">
+                <MapPin aria-hidden="true" />
+                <h2>{p.city ?? "Votre établissement"}</h2>
+                <p>
+                  {p.address
+                    ? `${p.address}, ${p.postal_code} ${p.city}`
+                    : "L’adresse de votre établissement reste à renseigner."}
+                </p>
+              </section>
+            </>
+          )}
         </aside>
       </div>
     </>
