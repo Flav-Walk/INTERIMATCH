@@ -1,0 +1,18 @@
+:root {
+  --forest: oklch(0.32 0.065 165);
+  --orange: oklch(0.75 0.17 43);
+  --orange-hover: oklch(0.8 0.14 43);
+  --background: oklch(0.975 0.003 165);
+  --surface: oklch(1 0 0);
+  --ink: oklch(0.23 0.02 160);
+  --muted: oklch(0.45 0.02 160);
+  --border: oklch(0.88 0.008 160);
+  --tint: oklch(0.94 0.025 160);
+  --radius: 12px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+}
