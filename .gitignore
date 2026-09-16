@@ -1,0 +1,33 @@
+# Secrets : tous les environnements locaux, seuls les exemples sont versionnables
+.env
+.env.*
+*.env
+*.env.*
+!.env.example
+!*.env.example
+*.pem
+*.key
+
+# Dépendances et sorties
+node_modules/
+dist/
+build/
+coverage/
+*.tsbuildinfo
+*.log
+.vite/
+.vercel/
+
+# Outils et fichiers locaux
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+.impeccable/
+.venv/
+__pycache__/
+.cache/
+tmp/
+
+playwright-report/
+test-results/
