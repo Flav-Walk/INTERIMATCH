@@ -819,3 +819,12 @@ small {
     justify-self: end;
   }
 }
+
+.editable-slots li {
+  flex-wrap: wrap;
+}
+.slot-actions {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}

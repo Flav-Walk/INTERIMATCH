@@ -276,3 +276,188 @@ test("Google callback errors and keyboard access", async ({ page }) => {
     page.getByRole("link", { name: "Aller au contenu" }),
   ).toBeFocused();
 });
+
+test("profile lists persist, reject incomplete rows, and allow slot editing", async ({
+  page,
+}, testInfo) => {
+  await register(page, `acceptance.${crypto.randomUUID()}@example.test`);
+  await completeTour(page);
+  await page.getByRole("link", { name: "Mon profil", exact: true }).click();
+  const jobs = section(page, "Votre métier");
+  await jobs.getByLabel("Métier principal").selectOption("barman");
+  await jobs
+    .getByRole("checkbox", { name: "Chef de rang", exact: true })
+    .check();
+  await jobs
+    .getByLabel("Années d’expérience du métier (facultatif)")
+    .fill("3.5");
+  await save(page, "Votre métier");
+  // Reproduction live : distinguer la valeur persistée de celle du select.
+  const restoredProfile = page.waitForResponse(
+    (response) =>
+      new URL(response.url()).pathname === "/api/v1/me" &&
+      response.request().method() === "GET" &&
+      response.status() === 200,
+  );
+  await page.reload();
+  const restored = await (await restoredProfile).json();
+  expect(restored.profile.main_job).toBe("barman");
+  expect(restored.missing_requirements).not.toContain("main_job");
+  expect(restored.onboarding_completed).toBe(false);
+  await expect(jobs.getByLabel("Métier principal")).toHaveValue("barman");
+  const identity = section(page, "Votre identité");
+  await identity.getByLabel("Prénom", { exact: true }).fill("Camille");
+  await identity.getByLabel("Nom", { exact: true }).fill("Recette");
+  await identity.getByLabel("Téléphone (facultatif)").fill("+33600000000");
+  await save(page, "Votre identité");
+  const mobility = section(page, "Votre mobilité");
+  await mobility.getByLabel("Ville", { exact: true }).fill("Lyon");
+  await mobility.getByLabel("Code postal").fill("69002");
+  await mobility.getByLabel("Rayon de mobilité (km)").fill("25");
+  await mobility.getByLabel("J’ai le permis").check();
+  await mobility.getByLabel("J’ai un véhicule").check();
+  await save(page, "Votre mobilité");
+  const skills = section(page, "Vos compétences").getByRole("checkbox");
+  await skills.nth(0).check();
+  await skills.nth(1).check();
+  await save(page, "Vos compétences");
+  await section(page, "Votre recherche").getByRole("checkbox").uncheck();
+  await save(page, "Votre recherche");
+  await page.reload();
+  await expect(jobs.getByLabel("Métier principal")).toHaveValue("barman");
+  await expect(
+    jobs.getByRole("checkbox", { name: "Chef de rang", exact: true }),
+  ).toBeChecked();
+  await expect(
+    jobs.getByLabel("Années d’expérience du métier (facultatif)"),
+  ).toHaveValue("3.5");
+  await expect(identity.getByLabel("Téléphone (facultatif)")).toHaveValue(
+    "+33600000000",
+  );
+  await expect(mobility.getByLabel("J’ai le permis")).toBeChecked();
+  await expect(mobility.getByLabel("J’ai un véhicule")).toBeChecked();
+  await expect(mobility.getByLabel("Rayon de mobilité (km)")).toHaveValue("25");
+  await expect(skills.nth(0)).toBeChecked();
+  await expect(skills.nth(1)).toBeChecked();
+  await expect(
+    section(page, "Votre recherche").getByRole("checkbox"),
+  ).not.toBeChecked();
+
+  const experiences = section(page, "Vos expériences");
+  for (const [title, employer] of [
+    ["Service", "Brasserie"],
+    ["Bar", "Hôtel"],
+  ]) {
+    await experiences
+      .getByRole("button", { name: "Ajouter une expérience" })
+      .click();
+    await experiences.getByLabel("Poste", { exact: true }).last().fill(title);
+    await experiences
+      .getByLabel("Établissement", { exact: true })
+      .last()
+      .fill(employer);
+  }
+  await save(page, "Vos expériences");
+  const certs = section(page, "Vos diplômes et certifications");
+  for (const name of ["HACCP", "Secourisme"]) {
+    await certs
+      .getByRole("button", { name: "Ajouter une certification" })
+      .click();
+    await certs.getByLabel("Intitulé").last().fill(name);
+    await certs.getByLabel("Obtenu le").last().fill("2025-06-01");
+  }
+  await save(page, "Vos diplômes et certifications");
+  await page.reload();
+  await expect(experiences.getByLabel("Poste", { exact: true })).toHaveCount(2);
+  await expect(certs.getByLabel("Intitulé")).toHaveCount(2);
+  await expect(certs.getByLabel("Obtenu le").first()).toHaveValue("2025-06-01");
+  await experiences
+    .getByLabel("Établissement", { exact: true })
+    .first()
+    .fill("");
+  await experiences.getByRole("button", { name: "Enregistrer" }).click();
+  await expect(experiences.getByRole("alert")).toBeVisible();
+  await page.reload();
+  await expect(experiences.getByLabel("Poste", { exact: true })).toHaveCount(2);
+  await certs.getByLabel("Intitulé").first().fill("");
+  await certs.getByRole("button", { name: "Enregistrer" }).click();
+  await expect(certs.getByRole("alert")).toBeVisible();
+  await page.reload();
+  await expect(certs.getByLabel("Intitulé")).toHaveCount(2);
+
+  const availability = section(page, "Vos disponibilités");
+  await availability
+    .getByLabel("Début", { exact: true })
+    .fill("2027-08-10T10:00");
+  await availability
+    .getByLabel("Fin", { exact: true })
+    .fill("2027-08-10T18:00");
+  await availability
+    .getByLabel("Statut", { exact: true })
+    .selectOption("unavailable");
+  await availability
+    .getByRole("button", { name: "Ajouter ce créneau" })
+    .click();
+  await expect(availability.locator("li")).toHaveCount(1);
+  await page.reload();
+  await expect(availability.locator("li")).toContainText("Indisponible");
+  await availability
+    .getByRole("button", { name: /Modifier le créneau/ })
+    .click();
+  await expect(availability.getByLabel("Début", { exact: true })).toHaveValue(
+    "2027-08-10T10:00",
+  );
+  await availability
+    .getByLabel("Fin", { exact: true })
+    .fill("2027-08-11T01:00");
+  await availability
+    .getByLabel("Statut", { exact: true })
+    .selectOption("available");
+  await availability
+    .getByRole("button", { name: "Enregistrer le créneau" })
+    .click();
+  await page.reload();
+  await expect(availability.locator("li")).toContainText("Disponible");
+  await expect(availability.locator("li")).toContainText("11");
+  await expect(page.getByText("Votre profil est complet.")).toBeVisible();
+  await availability
+    .getByLabel("Début", { exact: true })
+    .fill("2027-08-10T12:00");
+  await availability
+    .getByLabel("Fin", { exact: true })
+    .fill("2027-08-10T14:00");
+  await availability
+    .getByRole("button", { name: "Ajouter ce créneau" })
+    .click();
+  await expect(availability.getByRole("alert")).toContainText("chevauche");
+  await expect(availability.locator("li")).toHaveCount(1);
+  await availability.scrollIntoViewIfNeeded();
+  await page.screenshot({
+    path: testInfo.outputPath("profile-availability.png"),
+  });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await availability
+    .getByRole("button", { name: /Retirer le créneau/ })
+    .click();
+  await expect(availability.locator("li")).toHaveCount(0);
+  await page.reload();
+  await expect(availability.locator("li")).toHaveCount(0);
+  await expect(
+    page.getByText("Au moins une disponibilité à venir", { exact: true }),
+  ).toBeVisible();
+  await experiences
+    .getByRole("button", { name: "Retirer l’expérience 1", exact: true })
+    .click();
+  await save(page, "Vos expériences");
+  await certs
+    .getByRole("button", { name: "Retirer la certification 1", exact: true })
+    .click();
+  await save(page, "Vos diplômes et certifications");
+  await page.reload();
+  await expect(experiences.getByLabel("Poste", { exact: true })).toHaveCount(1);
+  await expect(certs.getByLabel("Intitulé")).toHaveCount(1);
+});

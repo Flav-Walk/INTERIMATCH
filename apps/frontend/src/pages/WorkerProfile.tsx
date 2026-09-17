@@ -1,9 +1,16 @@
-import { useEffect, useState, type FormEvent, type ReactNode } from "react";
-import { Check, Plus, Trash2 } from "lucide-react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+  type ReactNode,
+} from "react";
+import { Check, Plus, Trash2, Pencil } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import {
   api,
   errorMessage,
+  type Availability,
   type ReferenceValue,
   type Skill,
   type User,
@@ -17,7 +24,8 @@ import {
   putSkills,
   removeAvailability,
   requirementLabels,
-  upcomingAvailabilities,
+  updateAvailability,
+  toLocalInput,
 } from "../services/profile";
 
 /**
@@ -95,6 +103,9 @@ export function WorkerProfile() {
     [jobs, setJobs] = useState<ReferenceValue[]>([]),
     [loadError, setLoadError] = useState("");
   const p = user?.profile ?? {};
+  // Les options arrivent après le profil : defaultValue ne réappliquerait pas
+  // le métier enregistré lors de leur chargement. Garder le select contrôlé.
+  const [mainJob, setMainJob] = useState(p.main_job ?? "");
   const [experiences, setExperiences] = useState(
     () => p.experiences ?? [{ job_title: "", employer: "", years: 0 }],
   );
@@ -200,7 +211,12 @@ export function WorkerProfile() {
       >
         <label>
           Métier principal
-          <select name="main_job" required defaultValue={p.main_job ?? ""}>
+          <select
+            name="main_job"
+            required
+            value={mainJob}
+            onChange={(event) => setMainJob(event.target.value)}
+          >
             <option value="" disabled>
               Choisissez un métier
             </option>
@@ -265,17 +281,21 @@ export function WorkerProfile() {
       <Section
         title="Vos expériences"
         hint="Facultatif, mais une expérience détaillée renforce votre profil."
-        onSave={() =>
-          putExperiences(
-            experiences
-              .filter((e) => e.job_title.trim() && e.employer.trim())
-              .map((e) => ({
-                job_title: e.job_title.trim(),
-                employer: e.employer.trim(),
-                years: Number(e.years) || 0,
-              })),
+        onSave={() => {
+          if (
+            experiences.some((e) => !e.job_title.trim() || !e.employer.trim())
           )
-        }
+            throw new Error(
+              "Renseignez le poste et l’établissement de chaque expérience, ou retirez la ligne.",
+            );
+          return putExperiences(
+            experiences.map((e) => ({
+              job_title: e.job_title.trim(),
+              employer: e.employer.trim(),
+              years: Number(e.years),
+            })),
+          );
+        }}
       >
         {experiences.map((e, i) => (
           <div className="repeat-row" key={i}>
@@ -353,17 +373,19 @@ export function WorkerProfile() {
       <Section
         title="Vos diplômes et certifications"
         hint="Facultatif. HACCP, permis d’exploitation, mention complémentaire…"
-        onSave={() =>
-          putCertifications(
-            certifications
-              .filter((c) => c.name.trim())
-              .map((c) => ({
-                name: c.name.trim(),
-                issuer: (c.issuer ?? "").trim(),
-                obtained_on: c.obtained_on || null,
-              })),
-          )
-        }
+        onSave={() => {
+          if (certifications.some((c) => !c.name.trim()))
+            throw new Error(
+              "Renseignez l’intitulé de chaque certification, ou retirez la ligne.",
+            );
+          return putCertifications(
+            certifications.map((c) => ({
+              name: c.name.trim(),
+              issuer: (c.issuer ?? "").trim(),
+              obtained_on: c.obtained_on || null,
+            })),
+          );
+        }}
       >
         {certifications.map((c, i) => (
           <div className="repeat-row" key={i}>
@@ -520,33 +542,52 @@ export function WorkerProfile() {
   );
 }
 
-/** Les créneaux s'ajoutent et se suppriment un par un, sans bouton global. */
-function AvailabilitySection({
-  slots,
-}: {
-  slots: { id: string; starts_at: string; ends_at: string; status: string }[];
-}) {
+/** Chaque créneau se gère individuellement, quel que soit son statut. */
+function AvailabilitySection({ slots }: { slots: Availability[] }) {
   const { setUser } = useAuth();
+  const formRef = useRef<HTMLFormElement>(null);
   const refresh = async () => setUser(await api<User>("/workers/me"));
-  const [busy, setBusy] = useState(false),
-    [error, setError] = useState("");
-  const upcoming = upcomingAvailabilities(
-    slots as Parameters<typeof upcomingAvailabilities>[0],
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+  const [editing, setEditing] = useState<Availability | null>(null);
+  const sorted = [...slots].sort(
+    (a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at),
   );
 
-  async function add(event: FormEvent<HTMLFormElement>) {
+  function edit(slot: Availability) {
+    setEditing(slot);
+    setError("");
+    setMessage("");
+    requestAnimationFrame(() =>
+      formRef.current
+        ?.querySelector<HTMLInputElement>('[name="starts_at"]')
+        ?.focus(),
+    );
+  }
+
+  async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = event.currentTarget;
     const f = new FormData(form);
     setBusy(true);
     setError("");
+    setMessage("");
     try {
-      await addAvailability({
-        starts_at: new Date(str(f, "starts_at")).toISOString(),
-        ends_at: new Date(str(f, "ends_at")).toISOString(),
-        status: "available",
-      });
+      const starts_at = new Date(str(f, "starts_at")).toISOString();
+      const ends_at = new Date(str(f, "ends_at")).toISOString();
+      if (Date.parse(ends_at) <= Date.parse(starts_at))
+        throw new Error("La fin doit suivre le début du créneau.");
+      const slot = {
+        starts_at,
+        ends_at,
+        status: str(f, "status") as Availability["status"],
+      };
+      if (editing) await updateAvailability(editing.id, slot);
+      else await addAvailability(slot);
       await refresh();
+      setMessage(editing ? "Créneau modifié." : "Créneau ajouté.");
+      setEditing(null);
       form.reset();
     } catch (e) {
       setError(errorMessage(e));
@@ -556,50 +597,94 @@ function AvailabilitySection({
   }
 
   async function drop(id: string) {
+    setBusy(true);
     setError("");
+    setMessage("");
     try {
       await removeAvailability(id);
       await refresh();
+      if (editing?.id === id) setEditing(null);
+      setMessage("Créneau supprimé.");
     } catch (e) {
       setError(errorMessage(e));
+    } finally {
+      setBusy(false);
     }
   }
 
   return (
-    <form onSubmit={(e) => void add(e)}>
-      <fieldset>
+    <form ref={formRef} onSubmit={(e) => void save(e)}>
+      <fieldset disabled={busy}>
         <legend>Vos disponibilités</legend>
         <p className="quiet">
-          Au moins un créneau à venir est nécessaire. Les heures sont celles de
-          votre navigateur.
+          Au moins un créneau disponible à venir est nécessaire. Les heures sont
+          celles de votre navigateur.
         </p>
-        {upcoming.length > 0 ? (
-          <ul className="slot-list">
-            {upcoming.map((slot) => (
+        {sorted.length > 0 ? (
+          <ul className="slot-list editable-slots">
+            {sorted.map((slot) => (
               <li key={slot.id}>
-                <span>{formatSlot(slot)}</span>
-                <button
-                  type="button"
-                  className="icon-button"
-                  aria-label={`Retirer le créneau ${formatSlot(slot)}`}
-                  onClick={() => void drop(slot.id)}
-                >
-                  <Trash2 size={16} aria-hidden="true" />
-                </button>
+                <span>
+                  {formatSlot(slot)} ·{" "}
+                  {slot.status === "available" ? "Disponible" : "Indisponible"}
+                  {Date.parse(slot.ends_at) <= Date.now() ? " · Terminé" : ""}
+                </span>
+                <div className="slot-actions">
+                  <button
+                    type="button"
+                    className="icon-button"
+                    aria-label={`Modifier le créneau ${formatSlot(slot)}`}
+                    onClick={() => edit(slot)}
+                  >
+                    <Pencil size={16} aria-hidden="true" />
+                  </button>
+                  <button
+                    type="button"
+                    className="icon-button"
+                    aria-label={`Retirer le créneau ${formatSlot(slot)}`}
+                    onClick={() => void drop(slot.id)}
+                  >
+                    <Trash2 size={16} aria-hidden="true" />
+                  </button>
+                </div>
               </li>
             ))}
           </ul>
         ) : (
-          <p className="quiet">Aucun créneau à venir pour le moment.</p>
+          <p className="quiet">Aucun créneau enregistré pour le moment.</p>
         )}
-        <div className="form-grid">
+        <div key={editing?.id ?? "new"}>
+          {editing && <p>Modification du créneau sélectionné</p>}
+          <div className="form-grid">
+            <label>
+              Début
+              <input
+                name="starts_at"
+                type="datetime-local"
+                required
+                defaultValue={toLocalInput(editing?.starts_at)}
+              />
+            </label>
+            <label>
+              Fin
+              <input
+                name="ends_at"
+                type="datetime-local"
+                required
+                defaultValue={toLocalInput(editing?.ends_at)}
+              />
+            </label>
+          </div>
           <label>
-            Début
-            <input name="starts_at" type="datetime-local" required />
-          </label>
-          <label>
-            Fin
-            <input name="ends_at" type="datetime-local" required />
+            Statut
+            <select
+              aria-label="Statut"
+              name="status"
+              defaultValue={editing?.status ?? "available"}
+            >
+              <option value="available">Disponible</option>
+              <option value="unavailable">Indisponible</option>
+            </select>
           </label>
         </div>
         {error && (
@@ -607,11 +692,31 @@ function AvailabilitySection({
             {error}
           </p>
         )}
+        {message && (
+          <p className="form-success" role="status">
+            {message}
+          </p>
+        )}
         <div className="section-actions">
           <button className="secondary-button" disabled={busy}>
-            <Plus size={16} aria-hidden="true" />
-            {busy ? "Ajout…" : "Ajouter ce créneau"}
+            {busy
+              ? "Enregistrement…"
+              : editing
+                ? "Enregistrer le créneau"
+                : "Ajouter ce créneau"}
           </button>
+          {editing && (
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={() => {
+                setEditing(null);
+                setError("");
+              }}
+            >
+              Annuler
+            </button>
+          )}
         </div>
       </fieldset>
     </form>
