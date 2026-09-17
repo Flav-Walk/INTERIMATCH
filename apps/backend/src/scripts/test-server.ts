@@ -6,6 +6,7 @@ import { readConfig } from "../config.js";
 import { AccountService } from "../auth/service.js";
 import { WorkerService } from "../worker/service.js";
 import { MissionService } from "../missions/service.js";
+import { ApplicationService } from "../applications/service.js";
 import type { Db } from "../db.js";
 if (process.env.NODE_ENV !== "test")
   throw new Error("Test server requires NODE_ENV=test");
@@ -33,12 +34,15 @@ await pg.exec(
   `INSERT INTO company_accounts(email,label) VALUES
      ('company.desktop@example.test','E2E'),('company.mobile@example.test','E2E'),
      ('missions.desktop@example.test','E2E'),('missions.mobile@example.test','E2E'),
+     ('application.company.desktop@example.test','E2E'),
+     ('application.company.mobile@example.test','E2E'),
      -- Compte laissé vide : le parcours de création part d'une liste sans
      -- mission, donc ses décomptes ne dépendent d'aucune autre fixture.
      ('crud.desktop@example.test','E2E'),('crud.mobile@example.test','E2E'),
      ('place.desktop@example.test','E2E'),('place.mobile@example.test','E2E'),
      ('fresh.desktop@example.test','E2E'),('fresh.mobile@example.test','E2E'),
-     ('open.desktop@example.test','E2E'),('open.mobile@example.test','E2E')
+     ('open.desktop@example.test','E2E'),('open.mobile@example.test','E2E'),
+     ('match.desktop@example.test','E2E'),('match.mobile@example.test','E2E')
    ON CONFLICT DO NOTHING`,
 );
 
@@ -47,6 +51,7 @@ const geocode = async () => ({ latitude: 45.75, longitude: 4.85 });
 const accounts = new AccountService(db, undefined, geocode);
 const workers = new WorkerService(db, geocode);
 const missions = new MissionService(db, geocode);
+const applications = new ApplicationService(db);
 
 /**
  * Compte entreprise pré-rempli avec des missions, pour que la suite navigateur
@@ -116,6 +121,67 @@ for (const project of projects) {
         [id],
       );
   }
+
+  // Entreprise et mission réservées au parcours E2E candidature. Cette fixture
+  // ne partage ainsi ni visite guidée ni état métier avec les scénarios SL1.
+  const applicationCompanySession = await accounts.register(
+    `application.company.${project}@example.test`,
+    "Browser-test-password-42!",
+  );
+  const applicationCompany = await accounts.authenticate(
+    applicationCompanySession.access_token,
+  );
+  const applicationMissionId = await missions.create(applicationCompany.id, {
+    title: "Serveur candidature",
+    job: "serveur",
+    city: "Lyon",
+    postal_code: "69002",
+    headcount: 1,
+    description: "Mission de test du parcours candidature.",
+    address: "",
+    pay_amount: null,
+    pay_unit: null,
+    min_years_experience: null,
+    required_skill_ids: [],
+    desired_skill_ids: [],
+    ...slot(4, 16, 8),
+  });
+  await db.query(
+    "UPDATE missions SET status='open', published_at=now() WHERE id=$1",
+    [applicationMissionId],
+  );
+
+  // Intérimaire complet réservé au parcours E2E candidature. Les deux projets
+  // ont chacun le leur : aucune session ni candidature n'est partagée.
+  const workerSession = await accounts.register(
+    `application.worker.${project}@example.test`,
+    "Browser-test-password-42!",
+  );
+  const worker = await accounts.authenticate(workerSession.access_token);
+  await db.query(
+    `UPDATE profiles
+        SET first_name='Camille',last_name='Recette',
+            onboarding_completed=true,tour_version=1
+      WHERE id=$1`,
+    [worker.id],
+  );
+  await db.query(
+    `INSERT INTO worker_profiles(
+       profile_id,city,postal_code,latitude,longitude,mobility_radius_km,
+       main_job,open_to_missions)
+     VALUES($1,'Lyon','69002',45.75,4.85,50,'serveur',true)`,
+    [worker.id],
+  );
+  await db.query(
+    `INSERT INTO worker_skills(profile_id,skill_id)
+     SELECT $1,id FROM skills`,
+    [worker.id],
+  );
+  await db.query(
+    `INSERT INTO availabilities(profile_id,starts_at,ends_at,status)
+     VALUES($1,now(),now()+interval '30 days','available')`,
+    [worker.id],
+  );
 }
 
 createApp(
@@ -129,4 +195,6 @@ createApp(
   accounts,
   workers,
   missions,
+  undefined,
+  applications,
 ).listen(3001, "127.0.0.1");

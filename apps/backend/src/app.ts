@@ -14,6 +14,7 @@ import type { WorkerService } from "./worker/service.js";
 import type { MissionService } from "./missions/service.js";
 import type { AdminService } from "./admin/service.js";
 import { adminRouter } from "./admin/routes.js";
+import type { ApplicationService } from "./applications/service.js";
 import { requireAuth } from "./auth/routes.js";
 import { HttpError } from "./errors.js";
 /**
@@ -63,6 +64,7 @@ export function createApp(
   workers?: WorkerService,
   missions?: MissionService,
   admin?: AdminService,
+  applications?: ApplicationService,
 ) {
   const app = express();
   const logger = pino({
@@ -135,7 +137,10 @@ export function createApp(
   if (accounts && admin)
     app.use("/api/v1/admin", requireAuth(accounts), adminRouter(admin));
   if (accounts)
-    app.use("/api/v1", accountRouter(config, accounts, workers, missions));
+    app.use(
+      "/api/v1",
+      accountRouter(config, accounts, workers, missions, applications),
+    );
   app.use((_req, res) => {
     res.status(404).json({
       error: {
