@@ -11,6 +11,10 @@ import { Dashboard } from "./pages/Dashboard";
 import { ProfileForm } from "./pages/ProfileForm";
 import { WorkerProfile } from "./pages/WorkerProfile";
 import { Missions } from "./pages/Missions";
+import { CompanyDashboard } from "./pages/CompanyDashboard";
+import { CompanyMissions } from "./pages/CompanyMissions";
+import { CompanyMissionDetail } from "./pages/CompanyMissionDetail";
+import { CompanyMissionForm } from "./pages/CompanyMissionForm";
 import { Candidates } from "./pages/Candidates";
 import "./styles/global.css";
 
@@ -37,9 +41,15 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
 
             <Route element={<ProtectedRoute role="company" />}>
               <Route path="company">
-                <Route index element={<Dashboard />} />
+                <Route index element={<CompanyDashboard />} />
                 <Route path="profile" element={<ProfileForm />} />
-                <Route path="missions" element={<Missions />} />
+                <Route path="missions" element={<CompanyMissions />} />
+                <Route path="missions/new" element={<CompanyMissionForm />} />
+                <Route path="missions/:id" element={<CompanyMissionDetail />} />
+                <Route
+                  path="missions/:id/edit"
+                  element={<CompanyMissionForm />}
+                />
                 <Route path="candidates" element={<Candidates />} />
               </Route>
             </Route>

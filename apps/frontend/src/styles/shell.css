@@ -1,0 +1,748 @@
+/*
+ * Système de composants repris de la maquette (image.png).
+ *
+ * Ce fichier porte le vocabulaire visuel : en-tête, grille deux colonnes, carte
+ * héros, filtres, cartes mission, rail droit. Les valeurs de couleur, de rayon
+ * et d'espacement viennent de tokens.css — rien n'est redéfini ici.
+ */
+
+/* ---------- En-tête ---------- */
+/* Même gouttière que <main> : l'en-tête reste aligné sur le contenu jusqu'en
+   très grande largeur, au lieu de coller aux bords de la fenêtre. */
+.shell-header,
+.shell-footer {
+  padding-inline: max(
+    var(--page-gutter),
+    calc((100% - var(--page-max)) / 2 + var(--page-gutter))
+  );
+}
+.shell-header {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  min-height: 64px;
+  padding-block: 10px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.shell-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: Georgia, serif;
+  font-size: 1.28rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  text-decoration: none;
+  color: var(--ink);
+  flex: none;
+}
+.shell-brand svg {
+  color: var(--forest);
+}
+.shell-nav {
+  display: flex;
+  align-items: center;
+  gap: 26px;
+  margin-right: auto;
+}
+.shell-nav a {
+  position: relative;
+  padding: 6px 0 10px;
+  font-size: 0.9rem;
+  color: var(--muted);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.shell-nav a:hover {
+  color: var(--ink);
+}
+/* Onglet actif : libellé encré et point orange, comme sur la maquette. */
+.shell-nav a.active {
+  color: var(--ink);
+  font-weight: 600;
+}
+.shell-nav a.active::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--orange);
+  transform: translateX(-50%);
+}
+.shell-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  width: min(300px, 32vw);
+  padding: 8px 14px;
+  border: 1px solid var(--border);
+  border-radius: 99px;
+  background: var(--background);
+  color: var(--muted);
+}
+.shell-search input {
+  border: 0;
+  background: none;
+  padding: 0;
+  width: 100%;
+  min-width: 0;
+  font-size: 0.85rem;
+  color: var(--ink);
+}
+.shell-search input:focus-visible {
+  outline: none;
+}
+.shell-search:focus-within {
+  border-color: var(--forest);
+}
+.shell-account {
+  flex: none;
+  position: relative;
+}
+.shell-account > summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px;
+  border-radius: 10px;
+  cursor: pointer;
+  list-style: none;
+}
+.shell-account > summary::-webkit-details-marker {
+  display: none;
+}
+.shell-account > summary:hover {
+  background: var(--background);
+}
+.avatar {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--forest);
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  flex: none;
+}
+.account-identity {
+  display: grid;
+  line-height: 1.25;
+  text-align: left;
+}
+.account-identity strong,
+.account-identity span {
+  max-width: 22ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.account-identity strong {
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+.account-identity span {
+  font-size: 0.74rem;
+  color: var(--muted);
+}
+.account-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 20;
+  min-width: 220px;
+  padding: 8px;
+  display: grid;
+  gap: 2px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 16px 36px oklch(0.23 0.02 160 / 0.16);
+}
+.account-menu a,
+.account-menu button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  font: inherit;
+  font-size: 0.86rem;
+  color: var(--ink);
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+.account-menu a:hover,
+.account-menu button:hover:not(:disabled) {
+  background: var(--background);
+}
+.account-menu button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* ---------- Grille deux colonnes ---------- */
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 328px;
+  gap: 20px;
+  align-items: start;
+}
+.layout-main {
+  display: grid;
+  gap: 26px;
+  min-width: 0;
+}
+.layout-rail {
+  display: grid;
+  gap: 20px;
+  position: sticky;
+  top: 20px;
+}
+
+/* ---------- Carte héros ---------- */
+/* La maquette pose un média plein cadre et superpose un dégradé sombre côté
+   texte : ce n'est pas une grille à deux colonnes. Le média peut donc être
+   remplacé par une photographie sans retoucher la composition. */
+.hero {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 258px;
+  border-radius: 16px;
+  overflow: hidden;
+  background: var(--forest);
+  color: #fff;
+  isolation: isolate;
+}
+.hero-media {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  display: grid;
+  place-items: center;
+  justify-items: end;
+  padding-right: 9%;
+  background: radial-gradient(
+    130% 120% at 100% 0%,
+    oklch(0.44 0.07 165) 0%,
+    oklch(0.27 0.055 165) 68%
+  );
+}
+/* Voile qui garantit la lisibilité du texte, quel que soit le média derrière. */
+.hero-media::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    92deg,
+    var(--forest) 0%,
+    oklch(0.32 0.065 165 / 0.92) 42%,
+    oklch(0.32 0.065 165 / 0) 78%
+  );
+}
+.hero-media svg {
+  width: 88px;
+  height: 88px;
+  color: oklch(1 0 0 / 0.38);
+}
+.hero-body {
+  position: relative;
+  padding: 30px 34px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  max-width: 68%;
+}
+.hero-badge {
+  display: inline-block;
+  padding: 5px 13px;
+  border: 1px solid oklch(1 0 0 / 0.32);
+  border-radius: 99px;
+  font-size: 0.76rem;
+  color: oklch(0.97 0.01 160);
+}
+.hero h1 {
+  margin: 0;
+  /* Georgia est plus large que la serif de la maquette : la taille est ajustée
+     pour conserver les deux lignes du titre plutôt que sa taille exacte. */
+  font-size: 1.9rem;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  text-wrap: pretty;
+}
+.hero p {
+  margin: 0;
+  max-width: 42ch;
+  font-size: 0.95rem;
+  color: oklch(0.9 0.02 160);
+}
+.hero .button {
+  margin-top: 6px;
+}
+
+/* ---------- Titre de section + filtres ---------- */
+.section-head {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.section-head h2 {
+  margin: 0;
+  font-size: 1.4rem;
+  letter-spacing: -0.01em;
+}
+.section-head .link-more {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.86rem;
+  color: var(--muted);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.section-head .link-more:hover {
+  color: var(--forest);
+}
+.chips {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 14px;
+  border: 0;
+  border-radius: 99px;
+  background: none;
+  font: inherit;
+  font-size: 0.88rem;
+  color: var(--muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.chip:hover {
+  color: var(--ink);
+}
+.chip .chip-count {
+  font-size: 0.78rem;
+  opacity: 0.75;
+}
+.chip.is-active {
+  background: var(--forest);
+  color: #fff;
+  font-weight: 600;
+}
+.chip.is-active .chip-count {
+  opacity: 0.85;
+}
+
+/* ---------- Carte mission ---------- */
+.mission-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+/* Sans rail à droite, quatre colonnes donneraient des cartes deux fois plus
+   larges que la maquette : on conserve leur largeur et on en met davantage. */
+.mission-grid.is-wide {
+  grid-template-columns: repeat(auto-fill, minmax(238px, 1fr));
+}
+.mission-card {
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  /* Élévation très douce : les cartes de la maquette se détachent du fond
+     crème sans ombre portée marquée. */
+  box-shadow: 0 1px 2px oklch(0.23 0.02 160 / 0.04);
+  overflow: hidden;
+  text-decoration: none;
+  color: inherit;
+  min-width: 0;
+}
+.mission-card:hover {
+  border-color: oklch(0.78 0.02 160);
+  box-shadow: 0 4px 14px oklch(0.23 0.02 160 / 0.08);
+}
+.mission-card:focus-visible {
+  outline: 3px solid var(--forest);
+  outline-offset: 2px;
+}
+/* Ratio et position repris de la maquette : la photo viendra remplacer
+   l'aplat sans changer la hauteur ni le cadrage. */
+.mission-media {
+  position: relative;
+  aspect-ratio: 16 / 7;
+  display: grid;
+  place-items: center;
+  background: var(--tint);
+}
+.mission-media svg {
+  width: 30px;
+  height: 30px;
+  color: var(--forest);
+  opacity: 0.55;
+}
+.mission-status {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  padding: 4px 11px;
+  border-radius: 99px;
+  font-size: 0.73rem;
+  font-weight: 600;
+  background: var(--surface);
+  color: var(--ink);
+}
+.mission-status.is-open {
+  background: oklch(0.9 0.05 235);
+  color: oklch(0.36 0.09 245);
+}
+.mission-status.is-running {
+  background: oklch(0.9 0.06 160);
+  color: var(--forest);
+}
+.mission-status.is-done {
+  background: oklch(0.93 0.004 160);
+  color: var(--muted);
+}
+.mission-status.is-draft {
+  background: oklch(0.93 0.05 80);
+  color: oklch(0.42 0.09 70);
+}
+.mission-body {
+  padding: 14px 15px 12px;
+  display: grid;
+  align-content: start;
+  gap: 7px;
+}
+.mission-title {
+  margin: 0;
+  font-family: inherit;
+  font-size: 0.98rem;
+  font-weight: 650;
+  line-height: 1.3;
+}
+.mission-meta {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.84rem;
+  color: var(--muted);
+}
+.mission-meta svg {
+  flex: none;
+  color: var(--muted);
+}
+.mission-foot {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 15px;
+  border-top: 1px solid var(--border);
+  font-size: 0.83rem;
+  color: var(--muted);
+}
+.avatar-stack {
+  display: flex;
+}
+.avatar-stack span {
+  width: 25px;
+  height: 25px;
+  margin-right: -8px;
+  border-radius: 50%;
+  border: 2px solid var(--surface);
+  background: var(--tint);
+  display: grid;
+  place-items: center;
+  font-size: 0.62rem;
+  font-weight: 650;
+  color: var(--forest);
+}
+.circle-button {
+  margin-left: auto;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--forest);
+  flex: none;
+}
+.mission-card:hover .circle-button {
+  background: var(--forest);
+  border-color: var(--forest);
+  color: #fff;
+}
+
+/* ---------- Rail droit ---------- */
+.rail-card {
+  padding: 22px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 1px 2px oklch(0.23 0.02 160 / 0.04);
+}
+.rail-card .quiet {
+  font-size: 0.86rem;
+}
+.rail-head {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 16px;
+}
+.rail-head svg {
+  color: var(--forest);
+}
+.rail-head h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+.rail-head .link-more {
+  margin-left: auto;
+  font-size: 0.82rem;
+  color: var(--muted);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+/* ---------- Mini-calendrier ---------- */
+.calendar-head {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.calendar-head strong {
+  font-size: 0.86rem;
+}
+.calendar-nav {
+  margin-left: auto;
+  display: flex;
+  gap: 4px;
+}
+.calendar-nav button {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface);
+  color: var(--muted);
+  cursor: pointer;
+}
+.calendar-nav button:hover {
+  color: var(--forest);
+  border-color: var(--forest);
+}
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  text-align: center;
+}
+.calendar-grid .weekday {
+  font-size: 0.68rem;
+  color: var(--muted);
+  padding-bottom: 6px;
+}
+.calendar-day {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  font-size: 0.78rem;
+  color: var(--ink);
+}
+.calendar-day.is-outside {
+  color: oklch(0.82 0.005 160);
+}
+.calendar-day.has-mission {
+  background: oklch(0.91 0.055 160);
+  color: var(--forest);
+  font-weight: 650;
+}
+.calendar-day.is-today {
+  background: var(--forest);
+  color: #fff;
+  font-weight: 650;
+}
+
+/* ---------- Agenda ---------- */
+.agenda {
+  display: grid;
+  gap: 2px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+.agenda-item {
+  display: flex;
+  gap: 12px;
+  padding: 9px 0;
+  text-decoration: none;
+  color: inherit;
+}
+.agenda-item + .agenda-item {
+  border-top: 1px solid var(--border);
+}
+.agenda-item:hover .agenda-title {
+  color: var(--forest);
+}
+.agenda-date {
+  flex: none;
+  width: 34px;
+  text-align: center;
+  line-height: 1.1;
+}
+.agenda-date strong {
+  display: block;
+  font-size: 0.95rem;
+}
+.agenda-date span {
+  font-size: 0.68rem;
+  color: var(--orange);
+}
+.agenda-body {
+  min-width: 0;
+}
+.agenda-title {
+  display: block;
+  font-size: 0.88rem;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.agenda-body span {
+  font-size: 0.79rem;
+  color: var(--muted);
+}
+
+/* ---------- Pied de page ---------- */
+.shell-footer {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+  padding-block: 22px;
+  border-top: 1px solid var(--border);
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+.shell-footer .shell-brand {
+  font-size: 1rem;
+}
+.shell-footer nav {
+  margin-left: auto;
+  display: flex;
+  gap: 22px;
+}
+.shell-footer a {
+  color: var(--muted);
+  text-decoration: none;
+}
+.shell-footer a:hover {
+  color: var(--forest);
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 1100px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .layout-rail {
+    position: static;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  }
+  .mission-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 900px) {
+  .shell-header {
+    flex-wrap: wrap;
+    gap: 12px 20px;
+    padding: 12px 20px;
+  }
+  .shell-nav {
+    order: 3;
+    margin-right: 0;
+    width: 100%;
+    gap: 20px;
+    overflow-x: auto;
+    padding-bottom: 2px;
+  }
+  .shell-search {
+    width: min(240px, 46vw);
+  }
+  .hero-body {
+    max-width: 100%;
+    padding: 28px 24px;
+  }
+  .hero-media {
+    padding-right: 0;
+  }
+  .hero-media svg {
+    display: none;
+  }
+  .hero h1 {
+    font-size: 1.9rem;
+    max-width: 20ch;
+  }
+}
+@media (max-width: 620px) {
+  .shell-header {
+    padding: 12px 16px;
+  }
+  .account-identity {
+    display: none;
+  }
+  .shell-search {
+    width: 100%;
+    order: 4;
+  }
+  .mission-grid,
+  .mission-grid.is-wide {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .mission-media {
+    max-height: 124px;
+  }
+  .section-head h2 {
+    font-size: 1.25rem;
+  }
+  .shell-footer {
+    padding: 20px 16px;
+  }
+  .shell-footer nav {
+    margin-left: 0;
+    width: 100%;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+}

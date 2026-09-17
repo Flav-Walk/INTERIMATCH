@@ -1,6 +1,12 @@
-import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { Sprout, LifeBuoy } from "lucide-react";
-import { useState } from "react";
+import {
+  NavLink,
+  Outlet,
+  useLocation,
+  useNavigate,
+  useSearchParams,
+} from "react-router-dom";
+import { Sprout, Search, LifeBuoy, LogOut, ChevronDown } from "lucide-react";
+import { useRef, useState, type FormEvent } from "react";
 import { useAuth } from "../hooks/useAuth";
 import { destination, errorMessage, api, type User } from "../services/session";
 import { GuidedTour } from "../components/GuidedTour";
@@ -10,6 +16,7 @@ import {
   tourFor,
 } from "../services/tours";
 
+/** Navigation de la maquette : Accueil · Missions · Candidats · Entreprise. */
 const links: Record<"worker" | "company", { to: string; label: string }[]> = {
   worker: [
     { to: "/worker", label: "Tableau de bord" },
@@ -17,35 +24,35 @@ const links: Record<"worker" | "company", { to: string; label: string }[]> = {
     { to: "/worker/missions", label: "Missions" },
   ],
   company: [
-    { to: "/company", label: "Tableau de bord" },
-    { to: "/company/profile", label: "Mon établissement" },
+    { to: "/company", label: "Accueil" },
     { to: "/company/missions", label: "Missions" },
     { to: "/company/candidates", label: "Candidats" },
+    { to: "/company/profile", label: "Entreprise" },
   ],
 };
 
-function WorkspaceNav({ user }: { user: User }) {
-  if (user.role === "admin") return null;
-  return (
-    <nav aria-label="Navigation principale" data-tour="nav">
-      {links[user.role].map((link) => (
-        <NavLink key={link.to} to={link.to} end={link.to === destination(user)}>
-          {link.label}
-        </NavLink>
-      ))}
-    </nav>
-  );
-}
+const initials = (user: User) => {
+  const letters = `${user.first_name} ${user.last_name}`
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2);
+  return (letters || user.email.slice(0, 2)).toLocaleUpperCase("fr");
+};
 
 export function AppLayout() {
   const auth = useAuth(),
     navigate = useNavigate(),
-    location = useLocation();
+    location = useLocation(),
+    [params] = useSearchParams();
   const [error, setError] = useState(""),
     [replay, setReplay] = useState(false);
+  const account = useRef<HTMLDetailsElement>(null);
   const user = auth.user;
 
   async function logout() {
+    account.current?.removeAttribute("open");
     try {
       await auth.logout();
       navigate("/login");
@@ -79,39 +86,113 @@ export function AppLayout() {
     }
   }
 
+  function search(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const value = String(
+      new FormData(event.currentTarget).get("q") ?? "",
+    ).trim();
+    navigate(
+      value
+        ? `/company/missions?q=${encodeURIComponent(value)}`
+        : "/company/missions",
+    );
+  }
+
   return (
     <>
       <a className="skip" href="#content">
         Aller au contenu
       </a>
-      <header className="site-header">
-        <NavLink className="brand" to={user ? destination(user) : "/"}>
-          <Sprout aria-hidden="true" />
+      <header className="shell-header">
+        <NavLink className="shell-brand" to={user ? destination(user) : "/"}>
+          <Sprout size={22} aria-hidden="true" />
           InteriMatch
         </NavLink>
         {user ? (
           <>
-            <WorkspaceNav user={user} />
-            <div className="account-link" data-tour="account">
-              {user.role !== "admin" && (
-                <button
-                  className="text-button quiet-button"
-                  onClick={() => setReplay(true)}
-                  disabled={!onDashboard}
-                  title={
-                    onDashboard
-                      ? undefined
-                      : "Disponible depuis votre tableau de bord"
-                  }
-                >
-                  <LifeBuoy size={16} aria-hidden="true" />
-                  Revoir la visite
+            {user.role !== "admin" && (
+              <nav
+                aria-label="Navigation principale"
+                className="shell-nav"
+                data-tour="nav"
+              >
+                {links[user.role].map((link) => (
+                  <NavLink
+                    key={link.to}
+                    to={link.to}
+                    end={link.to === destination(user)}
+                  >
+                    {link.label}
+                  </NavLink>
+                ))}
+              </nav>
+            )}
+            {user.role === "company" && (
+              <form
+                className="shell-search"
+                role="search"
+                onSubmit={search}
+                key={params.get("q") ?? ""}
+              >
+                <Search size={16} aria-hidden="true" />
+                <input
+                  name="q"
+                  type="search"
+                  aria-label="Rechercher une mission"
+                  placeholder="Rechercher une mission…"
+                  defaultValue={params.get("q") ?? ""}
+                />
+              </form>
+            )}
+            <details
+              className="shell-account"
+              ref={account}
+              data-tour="account"
+            >
+              <summary aria-label="Mon compte">
+                <span className="avatar" aria-hidden="true">
+                  {initials(user)}
+                </span>
+                <span className="account-identity">
+                  <strong>
+                    {user.first_name
+                      ? `${user.first_name} ${user.last_name}`.trim()
+                      : user.email}
+                  </strong>
+                  <span>
+                    {user.role === "company"
+                      ? (user.profile.establishment_name ??
+                        "Votre établissement")
+                      : "Espace intérimaire"}
+                  </span>
+                </span>
+                <ChevronDown size={16} aria-hidden="true" />
+              </summary>
+              <div className="account-menu">
+                {user.role !== "admin" && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      account.current?.removeAttribute("open");
+                      setReplay(true);
+                    }}
+                    disabled={!onDashboard}
+                    title={
+                      onDashboard
+                        ? undefined
+                        : "Disponible depuis votre tableau de bord"
+                    }
+                  >
+                    <LifeBuoy size={16} aria-hidden="true" />
+                    Revoir la visite
+                  </button>
+                )}
+                <button type="button" onClick={() => void logout()}>
+                  <LogOut size={16} aria-hidden="true" />
+                  Se déconnecter
                 </button>
-              )}
-              <button className="text-button" onClick={() => void logout()}>
-                Se déconnecter
-              </button>
-            </div>
+              </div>
+            </details>
           </>
         ) : (
           <nav className="account-link" aria-label="Compte">
@@ -128,13 +209,15 @@ export function AppLayout() {
       <main id="content" tabIndex={-1}>
         <Outlet />
       </main>
-      <footer>
-        <span className="brand">
+      <footer className="shell-footer">
+        <span className="shell-brand">
           <Sprout size={19} aria-hidden="true" />
           InteriMatch
         </span>
         <span>Les talents d’aujourd’hui, vos réussites de demain.</span>
-        <span>Prototype · Hôtellerie &amp; restauration</span>
+        <nav aria-label="Liens utiles">
+          <span>Prototype · Hôtellerie &amp; restauration</span>
+        </nav>
       </footer>
       {runTour && user && (
         <GuidedTour

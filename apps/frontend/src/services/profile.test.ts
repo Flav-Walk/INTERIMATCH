@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import {
   availableFrom,
+  humaniseError,
+  partial,
   formatSlot,
   isUpcoming,
   requirementLabels,
@@ -22,6 +24,23 @@ const slot = (
     status,
   };
 };
+
+/**
+ * Créneau à dates fixes, pour les assertions de rendu : un créneau construit à
+ * partir de l'heure courante franchirait minuit selon le moment de la journée où
+ * la suite est lancée, et le rendu changerait avec elle. Les dates sont données
+ * en heure locale, celle qu'affiche `formatSlot`, donc le résultat attendu ne
+ * dépend pas non plus du fuseau de la machine.
+ */
+const fixedSlot = (
+  [y, m, d, h]: number[],
+  [ey, em, ed, eh]: number[],
+): Availability => ({
+  id: "slot-fixe",
+  starts_at: new Date(y, m, d, h).toISOString(),
+  ends_at: new Date(ey, em, ed, eh).toISOString(),
+  status: "available",
+});
 
 describe("créneaux de disponibilité", () => {
   it("ne retient que les créneaux disponibles à venir", () => {
@@ -58,9 +77,17 @@ describe("créneaux de disponibilité", () => {
   });
 
   it("formate un créneau de façon lisible", () => {
-    const text = formatSlot(slot(24));
-    expect(text).toMatch(/·/);
-    expect(text).toMatch(/\d{2}:\d{2} – \d{2}:\d{2}/);
+    expect(formatSlot(fixedSlot([2027, 0, 12, 16], [2027, 0, 12, 22]))).toBe(
+      "mar. 12 janv. · 16:00 – 22:00",
+    );
+  });
+
+  it("répète la date de fin quand le créneau franchit minuit", () => {
+    // Un service de soirée se termine le lendemain. Sans la date de fin,
+    // « 18:00 – 02:00 » laisserait croire à un créneau clos le même jour.
+    expect(formatSlot(fixedSlot([2027, 0, 12, 18], [2027, 0, 13, 2]))).toBe(
+      "mar. 12 janv. · 18:00 – mer. 13 janv. · 02:00",
+    );
   });
 });
 
@@ -85,5 +112,71 @@ describe("saisie et libellés", () => {
     ]);
     for (const label of Object.values(requirementLabels))
       expect(label.length).toBeGreaterThan(0);
+  });
+});
+
+describe("modification partielle", () => {
+  it("retire les champs vides pour ne pas écraser l'existant", () => {
+    // C'est ce qui permet de ne modifier que les métiers secondaires sans
+    // devoir avoir déjà choisi son métier principal.
+    expect(partial({ main_job: "", secondary_jobs: ["barman"] })).toEqual({
+      secondary_jobs: ["barman"],
+    });
+    expect(partial({ city: "   ", postal_code: "69002" })).toEqual({
+      postal_code: "69002",
+    });
+  });
+
+  it("conserve null, qui est un effacement volontaire", () => {
+    expect(partial({ phone: null, years_experience: null })).toEqual({
+      phone: null,
+      years_experience: null,
+    });
+  });
+
+  it("conserve les booléens, y compris false", () => {
+    expect(partial({ has_driving_licence: false, has_vehicle: false })).toEqual(
+      {
+        has_driving_licence: false,
+        has_vehicle: false,
+      },
+    );
+  });
+
+  it("conserve le zéro, qui est une valeur renseignée", () => {
+    expect(partial({ mobility_radius_km: 0 })).toEqual({
+      mobility_radius_km: 0,
+    });
+  });
+
+  it("retire un nombre non calculable plutôt que d'envoyer NaN", () => {
+    expect(partial({ years_experience: Number("abc") })).toEqual({});
+  });
+
+  it("retire les champs absents", () => {
+    expect(partial({ city: undefined })).toEqual({});
+  });
+});
+
+describe("messages d'erreur", () => {
+  it("remplace un nom de champ d'API par son libellé à l'écran", () => {
+    expect(humaniseError("Donnée invalide : postal_code.")).toBe(
+      "Vérifiez le champ « Code postal ».",
+    );
+  });
+
+  it("énumère plusieurs champs", () => {
+    expect(humaniseError("Donnée invalide : city, postal_code.")).toBe(
+      "Vérifiez ces champs : Ville, Code postal.",
+    );
+  });
+
+  it("garde un nom inconnu plutôt que de l'effacer", () => {
+    expect(humaniseError("Donnée invalide : inconnu.")).toContain("inconnu");
+  });
+
+  it("laisse intact un message déjà lisible", () => {
+    const message = "Un véhicule nécessite le permis.";
+    expect(humaniseError(message)).toBe(message);
   });
 });

@@ -22,6 +22,8 @@ import {
   putCertifications,
   putExperiences,
   putSkills,
+  humaniseError,
+  partial,
   removeAvailability,
   requirementLabels,
   updateAvailability,
@@ -59,14 +61,17 @@ function Section({
       if (updated) setUser(updated);
       setSaved(true);
     } catch (e) {
-      setError(errorMessage(e));
+      setError(humaniseError(errorMessage(e)));
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <form onSubmit={(e) => void submit(e)}>
+    <form
+      onSubmit={(e) => void submit(e)}
+      onInput={() => saved && setSaved(false)}
+    >
       <fieldset>
         <legend>{title}</legend>
         {hint && <p className="quiet">{hint}</p>}
@@ -92,9 +97,20 @@ function Section({
 }
 
 const str = (f: FormData, n: string) => String(f.get(n) ?? "").trim();
+/** Champ numérique effaçable : le serveur accepte null (expérience, téléphone). */
 const optionalNumber = (f: FormData, n: string) => {
   const raw = str(f, n);
   return raw === "" ? null : Number(raw);
+};
+
+/**
+ * Champ numérique non effaçable : le serveur n'accepte pas null pour le rayon
+ * de mobilité. Laissé vide, il est simplement omis de la modification partielle
+ * plutôt qu'envoyé comme une valeur invalide.
+ */
+const numberOrOmit = (f: FormData, n: string) => {
+  const raw = str(f, n);
+  return raw === "" ? undefined : Number(raw);
 };
 
 export function WorkerProfile() {
@@ -112,6 +128,10 @@ export function WorkerProfile() {
   const [certifications, setCertifications] = useState(
     () => p.certifications ?? [],
   );
+  // Permis et véhicule sont liés par une règle métier : le véhicule suppose le
+  // permis. Deux cases à cocher indépendantes laissaient exprimer l'inverse.
+  const [licence, setLicence] = useState(p.has_driving_licence ?? false);
+  const [vehicle, setVehicle] = useState(p.has_vehicle ?? false);
 
   useEffect(() => {
     void Promise.all([
@@ -129,6 +149,12 @@ export function WorkerProfile() {
   const chosen = new Set((p.skills ?? []).map((s) => s.id));
   const missing = user.missing_requirements ?? [];
   const slots = p.availabilities ?? [];
+  // Un profil ancien peut porter un métier absent du référentiel actuel. Sans
+  // cette option, le sélecteur s'afficherait vide et la valeur semblerait perdue.
+  const jobOptions =
+    !mainJob || jobs.some((j) => j.value === mainJob)
+      ? jobs
+      : [...jobs, { value: mainJob, label: mainJob }];
 
   return (
     <section className="onboarding">
@@ -145,6 +171,11 @@ export function WorkerProfile() {
           {loadError}
         </p>
       )}
+
+      <p className="quiet form-legend">
+        Les champs marqués « facultatif » peuvent rester vides. Chaque bloc
+        s’enregistre séparément : vous pouvez revenir le compléter plus tard.
+      </p>
 
       {missing.length > 0 ? (
         <section className="side-panel pale" role="status">
@@ -165,8 +196,10 @@ export function WorkerProfile() {
         title="Votre identité"
         onSave={(f) =>
           patchWorker({
-            first_name: str(f, "first_name"),
-            last_name: str(f, "last_name"),
+            ...partial({
+              first_name: str(f, "first_name"),
+              last_name: str(f, "last_name"),
+            }),
             phone: str(f, "phone") || null,
           })
         }
@@ -176,7 +209,6 @@ export function WorkerProfile() {
             Prénom
             <input
               name="first_name"
-              required
               maxLength={120}
               defaultValue={user.first_name}
             />
@@ -185,7 +217,6 @@ export function WorkerProfile() {
             Nom
             <input
               name="last_name"
-              required
               maxLength={120}
               defaultValue={user.last_name}
             />
@@ -203,7 +234,10 @@ export function WorkerProfile() {
         hint="Le métier principal sert au rapprochement avec les missions."
         onSave={(f) =>
           patchWorker({
-            main_job: str(f, "main_job"),
+            // Le métier principal n'est envoyé que s'il est choisi : on peut
+            // ainsi modifier les seuls métiers secondaires sans être bloqué,
+            // et la valeur déjà enregistrée reste intacte.
+            ...partial({ main_job: mainJob }),
             secondary_jobs: f.getAll("secondary_jobs").map(String),
             years_experience: optionalNumber(f, "years_experience"),
           })
@@ -213,14 +247,11 @@ export function WorkerProfile() {
           Métier principal
           <select
             name="main_job"
-            required
             value={mainJob}
             onChange={(event) => setMainJob(event.target.value)}
           >
-            <option value="" disabled>
-              Choisissez un métier
-            </option>
-            {jobs.map((j) => (
+            <option value="">Choisissez un métier</option>
+            {jobOptions.map((j) => (
               <option key={j.value} value={j.value}>
                 {j.label}
               </option>
@@ -462,24 +493,25 @@ export function WorkerProfile() {
         hint="Indiquez simplement votre ville : les coordonnées nécessaires au rapprochement sont retrouvées automatiquement."
         onSave={(f) =>
           patchWorker({
-            city: str(f, "city"),
-            postal_code: str(f, "postal_code"),
-            mobility_radius_km: Number(str(f, "mobility_radius_km")),
-            has_driving_licence: f.get("has_driving_licence") === "on",
-            has_vehicle: f.get("has_vehicle") === "on",
+            ...partial({
+              city: str(f, "city"),
+              postal_code: str(f, "postal_code"),
+              mobility_radius_km: numberOrOmit(f, "mobility_radius_km"),
+            }),
+            has_driving_licence: licence,
+            has_vehicle: licence && vehicle,
           })
         }
       >
         <div className="form-grid">
           <label>
             Ville
-            <input name="city" required defaultValue={p.city ?? ""} />
+            <input name="city" defaultValue={p.city ?? ""} />
           </label>
           <label>
             Code postal
             <input
               name="postal_code"
-              required
               inputMode="numeric"
               pattern="[0-9]{5}"
               maxLength={5}
@@ -494,28 +526,57 @@ export function WorkerProfile() {
             type="number"
             min={0}
             max={250}
-            required
             defaultValue={p.mobility_radius_km ?? ""}
           />
         </label>
-        <div className="skill-options">
+
+        <div
+          className="choice-group"
+          role="radiogroup"
+          aria-labelledby="licence-label"
+        >
+          <span id="licence-label" className="choice-label">
+            Permis de conduire
+          </span>
           <label>
             <input
-              type="checkbox"
-              name="has_driving_licence"
-              defaultChecked={p.has_driving_licence ?? false}
+              type="radio"
+              name="licence"
+              checked={licence}
+              onChange={() => setLicence(true)}
             />
             J’ai le permis
           </label>
           <label>
             <input
-              type="checkbox"
-              name="has_vehicle"
-              defaultChecked={p.has_vehicle ?? false}
+              type="radio"
+              name="licence"
+              checked={!licence}
+              onChange={() => {
+                // Le véhicule suppose le permis : on retire l'un avec l'autre
+                // plutôt que de laisser deux réponses contradictoires.
+                setLicence(false);
+                setVehicle(false);
+              }}
             />
-            J’ai un véhicule
+            Je n’ai pas le permis
           </label>
         </div>
+        <label className="choice-single">
+          <input
+            type="checkbox"
+            checked={licence && vehicle}
+            disabled={!licence}
+            onChange={(event) => setVehicle(event.target.checked)}
+          />
+          J’ai un véhicule
+        </label>
+        {!licence && (
+          <p className="quiet">
+            Le véhicule suppose le permis. Indiquez « J’ai le permis » pour
+            pouvoir le signaler.
+          </p>
+        )}
       </Section>
 
       <AvailabilitySection slots={slots} />
@@ -590,7 +651,7 @@ function AvailabilitySection({ slots }: { slots: Availability[] }) {
       setEditing(null);
       form.reset();
     } catch (e) {
-      setError(errorMessage(e));
+      setError(humaniseError(errorMessage(e)));
     } finally {
       setBusy(false);
     }
@@ -606,7 +667,7 @@ function AvailabilitySection({ slots }: { slots: Availability[] }) {
       if (editing?.id === id) setEditing(null);
       setMessage("Créneau supprimé.");
     } catch (e) {
-      setError(errorMessage(e));
+      setError(humaniseError(errorMessage(e)));
     } finally {
       setBusy(false);
     }
