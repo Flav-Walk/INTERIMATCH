@@ -19,6 +19,12 @@ export const environmentSchema = z.object({
   // devant le service, d'où la valeur 1 par défaut en production. Jamais `true` :
   // cela laisserait n'importe qui usurper son IP et contourner le rate limiting.
   TRUST_PROXY: z.coerce.number().int().min(0).max(10).optional(),
+  // Tentatives d'authentification par IP et par quart d'heure. Configurable pour
+  // que les harnais de test puissent enchaîner des parcours sans être bridés ;
+  // la valeur de production reste volontairement basse.
+  AUTH_RATE_LIMIT: z.coerce.number().int().min(1).max(100000).default(30),
+  // Requêtes par IP et par minute, toutes routes confondues.
+  RATE_LIMIT: z.coerce.number().int().min(1).max(1000000).default(100),
   SUPABASE_URL: optionalUrl,
   SUPABASE_SERVICE_ROLE_KEY: optional,
   SUPABASE_SECRET_KEY: optional,

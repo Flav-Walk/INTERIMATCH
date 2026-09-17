@@ -33,6 +33,27 @@ export const applicationStatuses: readonly ReferenceValue[] = Object.freeze([
   { value: "withdrawn", label: "Retirée" },
 ]);
 
+// Métiers de l'hôtellerie-restauration. Liste volontairement courte et fermée :
+// une valeur comparable vaut mieux qu'un texte libre pour le futur matching.
+// Ce n'est PAS une taxonomie métier complète — cette limite est documentée, et
+// la liste s'étend en ajoutant une ligne ici, sans toucher aux écrans.
+export const jobs: readonly ReferenceValue[] = Object.freeze([
+  { value: "serveur", label: "Serveur / Serveuse" },
+  { value: "chef_de_rang", label: "Chef de rang" },
+  { value: "maitre_hotel", label: "Maître d'hôtel" },
+  { value: "commis_salle", label: "Commis de salle" },
+  { value: "barman", label: "Barman / Barmaid" },
+  { value: "cuisinier", label: "Cuisinier / Cuisinière" },
+  { value: "chef_de_partie", label: "Chef de partie" },
+  { value: "commis_cuisine", label: "Commis de cuisine" },
+  { value: "plongeur", label: "Plongeur / Plongeuse" },
+  { value: "receptionniste", label: "Réceptionniste" },
+  { value: "employe_etage", label: "Employé·e d'étage" },
+  { value: "hote_accueil", label: "Hôte / Hôtesse d'accueil" },
+]);
+
+export const jobValues = jobs.map((j) => j.value) as [string, ...string[]];
+
 export const sectorValues = sectors.map((s) => s.value) as [
   string,
   ...string[],

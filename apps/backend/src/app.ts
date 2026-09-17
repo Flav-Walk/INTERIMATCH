@@ -10,8 +10,23 @@ import { healthRouter } from "./routes/health.js";
 import cookieParser from "cookie-parser";
 import { AccountService } from "./auth/service.js";
 import { accountRouter } from "./auth/routes.js";
+import type { WorkerService } from "./worker/service.js";
 import { HttpError } from "./errors.js";
-export function createApp(config: Config, accounts?: AccountService) {
+/** Code d'erreur technique court et sans donnée : ENETUNREACH, 23505, ECONNRESET… */
+function shortErrorCode(err: unknown) {
+  if (typeof err !== "object" || err === null || !("code" in err))
+    return undefined;
+  const code = (err as { code: unknown }).code;
+  if (typeof code !== "string" && typeof code !== "number") return undefined;
+  const text = String(code);
+  return /^[A-Za-z0-9_]{1,32}$/.test(text) ? text : undefined;
+}
+
+export function createApp(
+  config: Config,
+  accounts?: AccountService,
+  workers?: WorkerService,
+) {
   const app = express();
   const logger = pino({
     level: config.NODE_ENV === "test" ? "silent" : "info",
@@ -51,7 +66,7 @@ export function createApp(config: Config, accounts?: AccountService) {
   app.use(
     rateLimit({
       windowMs: 60_000,
-      limit: 100,
+      limit: config.RATE_LIMIT,
       standardHeaders: "draft-8",
       legacyHeaders: false,
       handler: (_req, res) => {
@@ -68,7 +83,7 @@ export function createApp(config: Config, accounts?: AccountService) {
   app.use(express.json({ limit: "100kb" }));
   app.use("/api/v1", healthRouter);
   app.use(cookieParser());
-  if (accounts) app.use("/api/v1", accountRouter(config, accounts));
+  if (accounts) app.use("/api/v1", accountRouter(config, accounts, workers));
   app.use((_req, res) => {
     res.status(404).json({
       error: {
@@ -116,17 +131,10 @@ export function createApp(config: Config, accounts?: AccountService) {
         origin: req.headers.origin,
         detail: err instanceof HttpError ? err.detail : undefined,
         cause: status === 500 && err instanceof Error ? err.name : undefined,
-        errorMessage:
-  status === 500 && err instanceof Error ? err.message : undefined,
-errorCode:
-  status === 500 &&
-  typeof err === "object" &&
-  err !== null &&
-  "code" in err
-    ? String(err.code)
-    : undefined,
-stack:
-  status === 500 && err instanceof Error ? err.stack : undefined,
+        // Les codes courts des erreurs d'infrastructure (ENETUNREACH, 23505…)
+        // situent une panne sans rien révéler de la requête ni du code. Le
+        // message et la pile, eux, restent hors des journaux de production.
+        errorCode: status === 500 ? shortErrorCode(err) : undefined,
       },
       "request_failed",
     );

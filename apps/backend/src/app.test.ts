@@ -69,11 +69,12 @@ describe("API foundation", () => {
     );
   });
   it("limits repeated requests", async () => {
-    const app = createApp(config);
-    for (let i = 0; i < 100; i++) await request(app).get("/api/v1/health");
+    const app = createApp(readConfig({ NODE_ENV: "test", RATE_LIMIT: "5" }));
+    for (let i = 0; i < 5; i++) await request(app).get("/api/v1/health");
     const res = await request(app).get("/api/v1/health");
     expect(res.status).toBe(429);
     expect(res.body.error.code).toBe("RATE_LIMITED");
+    expect(readConfig({ NODE_ENV: "test" }).RATE_LIMIT).toBe(100);
   });
   it("trusts exactly one proxy hop in production and none elsewhere", () => {
     // Render place un seul proxy devant le service. Jamais `true` : cela permettrait
@@ -112,6 +113,23 @@ describe("API foundation", () => {
     expect((await call("203.0.113.10")).status).toBe(429);
     // Sans trust proxy, ce second client partagerait le compteur du premier.
     expect((await call("203.0.113.99")).status).toBe(200);
+  });
+  it("limits authentication attempts with a configurable ceiling", async () => {
+    const app = createApp(
+      readConfig({ NODE_ENV: "test", AUTH_RATE_LIMIT: "2" }),
+      { db: null } as never,
+    );
+    const attempt = () =>
+      request(app)
+        .post("/api/v1/auth/login")
+        .set("Origin", "http://localhost:5173")
+        .send({ email: "someone@example.test", password: "whatever" });
+    await attempt();
+    await attempt();
+    const blocked = await attempt();
+    expect(blocked.status).toBe(429);
+    expect(blocked.body.error.code).toBe("AUTH_RATE_LIMIT");
+    expect(readConfig({ NODE_ENV: "test" }).AUTH_RATE_LIMIT).toBe(30);
   });
   it("validates config without exposing values", () => {
     expect(() => readConfig({ PORT: "bad" })).toThrow("PORT");

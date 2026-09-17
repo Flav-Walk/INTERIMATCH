@@ -2,7 +2,8 @@ import { hash, verify, argon2id } from "argon2";
 import { createHash, randomBytes } from "node:crypto";
 import type { Db } from "../db.js";
 import { HttpError } from "../errors.js";
-import type { Profile, WorkerInput, CompanyInput } from "./schemas.js";
+import type { Profile, CompanyInput } from "./schemas.js";
+import { missingRules } from "../worker/completion.js";
 export const digest = (token: string) =>
   createHash("sha256").update(token).digest("hex");
 export const passwordHash = (password: string) =>
@@ -166,6 +167,16 @@ export class AccountService {
         digest(access),
       ]);
   }
+  /** Relit un profil par son identifiant, après une écriture par exemple. */
+  async reload(id: string) {
+    const { rows } = await this.db.query<Profile>(
+      "SELECT * FROM profiles WHERE id=$1",
+      [id],
+    );
+    if (!rows[0])
+      throw new HttpError(404, "PROFILE_NOT_FOUND", "Compte introuvable.");
+    return rows[0];
+  }
   async me(p: Profile) {
     let detail: Record<string, unknown> = {};
     if (p.role === "worker") {
@@ -190,7 +201,13 @@ export class AccountService {
       ).rows;
       detail.availabilities = (
         await this.db.query(
-          "SELECT id,starts_at,ends_at FROM availabilities WHERE profile_id=$1 ORDER BY starts_at",
+          "SELECT id,starts_at,ends_at,status FROM availabilities WHERE profile_id=$1 ORDER BY starts_at",
+          [p.id],
+        )
+      ).rows;
+      detail.certifications = (
+        await this.db.query(
+          "SELECT id,name,issuer,obtained_on FROM certifications WHERE profile_id=$1 ORDER BY name",
           [p.id],
         )
       ).rows;
@@ -203,7 +220,29 @@ export class AccountService {
             [p.id],
           )
         ).rows[0] ?? {};
-    return { ...p, profile: detail };
+    if (p.role !== "worker") return { ...p, profile: detail };
+    // Les règles de complétion sont évaluées ici à partir des données déjà lues,
+    // pour que /me et les routes intérimaire disent exactement la même chose.
+    const now = Date.now();
+    const slots = detail.availabilities as
+      { ends_at: string; status: string }[] | undefined;
+    return {
+      ...p,
+      profile: detail,
+      missing_requirements: missingRules({
+        first_name: p.first_name,
+        last_name: p.last_name,
+        city: (detail.city as string | null) ?? null,
+        postal_code: (detail.postal_code as string | null) ?? null,
+        mobility_radius_km:
+          (detail.mobility_radius_km as number | null) ?? null,
+        main_job: (detail.main_job as string | null) ?? null,
+        skill_count: ((detail.skills as unknown[]) ?? []).length,
+        upcoming_availability_count: (slots ?? []).filter(
+          (s) => s.status === "available" && Date.parse(s.ends_at) > now,
+        ).length,
+      }),
+    };
   }
   // Guided tour progress. Storing the highest completed version lets a later tour be
   // shown again to existing accounts by raising CURRENT_TOUR_VERSION; 0 replays it.
@@ -215,51 +254,6 @@ export class AccountService {
     if (!rows[0])
       throw new HttpError(404, "PROFILE_NOT_FOUND", "Compte introuvable.");
     return this.me(rows[0]);
-  }
-  async onboardWorker(id: string, input: WorkerInput) {
-    return this.db.transaction(async (db) => {
-      await db.query("SELECT id FROM profiles WHERE id=$1 FOR UPDATE", [id]);
-      const skills = await db.query(
-        "SELECT id FROM skills WHERE id=ANY($1::uuid[])",
-        [input.skill_ids],
-      );
-      if (skills.rows.length !== input.skill_ids.length)
-        throw new HttpError(400, "INVALID_SKILLS", "Compétence inconnue.");
-      await db.query(
-        "INSERT INTO worker_profiles(profile_id,city,postal_code,latitude,longitude,mobility_radius_km,main_job) VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT(profile_id) DO UPDATE SET city=$2,postal_code=$3,latitude=$4,longitude=$5,mobility_radius_km=$6,main_job=$7",
-        [
-          id,
-          input.city,
-          input.postal_code,
-          input.latitude,
-          input.longitude,
-          input.mobility_radius_km,
-          input.main_job,
-        ],
-      );
-      await db.query("DELETE FROM worker_skills WHERE profile_id=$1", [id]);
-      for (const skill of input.skill_ids)
-        await db.query(
-          "INSERT INTO worker_skills(profile_id,skill_id) VALUES($1,$2)",
-          [id, skill],
-        );
-      await db.query("DELETE FROM experiences WHERE profile_id=$1", [id]);
-      for (const e of input.experiences)
-        await db.query(
-          "INSERT INTO experiences(profile_id,job_title,employer,years) VALUES($1,$2,$3,$4)",
-          [id, e.job_title, e.employer, e.years],
-        );
-      await db.query("DELETE FROM availabilities WHERE profile_id=$1", [id]);
-      for (const a of input.availabilities)
-        await db.query(
-          "INSERT INTO availabilities(profile_id,starts_at,ends_at) VALUES($1,$2,$3)",
-          [id, a.starts_at, a.ends_at],
-        );
-      await db.query(
-        "UPDATE profiles SET first_name=$2,last_name=$3,onboarding_completed=true,updated_at=now() WHERE id=$1",
-        [id, input.first_name, input.last_name],
-      );
-    });
   }
   async onboardCompany(id: string, input: CompanyInput) {
     return this.db.transaction(async (db) => {
