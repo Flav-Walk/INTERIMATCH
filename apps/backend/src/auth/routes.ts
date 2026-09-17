@@ -16,11 +16,14 @@ import {
 import {
   sectors,
   jobs,
+  payUnits,
   missionStatuses,
   applicationStatuses,
 } from "../domain/reference.js";
 import type { WorkerService } from "../worker/service.js";
 import { workerRouter } from "../worker/routes.js";
+import type { MissionService } from "../missions/service.js";
+import { missionRouter } from "../missions/routes.js";
 export const requireAuth =
   (service: AccountService): RequestHandler =>
   async (req, res, next) => {
@@ -54,6 +57,7 @@ export function accountRouter(
   config: Config,
   service: AccountService,
   workers?: WorkerService,
+  missions?: MissionService,
 ) {
   const router = Router();
   const origin: RequestHandler = (req, _res, next) => {
@@ -141,6 +145,7 @@ export function accountRouter(
     res.json({
       sectors,
       jobs,
+      pay_units: payUnits,
       mission_statuses: missionStatuses,
       application_statuses: applicationStatuses,
     });
@@ -151,6 +156,7 @@ export function accountRouter(
     ),
   );
   if (workers) router.use(workerRouter(service, workers));
+  if (missions) router.use(missionRouter(missions));
   router.get("/companies/me", requireRole("company"), async (_req, res) =>
     res.json(await service.me(res.locals.profile as Profile)),
   );

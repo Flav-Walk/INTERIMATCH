@@ -11,7 +11,39 @@ import cookieParser from "cookie-parser";
 import { AccountService } from "./auth/service.js";
 import { accountRouter } from "./auth/routes.js";
 import type { WorkerService } from "./worker/service.js";
+import type { MissionService } from "./missions/service.js";
 import { HttpError } from "./errors.js";
+/**
+ * Message d'une requête refusée à la validation. Nommer les champs fautifs rend
+ * l'erreur exploitable par l'interface ; les noms de champs font déjà partie du
+ * contrat d'API public, contrairement aux libellés internes de la bibliothèque
+ * de validation, qui ne sont pas traduits.
+ *
+ * Une règle portant sur l'objet entier — « Aucune modification transmise. »,
+ * « Un véhicule suppose le permis. » — n'a aucun chemin de champ à nommer. Son
+ * message est alors repris tel quel : nous l'avons écrit nous-mêmes, en
+ * français, et il dit à l'appelant ce qu'aucun nom de champ ne dirait. Seules
+ * les règles `custom` sont reprises ; les messages internes de la bibliothèque,
+ * eux, restent hors de la réponse.
+ */
+function invalidRequestMessage(err: unknown) {
+  if (!(err instanceof ZodError)) return "Requête invalide.";
+  const fields = [
+    ...new Set(
+      err.issues
+        .map((issue) =>
+          issue.path.filter((p) => typeof p === "string").join("."),
+        )
+        .filter(Boolean),
+    ),
+  ].slice(0, 4);
+  if (fields.length) return `Donnée invalide : ${fields.join(", ")}.`;
+  const rule = err.issues.find(
+    (issue) => issue.code === "custom" && issue.message,
+  );
+  return rule ? rule.message : "Requête invalide.";
+}
+
 /** Code d'erreur technique court et sans donnée : ENETUNREACH, 23505, ECONNRESET… */
 function shortErrorCode(err: unknown) {
   if (typeof err !== "object" || err === null || !("code" in err))
@@ -26,6 +58,7 @@ export function createApp(
   config: Config,
   accounts?: AccountService,
   workers?: WorkerService,
+  missions?: MissionService,
 ) {
   const app = express();
   const logger = pino({
@@ -83,7 +116,8 @@ export function createApp(
   app.use(express.json({ limit: "100kb" }));
   app.use("/api/v1", healthRouter);
   app.use(cookieParser());
-  if (accounts) app.use("/api/v1", accountRouter(config, accounts, workers));
+  if (accounts)
+    app.use("/api/v1", accountRouter(config, accounts, workers, missions));
   app.use((_req, res) => {
     res.status(404).json({
       error: {
@@ -146,7 +180,7 @@ export function createApp(
             ? err.message
             : status === 500
               ? "Erreur interne."
-              : "Requête invalide.",
+              : invalidRequestMessage(err),
         request_id: res.locals.requestId,
       },
     });
