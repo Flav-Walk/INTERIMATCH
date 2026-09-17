@@ -49,6 +49,15 @@ export const addAvailability = (slot: {
     body: JSON.stringify(slot),
   });
 
+export const updateAvailability = (
+  id: string,
+  slot: Partial<Omit<Availability, "id">>,
+) =>
+  api<Availability>("/workers/me/availabilities/" + id, {
+    method: "PATCH",
+    body: JSON.stringify(slot),
+  });
+
 export const removeAvailability = (id: string) =>
   api<void>("/workers/me/availabilities/" + id, { method: "DELETE" });
 
@@ -76,7 +85,11 @@ const timeFormat = new Intl.DateTimeFormat("fr-FR", {
 export function formatSlot(slot: Availability) {
   const start = new Date(slot.starts_at);
   const end = new Date(slot.ends_at);
-  return `${dateFormat.format(start)} · ${timeFormat.format(start)} – ${timeFormat.format(end)}`;
+  const endDate =
+    start.toDateString() === end.toDateString()
+      ? ""
+      : `${dateFormat.format(end)} · `;
+  return `${dateFormat.format(start)} · ${timeFormat.format(start)} – ${endDate}${timeFormat.format(end)}`;
 }
 
 export const isUpcoming = (slot: Availability) =>
