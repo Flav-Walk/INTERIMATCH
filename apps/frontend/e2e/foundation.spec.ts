@@ -1012,3 +1012,124 @@ test("the company dashboard reflects mission changes without reloading", async (
   expect(await page.locator(".mission-card").count()).toBe(avant);
   expect(errors).toEqual([]);
 });
+
+// SL2c — le premier parcours de bout en bout : une entreprise publie, un
+// intérimaire voit. Les deux rôles dans un seul test, parce que c'est le
+// passage de l'un à l'autre qui est la fonctionnalité.
+test("a published mission becomes visible to an intérimaire", async ({
+  page,
+}, testInfo) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  const suffix = testInfo.project.name;
+  const offert = `Extra plonge — service du soir ${suffix}`;
+  const brouillon = `Jamais publiée ${suffix}`;
+
+  // ---- L'entreprise prépare deux missions, n'en publie qu'une ----
+  await register(page, `open.${suffix}@example.test`);
+  await expect(page).toHaveURL(/\/company$/);
+  await completeTour(page);
+
+  const create = async (titre: string, jour: string) => {
+    await page.goto("/company/missions/new");
+    await page.getByLabel("Intitulé de la mission").fill(titre);
+    await page.getByLabel("Métier recherché").selectOption("plongeur");
+    await page
+      .getByLabel("Description (facultatif)")
+      .fill("Plonge batterie et vaisselle, 150 couverts.");
+    await page.getByLabel("Début").fill(`2027-09-${jour}T18:00`);
+    await page.getByLabel("Fin").fill(`2027-09-${jour}T23:30`);
+    await page.getByLabel("Adresse (facultatif)").fill("12 quai Rambaud");
+    await page.getByLabel("Ville").fill("Lyon");
+    await page.getByLabel("Code postal").fill("69002");
+    await page.getByLabel("Nombre de personnes").fill("2");
+    await page
+      .getByLabel("Expérience minimale en années (facultatif)")
+      .fill("1");
+    await page.getByLabel("Montant en euros").fill("14");
+    await page.getByLabel("Unité").selectOption("hour");
+    await page.getByRole("radio", { name: "Cuisine : obligatoire" }).check();
+    await page
+      .getByRole("radio", { name: "Mise en place : souhaitée" })
+      .check();
+    await page
+      .getByRole("button", { name: "Enregistrer le brouillon" })
+      .click();
+    await page.waitForURL(/\/company\/missions\/[0-9a-f-]{36}$/);
+    return page.url();
+  };
+
+  const urlOfferte = await create(offert, "18");
+  await page.getByRole("button", { name: "Publier la mission" }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Publier" })
+    .click();
+  await expect(page.locator(".mission-status")).toHaveText("À pourvoir");
+  const idOffert = urlOfferte.split("/").pop();
+
+  const urlBrouillon = await create(brouillon, "19");
+  const idBrouillon = urlBrouillon.split("/").pop();
+  await expect(page.locator(".mission-status")).toHaveText("Brouillon");
+
+  await openAccount(page);
+  await page.getByRole("button", { name: "Se déconnecter" }).click();
+  await expect(page).toHaveURL(/\/login$/);
+
+  // ---- L'intérimaire la voit ----
+  await register(page, `seeker.${suffix}.${Date.now()}@example.test`);
+  await expect(page).toHaveURL(/\/worker$/);
+  await completeTour(page);
+
+  // Dès le tableau de bord, sans rechargement manuel.
+  await expect(
+    page.getByRole("heading", { name: "Missions disponibles" }),
+  ).toBeVisible();
+
+  await page.getByRole("link", { name: "Missions", exact: true }).click();
+  await expect(page).toHaveURL(/\/worker\/missions$/);
+  await expect(page.getByRole("heading", { name: offert })).toBeVisible();
+  // Le brouillon n'existe pas pour l'intérimaire.
+  await expect(page.getByRole("heading", { name: brouillon })).toHaveCount(0);
+
+  // ---- Liste → détail → retour ----
+  await page.getByRole("heading", { name: offert }).click();
+  await expect(page).toHaveURL(new RegExp(`/worker/missions/${idOffert}$`));
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(offert);
+
+  const detail = page.locator(".detail-grid");
+  await expect(detail).toContainText("2 postes à pourvoir");
+  await expect(detail).toContainText("69002 Lyon");
+  await expect(detail).toContainText("14,00 €");
+  await expect(detail).toContainText("1 an d’expérience");
+  await expect(page.locator(".detail-description")).toContainText(
+    "Plonge batterie",
+  );
+  // Compétences, distinguées comme à la saisie.
+  await expect(page.getByText("Obligatoires —")).toBeVisible();
+  await expect(page.getByText("Souhaitées —")).toBeVisible();
+  await expect(page.locator(".badge").first()).toHaveText("Cuisine");
+
+  // Aucune candidature n'est proposée tant que le backend ne sait pas l'enregistrer.
+  await expect(
+    page.getByRole("button", { name: /Postuler|Candidater/ }),
+  ).toHaveCount(0);
+
+  await page.getByRole("link", { name: "Missions disponibles" }).click();
+  await expect(page).toHaveURL(/\/worker\/missions$/);
+
+  // ---- Un brouillon reste introuvable, même par son adresse directe ----
+  await page.goto(`/worker/missions/${idBrouillon}`);
+  await expect(page.getByRole("alert")).toContainText("introuvable");
+
+  // L'espace entreprise reste fermé à l'intérimaire.
+  await page.goto("/company/missions");
+  await expect(page).toHaveURL(/\/worker$/);
+
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+  expect(errors).toEqual([]);
+});

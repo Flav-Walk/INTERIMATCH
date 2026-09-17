@@ -28,8 +28,8 @@ describe("session routing", () => {
       destination(user({ role: "worker", onboarding_completed: true })),
     ).toBe(destination(user({ role: "worker", onboarding_completed: false })));
   });
-  it("does not invent an admin space", () => {
-    expect(destination(user({ role: "admin" }))).toBe("/");
+  it("routes an admin to the dedicated administration space", () => {
+    expect(destination(user({ role: "admin" }))).toBe("/admin");
   });
 });
 describe("error messages", () => {

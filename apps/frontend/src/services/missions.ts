@@ -42,6 +42,30 @@ export const listMissions = (status?: MissionStatus) =>
 export const getMission = (id: string) => api<Mission>("/missions/" + id);
 
 /**
+ * Une mission telle qu'un intérimaire la voit : la mission elle-même, plus ce
+ * que l'entreprise destine aux intérimaires de son établissement. Les
+ * coordonnées de contact n'en font pas partie — le serveur ne les envoie pas.
+ */
+export interface OpenMission extends Mission {
+  company: {
+    establishment_name: string | null;
+    sector: string | null;
+    description: string | null;
+  };
+}
+
+/**
+ * Missions offertes, toutes entreprises confondues, de la plus proche à la plus
+ * lointaine. Aucun classement par affinité : le rapprochement viendra ensuite,
+ * et ordonnera cette même liste sans changer l'appel.
+ */
+export const listOpenMissions = () =>
+  api<{ missions: OpenMission[] }>("/workers/me/missions");
+
+export const getOpenMission = (id: string) =>
+  api<OpenMission>("/workers/me/missions/" + id);
+
+/**
  * Exactement ce que `POST /missions` accepte. Ni `company_id`, ni `status`, ni
  * les coordonnées : le serveur les décide, et les refuserait s'ils étaient
  * envoyés. Ce type est donc aussi la garantie qu'aucun écran ne les demandera.

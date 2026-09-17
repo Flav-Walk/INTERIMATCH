@@ -133,7 +133,7 @@ export async function api<T>(
 // Un compte connecté a toujours un espace : le profil se complète depuis l'espace,
 // il ne conditionne plus l'accès.
 export function destination(user: User) {
-  return user.role === "admin" ? "/" : "/" + user.role;
+  return "/" + user.role;
 }
 export const errorMessage = (e: unknown) =>
   e instanceof ApiError

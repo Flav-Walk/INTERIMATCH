@@ -8,7 +8,13 @@ import {
 import { Sprout, Search, LifeBuoy, LogOut, ChevronDown } from "lucide-react";
 import { useRef, useState, type FormEvent } from "react";
 import { useAuth } from "../hooks/useAuth";
-import { destination, errorMessage, api, type User } from "../services/session";
+import {
+  destination,
+  errorMessage,
+  api,
+  type Role,
+  type User,
+} from "../services/session";
 import { GuidedTour } from "../components/GuidedTour";
 import {
   CURRENT_TOUR_VERSION,
@@ -17,7 +23,7 @@ import {
 } from "../services/tours";
 
 /** Navigation de la maquette : Accueil · Missions · Candidats · Entreprise. */
-const links: Record<"worker" | "company", { to: string; label: string }[]> = {
+const links: Record<Role, { to: string; label: string }[]> = {
   worker: [
     { to: "/worker", label: "Tableau de bord" },
     { to: "/worker/profile", label: "Mon profil" },
@@ -29,6 +35,7 @@ const links: Record<"worker" | "company", { to: string; label: string }[]> = {
     { to: "/company/candidates", label: "Candidats" },
     { to: "/company/profile", label: "Entreprise" },
   ],
+  admin: [{ to: "/admin", label: "Administration" }],
 };
 
 const initials = (user: User) => {
@@ -118,23 +125,21 @@ export function AppLayout() {
         </NavLink>
         {user ? (
           <>
-            {user.role !== "admin" && (
-              <nav
-                aria-label="Navigation principale"
-                className="shell-nav"
-                data-tour="nav"
-              >
-                {links[user.role].map((link) => (
-                  <NavLink
-                    key={link.to}
-                    to={link.to}
-                    end={link.to === destination(user)}
-                  >
-                    {link.label}
-                  </NavLink>
-                ))}
-              </nav>
-            )}
+            <nav
+              aria-label="Navigation principale"
+              className="shell-nav"
+              data-tour="nav"
+            >
+              {links[user.role].map((link) => (
+                <NavLink
+                  key={link.to}
+                  to={link.to}
+                  end={link.to === destination(user)}
+                >
+                  {link.label}
+                </NavLink>
+              ))}
+            </nav>
             {user.role === "company" && (
               <form
                 className="shell-search"
@@ -168,10 +173,12 @@ export function AppLayout() {
                       : user.email}
                   </strong>
                   <span>
-                    {user.role === "company"
-                      ? (user.profile.establishment_name ??
-                        "Votre établissement")
-                      : "Espace intérimaire"}
+                    {user.role === "admin"
+                      ? "Administration"
+                      : user.role === "company"
+                        ? (user.profile.establishment_name ??
+                          "Votre établissement")
+                        : "Espace intérimaire"}
                   </span>
                 </span>
                 <ChevronDown size={16} aria-hidden="true" />
