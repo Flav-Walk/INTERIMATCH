@@ -39,6 +39,7 @@ function Field({
 
 export function ProfileForm() {
   const auth = useAuth(),
+    { invalidate } = auth,
     navigate = useNavigate();
   const p = auth.user?.profile ?? {};
   const [sectors, setSectors] = useState<ReferenceValue[]>([]),
@@ -59,7 +60,6 @@ export function ProfileForm() {
     setSaved(false);
     const f = new FormData(e.currentTarget);
     const str = (n: string) => String(f.get(n) ?? "");
-    const num = (n: string) => Number(f.get(n));
     try {
       await api("/onboarding/company", {
         method: "PUT",
@@ -68,8 +68,6 @@ export function ProfileForm() {
           last_name: str("last_name"),
           city: str("city"),
           postal_code: str("postal_code"),
-          latitude: num("latitude"),
-          longitude: num("longitude"),
           legal_name: str("legal_name"),
           establishment_name: str("establishment_name"),
           sector: str("sector"),
@@ -79,6 +77,7 @@ export function ProfileForm() {
         }),
       });
       await auth.reload();
+      invalidate();
       if (auth.user && !auth.user.onboarding_completed)
         navigate(destination(auth.user), { replace: true });
       else setSaved(true);
@@ -158,6 +157,10 @@ export function ProfileForm() {
         </fieldset>
         <fieldset>
           <legend>Localisation de l’établissement</legend>
+          <p className="quiet">
+            Indiquez simplement votre ville : les coordonnées nécessaires au
+            rapprochement avec les intérimaires sont retrouvées automatiquement.
+          </p>
           <div className="form-grid">
             <Field label="Ville" name="city" defaultValue={p.city ?? ""} />
             <Field
@@ -166,29 +169,7 @@ export function ProfileForm() {
               maxLength={5}
               defaultValue={p.postal_code ?? ""}
             />
-            <Field
-              label="Latitude"
-              name="latitude"
-              type="number"
-              min={-90}
-              max={90}
-              step="any"
-              defaultValue={p.latitude ?? ""}
-            />
-            <Field
-              label="Longitude"
-              name="longitude"
-              type="number"
-              min={-180}
-              max={180}
-              step="any"
-              defaultValue={p.longitude ?? ""}
-            />
           </div>
-          <p className="quiet">
-            Indiquez les coordonnées du centre de votre ville ou de votre
-            établissement. Exemple Lyon : latitude 45.75, longitude 4.85.
-          </p>
         </fieldset>
         {error && (
           <p className="form-error" role="alert">
@@ -198,6 +179,13 @@ export function ProfileForm() {
         {saved && (
           <p className="form-success" role="status">
             Vos informations ont été enregistrées.
+          </p>
+        )}
+        {saved && auth.user?.profile.latitude == null && (
+          <p className="quiet" role="status">
+            Nous n’avons pas pu situer cette adresse sur la carte. Elle est bien
+            enregistrée ; vérifiez la ville et le code postal, puis enregistrez
+            à nouveau pour réessayer.
           </p>
         )}
         <button className="button" disabled={busy}>

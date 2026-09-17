@@ -7,6 +7,7 @@ import {
   type ReferenceValue,
   type Skill,
 } from "../services/session";
+import { useAuth } from "../hooks/useAuth";
 import { SkillPicker } from "../components/mission/SkillPicker";
 import {
   createMission,
@@ -75,6 +76,7 @@ export function CompanyMissionForm() {
   const { id } = useParams();
   const editing = Boolean(id);
   const navigate = useNavigate();
+  const { invalidate } = useAuth();
   const formRef = useRef<HTMLFormElement>(null);
 
   const [values, setValues] = useState<MissionFormValues>(emptyMission);
@@ -164,11 +166,13 @@ export function CompanyMissionForm() {
           return;
         }
         const saved = await updateMission(id, patch);
+        invalidate();
         navigate("/company/missions/" + saved.id, {
           state: { flash: "Modifications enregistrées." },
         });
       } else {
         const created = await createMission(payload);
+        invalidate();
         navigate("/company/missions/" + created.id, {
           state: {
             flash:

@@ -1,26 +1,30 @@
-import { useState, type FormEvent } from "react";
+import { useId, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { destination, errorMessage } from "../services/session";
 import { supabase } from "../services/supabase";
+import { PasswordField } from "../components/PasswordField";
+import { PasswordStrength } from "../components/PasswordStrength";
+import { MIN_PASSWORD_LENGTH } from "../services/password";
 export function Login({ register = false }: { register?: boolean }) {
   const auth = useAuth(),
     navigate = useNavigate();
   const [error, setError] = useState(""),
-    [busy, setBusy] = useState(false);
+    [busy, setBusy] = useState(false),
+    // Contrôlés : l'indicateur de force a besoin de la valeur saisie, et la
+    // bascule afficher/masquer ne doit jamais la reconstruire.
+    [password, setPassword] = useState(""),
+    [confirm, setConfirm] = useState("");
+  const meterId = useId();
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
     setBusy(true);
     const f = new FormData(event.currentTarget);
     try {
-      if (register && f.get("password") !== f.get("confirm"))
+      if (register && password !== confirm)
         throw new Error("Les mots de passe ne correspondent pas.");
-      const user = await auth.login(
-        String(f.get("email")),
-        String(f.get("password")),
-        register,
-      );
+      const user = await auth.login(String(f.get("email")), password, register);
       navigate(destination(user), { replace: true });
     } catch (e) {
       setError(errorMessage(e));
@@ -89,30 +93,28 @@ export function Login({ register = false }: { register?: boolean }) {
               maxLength={254}
             />
           </label>
-          <label>
-            Mot de passe
-            <input
-              name="password"
-              type="password"
-              autoComplete={register ? "new-password" : "current-password"}
-              minLength={register ? 12 : 1}
-              maxLength={128}
-              required
-            />
-          </label>
+          <PasswordField
+            name="password"
+            label="Mot de passe"
+            toggleFor="le mot de passe"
+            value={password}
+            onChange={setPassword}
+            autoComplete={register ? "new-password" : "current-password"}
+            minLength={register ? MIN_PASSWORD_LENGTH : 1}
+            describedBy={register ? meterId : undefined}
+          />
           {register && (
             <>
-              <small>Au moins 12 caractères.</small>
-              <label>
-                Confirmer le mot de passe
-                <input
-                  name="confirm"
-                  type="password"
-                  autoComplete="new-password"
-                  minLength={12}
-                  required
-                />
-              </label>
+              <PasswordStrength password={password} id={meterId} />
+              <PasswordField
+                name="confirm"
+                label="Confirmer le mot de passe"
+                toggleFor="la confirmation du mot de passe"
+                value={confirm}
+                onChange={setConfirm}
+                autoComplete="new-password"
+                minLength={MIN_PASSWORD_LENGTH}
+              />
             </>
           )}
           {error && (

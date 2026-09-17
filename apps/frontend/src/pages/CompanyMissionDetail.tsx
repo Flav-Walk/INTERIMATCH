@@ -11,6 +11,7 @@ import {
   Wrench,
 } from "lucide-react";
 import { errorMessage } from "../services/session";
+import { useAuth } from "../hooks/useAuth";
 import {
   canEdit,
   canPublish,
@@ -47,6 +48,7 @@ const statusClass: Record<Mission["status"], string> = {
 export function CompanyMissionDetail() {
   const { id = "" } = useParams();
   const location = useLocation();
+  const { revision, invalidate } = useAuth();
   const [mission, setMission] = useState<Mission | null>(null),
     [loading, setLoading] = useState(true),
     [error, setError] = useState("");
@@ -69,7 +71,7 @@ export function CompanyMissionDetail() {
     return () => {
       live = false;
     };
-  }, [id]);
+  }, [id, revision]);
 
   async function publish() {
     setPublishing(true);
@@ -78,6 +80,8 @@ export function CompanyMissionDetail() {
       // La réponse porte l'état que le serveur vient d'établir : on l'affiche
       // plutôt que de recalculer le statut de notre côté.
       setMission(await publishMission(id));
+      // Le planning, les compteurs et la liste doivent suivre cette publication.
+      invalidate();
       setConfirming(false);
       setFlash("Mission publiée. Elle est désormais visible des intérimaires.");
     } catch (e) {
