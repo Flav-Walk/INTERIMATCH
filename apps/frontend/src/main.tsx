@@ -11,11 +11,13 @@ import { Dashboard } from "./pages/Dashboard";
 import { ProfileForm } from "./pages/ProfileForm";
 import { WorkerProfile } from "./pages/WorkerProfile";
 import { Missions } from "./pages/Missions";
+import { WorkerMissionDetail } from "./pages/WorkerMissionDetail";
 import { CompanyDashboard } from "./pages/CompanyDashboard";
 import { CompanyMissions } from "./pages/CompanyMissions";
 import { CompanyMissionDetail } from "./pages/CompanyMissionDetail";
 import { CompanyMissionForm } from "./pages/CompanyMissionForm";
 import { Candidates } from "./pages/Candidates";
+import { AdminPage } from "./pages/Admin";
 import "./styles/global.css";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
@@ -36,6 +38,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
                 <Route index element={<Dashboard />} />
                 <Route path="profile" element={<WorkerProfile />} />
                 <Route path="missions" element={<Missions />} />
+                <Route path="missions/:id" element={<WorkerMissionDetail />} />
               </Route>
             </Route>
 
@@ -52,6 +55,10 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
                 />
                 <Route path="candidates" element={<Candidates />} />
               </Route>
+            </Route>
+
+            <Route element={<ProtectedRoute role="admin" />}>
+              <Route path="admin" element={<AdminPage />} />
             </Route>
 
             <Route

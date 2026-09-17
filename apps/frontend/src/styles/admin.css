@@ -1,0 +1,160 @@
+.admin-page {
+  max-width: 1120px;
+  margin: 8px auto 0;
+}
+
+.admin-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 28px;
+}
+.admin-head h1 {
+  margin: 0 0 4px;
+  font-size: 1.75rem;
+}
+.admin-head p {
+  margin: 0;
+  color: var(--muted);
+}
+.admin-icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  flex: none;
+  border-radius: 10px;
+  background: var(--tint);
+  color: var(--forest);
+}
+
+.admin-table-wrap {
+  overflow-x: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.admin-table {
+  width: 100%;
+  min-width: 780px;
+  border-collapse: collapse;
+  text-align: left;
+}
+.admin-table th,
+.admin-table td {
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+.admin-table th {
+  background: var(--background);
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 650;
+}
+.admin-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+.admin-table tbody tr:hover {
+  background: oklch(0.985 0.006 165);
+}
+.admin-table td:first-child strong {
+  display: block;
+  font-size: 0.92rem;
+}
+.admin-table td:nth-child(2) {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+.admin-role-field {
+  display: block;
+}
+.admin-role-field select {
+  min-width: 170px;
+  padding-block: 9px;
+}
+.admin-role-field + small {
+  display: block;
+  max-width: 24ch;
+  margin-top: 5px;
+  line-height: 1.35;
+}
+.admin-you {
+  display: inline-block;
+  margin-top: 4px;
+  color: var(--forest);
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+.admin-action {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 220px;
+}
+.admin-save {
+  min-height: 40px;
+  padding: 8px 14px;
+  white-space: nowrap;
+}
+.admin-saved {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--forest);
+  font-size: 0.82rem;
+  font-weight: 650;
+}
+
+.admin-loading {
+  display: grid;
+  gap: 1px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--border);
+}
+.admin-loading span {
+  display: block;
+  height: 68px;
+  background: linear-gradient(
+    90deg,
+    var(--surface) 20%,
+    var(--background) 45%,
+    var(--surface) 70%
+  );
+  background-size: 220% 100%;
+  animation: admin-loading 1.3s ease-in-out infinite;
+}
+@keyframes admin-loading {
+  to {
+    background-position: -220% 0;
+  }
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 620px) {
+  .admin-head {
+    gap: 12px;
+  }
+  .admin-head h1 {
+    font-size: 1.5rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-loading span {
+    animation: none;
+  }
+}

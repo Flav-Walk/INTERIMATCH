@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   CalendarDays,
@@ -13,6 +14,9 @@ import {
   requirementLabels,
   upcomingAvailabilities,
 } from "../services/profile";
+import { errorMessage } from "../services/session";
+import { MissionCard } from "../components/mission/MissionCard";
+import { listOpenMissions, type OpenMission } from "../services/missions";
 
 /**
  * Rappel de complétion. Il n'apparaît que tant qu'il reste quelque chose à
@@ -49,7 +53,24 @@ function ProfileStatus({
 }
 
 export function Dashboard() {
-  const { user } = useAuth();
+  const { user, revision } = useAuth();
+  const [open, setOpen] = useState<OpenMission[]>([]);
+  const [missionsError, setMissionsError] = useState("");
+  const isWorker = user?.role === "worker";
+
+  // Un aperçu des missions réellement offertes. Le tableau de bord annonçait
+  // jusqu'ici une fonctionnalité à venir : elle existe maintenant.
+  useEffect(() => {
+    if (!isWorker) return;
+    let live = true;
+    void listOpenMissions()
+      .then((r) => live && setOpen(r.missions))
+      .catch((e) => live && setMissionsError(errorMessage(e)));
+    return () => {
+      live = false;
+    };
+  }, [isWorker, revision]);
+
   if (!user || user.role === "admin") return null;
   const worker = user.role === "worker",
     p = user.profile,
@@ -108,24 +129,41 @@ export function Dashboard() {
 
           <section className="section" data-tour="missions">
             <div className="section-heading">
-              <h2>{worker ? "Vos propositions de mission" : "Vos missions"}</h2>
+              <h2>{worker ? "Missions disponibles" : "Vos missions"}</h2>
               <Link className="quiet" to={"/" + user.role + "/missions"}>
                 Tout voir
               </Link>
             </div>
-            <div className="empty">
-              <BriefcaseBusiness aria-hidden="true" />
-              <h3>
-                {worker
-                  ? "Aucune mission proposée pour le moment"
-                  : "Votre première mission commence ici"}
-              </h3>
-              <p>
-                {worker
-                  ? "Vos propositions apparaîtront ici dès que la recherche de missions sera disponible."
-                  : "La création et la gestion des missions seront disponibles au prochain lot."}
+            {missionsError && (
+              <p className="form-error" role="alert">
+                {missionsError}
               </p>
-            </div>
+            )}
+            {worker && open.length > 0 ? (
+              <div className="mission-grid">
+                {open.slice(0, 2).map((mission) => (
+                  <MissionCard
+                    key={mission.id}
+                    mission={mission}
+                    basePath="/worker/missions"
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="empty">
+                <BriefcaseBusiness aria-hidden="true" />
+                <h3>
+                  {worker
+                    ? "Aucune mission disponible pour le moment"
+                    : "Votre première mission commence ici"}
+                </h3>
+                <p>
+                  {worker
+                    ? "Dès qu’un établissement publie une mission, elle apparaît ici."
+                    : "La création et la gestion des missions seront disponibles au prochain lot."}
+                </p>
+              </div>
+            )}
           </section>
         </section>
 

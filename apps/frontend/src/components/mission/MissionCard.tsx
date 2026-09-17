@@ -65,10 +65,21 @@ export function missionSchedule(mission: Mission) {
   return `${dayMonth.format(start)} · ${frenchHour(start)} – ${frenchHour(new Date(mission.ends_at))}`;
 }
 
-export function MissionCard({ mission }: { mission: Mission }) {
+/**
+ * `basePath` : la même carte sert les deux espaces, qui n'ouvrent simplement
+ * pas le même détail. Dupliquer le composant pour cette seule différence
+ * ferait diverger deux fois la maquette.
+ */
+export function MissionCard({
+  mission,
+  basePath = "/company/missions",
+}: {
+  mission: Mission;
+  basePath?: string;
+}) {
   const seats = Array.from({ length: Math.min(mission.headcount, 3) });
   return (
-    <Link className="mission-card" to={"/company/missions/" + mission.id}>
+    <Link className="mission-card" to={`${basePath}/${mission.id}`}>
       <div className="mission-media">
         <JobGlyph job={mission.job} />
         <span className={"mission-status " + statusClass[mission.status]}>

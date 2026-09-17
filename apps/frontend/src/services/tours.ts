@@ -31,8 +31,8 @@ const workerTour: TourStep[] = [
   },
   {
     target: "missions",
-    title: "Vos propositions de mission",
-    body: "Les missions compatibles avec votre profil apparaîtront ici, avec l'explication du score qui les a retenues.",
+    title: "Missions disponibles",
+    body: "Les missions publiées par les établissements apparaissent ici. Le classement selon votre profil, avec l'explication du score, viendra ensuite.",
   },
   {
     target: "availability",
