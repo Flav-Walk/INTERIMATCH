@@ -3,6 +3,10 @@ export const businessEventSchema = z
   .object({
     event_id: z.uuid(),
     event_type: z.enum([
+      // Profil intérimaire : les deux seuls événements dont la source existe
+      // réellement aujourd'hui (lot Profil). Aucun émetteur n'est encore branché.
+      "worker.profile.updated",
+      "worker.onboarding.completed",
       "mission.created",
       "mission.updated",
       "mission.published",

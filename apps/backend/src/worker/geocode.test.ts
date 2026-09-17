@@ -1,3 +1,5 @@
+import { createServer } from "node:http";
+import { once } from "node:events";
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { createAddressGeocoder, readCoordinates } from "./geocode.js";
 
@@ -33,6 +35,7 @@ describe("lecture de la réponse GeoJSON", () => {
     ["valeur nulle", null],
     ["coordonnées incomplètes", feature([4.85])],
     ["coordonnées non numériques", feature(["4.85", "45.75"])],
+    ["valeur non finie", feature([NaN, 45.75])],
     ["latitude hors bornes", feature([4.85, 120])],
     ["longitude hors bornes", feature([200, 45.75])],
   ])("renvoie null pour une %s", (_label, payload) => {
@@ -83,4 +86,29 @@ describe("géocodeur Base Adresse Nationale", () => {
       await createAddressGeocoder("https://geo.test/search/")("Zzz", "00000"),
     ).toBeNull();
   });
+});
+
+it("interrompt réellement une réponse HTTP bloquée et refuse le JSON invalide", async () => {
+  const server = createServer((req, res) => {
+    if (req.url?.startsWith("/invalid")) res.end("not JSON");
+    // /stall garde la socket ouverte jusqu'à l'annulation du client.
+  });
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+  const address = server.address();
+  if (!address || typeof address === "string") throw new Error("No test port");
+  const base = `http://127.0.0.1:${address.port}`;
+  try {
+    expect(
+      await createAddressGeocoder(base + "/invalid", 1000)("Lyon", "69002"),
+    ).toBeNull();
+    const started = Date.now();
+    expect(
+      await createAddressGeocoder(base + "/stall", 50)("Lyon", "69002"),
+    ).toBeNull();
+    expect(Date.now() - started).toBeLessThan(2000);
+  } finally {
+    server.closeAllConnections();
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
 });
