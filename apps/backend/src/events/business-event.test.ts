@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { randomUUID } from "node:crypto";
-import { businessEventSchema } from "./business-event.js";
+import { businessEventSchema, createBusinessEvent } from "./business-event.js";
 // The envelope is the contract handed to the n8n developer: it must stay strict.
 const envelope = {
   event_id: randomUUID(),
@@ -46,5 +46,23 @@ describe("business event envelope", () => {
     expect(
       businessEventSchema.safeParse({ ...envelope, extra: true }).success,
     ).toBe(false);
+  });
+  it("génère un UUID v4 et une enveloppe stable et sérialisable", () => {
+    const event = createBusinessEvent(
+      "worker.profile.updated",
+      { worker_id: "worker-1" },
+      { now: new Date("2026-09-18T07:30:00.000Z") },
+    );
+    expect(event.event_id).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+    );
+    expect(event).toMatchObject({
+      event_type: "worker.profile.updated",
+      occurred_at: "2026-09-18T07:30:00.000Z",
+      schema_version: "1.0",
+      data: { worker_id: "worker-1" },
+    });
+    expect(event.idempotency_key).toContain(event.event_id);
+    expect(JSON.parse(JSON.stringify(event))).toEqual(event);
   });
 });

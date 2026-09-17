@@ -38,3 +38,18 @@ Noms dans `.env.example`. Aucun secret ne doit être versionné ni écrit dans u
 TLS de la base : `DB_SSL=true` suffit et la connexion est chiffrée, sans exiger de certificat. `DB_SSL_CA_PATH` est facultatif — fourni et lisible, il active en plus la vérification du certificat ; illisible, il est signalé et ignoré, sans empêcher le démarrage.
 
 Documentation commune dans le worktree voisin `Piscine Epitech/docs`. Les commits et les push sont réalisés par Flavien seul.
+
+## Événements vers n8n
+
+Le backend publie les événements métier via `N8N_WEBHOOK_URL` et
+`N8N_WEBHOOK_SECRET`. Les deux variables doivent être définies ensemble ; si elles
+sont absentes, la livraison est désactivée. Une valeur partielle bloque le démarrage
+afin de rendre l'erreur de configuration visible.
+
+La livraison HMAC est asynchrone et réessaie les erreurs réseau, timeouts et réponses
+5xx. Les réponses 400 et 401 sont permanentes. Le POC conserve l'événement en mémoire
+pendant ces tentatives : une outbox persistante sera nécessaire avant production pour
+survivre à un redémarrage du backend.
+
+Prérequis n8n avant production : remplacer le stockage interne de déduplication du
+workflow par un stockage persistant imposant une contrainte d'unicité sur `event_id`.
