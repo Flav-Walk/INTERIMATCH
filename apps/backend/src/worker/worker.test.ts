@@ -98,6 +98,25 @@ describe("profil intérimaire", () => {
     ]);
   });
 
+  it("renvoie le message d'une règle portant sur la requête entière", async () => {
+    // Ces deux règles ne visent aucun champ en particulier : elles n'ont donc
+    // pas de chemin à nommer. Leur message doit malgré tout parvenir à
+    // l'appelant plutôt que d'être remplacé par un « Requête invalide. » muet.
+    const empty = await auth(
+      request(app).patch("/api/v1/workers/me"),
+      jimmy,
+    ).send({});
+    expect(empty.status).toBe(400);
+    expect(empty.body.error.message).toBe("Aucune modification transmise.");
+
+    const vehicle = await auth(
+      request(app).patch("/api/v1/workers/me"),
+      jimmy,
+    ).send({ has_vehicle: true, has_driving_licence: false });
+    expect(vehicle.status).toBe(400);
+    expect(vehicle.body.error.message).toBe("Un véhicule suppose le permis.");
+  });
+
   it("refuse une donnée invalide sans rien écrire", async () => {
     for (const body of [
       { postal_code: "690" },

@@ -54,6 +54,21 @@ export const jobs: readonly ReferenceValue[] = Object.freeze([
 
 export const jobValues = jobs.map((j) => j.value) as [string, ...string[]];
 
+// Unité de rémunération d'une mission (cahier des charges §8.3).
+export const payUnits: readonly ReferenceValue[] = Object.freeze([
+  { value: "hour", label: "de l'heure" },
+  { value: "day", label: "par jour" },
+  { value: "mission", label: "pour la mission" },
+]);
+
+export const payUnitValues = payUnits.map((u) => u.value) as [
+  string,
+  ...string[],
+];
+
+export const jobLabel = (value: string) =>
+  jobs.find((j) => j.value === value)?.label ?? value;
+
 export const sectorValues = sectors.map((s) => s.value) as [
   string,
   ...string[],

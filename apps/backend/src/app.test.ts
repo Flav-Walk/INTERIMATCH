@@ -22,6 +22,29 @@ describe("API foundation", () => {
     expect(res.headers["x-powered-by"]).toBeUndefined();
     expect(res.headers["x-request-id"]).toBeTruthy();
   });
+  it("names the invalid fields so the interface can guide the user", async () => {
+    const app = createApp(
+      readConfig({ NODE_ENV: "test", RATE_LIMIT: "1000" }),
+      { db: null } as never,
+    );
+    const res = await request(app)
+      .post("/api/v1/auth/register")
+      .set("Origin", "http://localhost:5173")
+      .send({ email: "pas-un-email", password: "court" });
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe("INVALID_REQUEST");
+    expect(res.body.error.message).toContain("email");
+    expect(res.body.error.message).toContain("password");
+    // Le message reste en français et ne cite aucun libellé interne.
+    expect(res.body.error.message).toMatch(/^Donnée invalide : /);
+  });
+  it("falls back to a generic message when no field can be named", async () => {
+    const res = await request(createApp(config))
+      .post("/missing")
+      .set("Content-Type", "application/json")
+      .send("{");
+    expect(res.body.error.message).toBe("Requête invalide.");
+  });
   it("never leaks internal detail in the error envelope", async () => {
     // Le champ `detail` d'une HttpError sert aux logs : il ne doit jamais sortir.
     const res = await request(createApp(config)).get("/missing");

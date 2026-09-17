@@ -7,15 +7,16 @@ import { AccountService } from "./auth/service.js";
 import { createGoogleBridge } from "./auth/google.js";
 import { WorkerService } from "./worker/service.js";
 import { createAddressGeocoder } from "./worker/geocode.js";
+import { MissionService } from "./missions/service.js";
 import {
   AsyncBusinessEventPublisher,
   N8nWebhookDelivery,
 } from "./events/dispatcher.js";
-
 const config = readConfig(process.env);
 const db = config.DATABASE_URL ? createDatabase(config) : null;
 const google = createGoogleBridge(config);
 const accounts = db ? new AccountService(db, google) : undefined;
+const geocoder = createAddressGeocoder();
 const eventLogger = pino({
   level: config.NODE_ENV === "test" ? "silent" : "info",
 });
@@ -30,27 +31,26 @@ const events =
         eventLogger,
       )
     : undefined;
-const workers = db
-  ? new WorkerService(db, createAddressGeocoder(), events)
-  : undefined;
-
-const server = createApp(config, accounts, workers).listen(config.PORT, () =>
-  // Capacités réellement actives : une variable manquante se voit ici, au boot,
-  // et non au moment où un utilisateur clique. Aucune valeur secrète n'est journalisée.
-  console.info(
-    JSON.stringify({
-      event: "server_started",
-      port: config.PORT,
-      environment: config.NODE_ENV,
-      database: Boolean(db),
-      google: Boolean(google),
-      n8n_webhook: Boolean(events),
-      trust_proxy: config.TRUST_PROXY,
-      frontend_url: config.FRONTEND_URL,
-    }),
-  ),
+const workers = db ? new WorkerService(db, geocoder, events) : undefined;
+const missions = db ? new MissionService(db, geocoder) : undefined;
+const server = createApp(config, accounts, workers, missions).listen(
+  config.PORT,
+  () =>
+    // Capacités réellement actives : une variable manquante se voit ici, au boot,
+    // et non au moment où un utilisateur clique. Aucune valeur secrète n'est journalisée.
+    console.info(
+      JSON.stringify({
+        event: "server_started",
+        port: config.PORT,
+        environment: config.NODE_ENV,
+        database: Boolean(db),
+        google: Boolean(google),
+        n8n_webhook: Boolean(events),
+        trust_proxy: config.TRUST_PROXY,
+        frontend_url: config.FRONTEND_URL,
+      }),
+    ),
 );
-
 for (const signal of ["SIGINT", "SIGTERM"])
   process.on(signal, () => {
     server.close(() => {
