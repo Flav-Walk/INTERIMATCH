@@ -35,6 +35,13 @@ export function missionRouter(missions: MissionService) {
   const worker = requireRole("worker");
   const me = (res: { locals: Record<string, unknown> }) =>
     (res.locals.profile as Profile).id;
+  /**
+   * Un compte de démonstration ne voit que des missions de démonstration, et un
+   * compte réel n'en voit aucune. Le marqueur vient de la session, jamais de la
+   * requête : personne ne peut demander à voir l'autre côté de la cloison.
+   */
+  const isDemo = (res: { locals: Record<string, unknown> }) =>
+    (res.locals.profile as Profile).demo;
 
   router.get("/missions", company, async (req, res) => {
     const { status } = missionListSchema.parse(req.query);
@@ -79,11 +86,13 @@ export function missionRouter(missions: MissionService) {
   // --- Espace intérimaire : lecture seule des missions offertes. ---
 
   router.get("/workers/me/missions", worker, async (_req, res) =>
-    res.json({ missions: await missions.listOpen() }),
+    res.json({ missions: await missions.listOpen(isDemo(res)) }),
   );
 
   router.get("/workers/me/missions/:id", worker, async (req, res) =>
-    res.json(await missions.getOpen(identifier.parse(req.params.id))),
+    res.json(
+      await missions.getOpen(identifier.parse(req.params.id), isDemo(res)),
+    ),
   );
 
   return router;

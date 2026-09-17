@@ -803,3 +803,163 @@ describe("missions — espace intérimaire", () => {
     expect(r.body.company.establishment_name).toBeNull();
   });
 });
+
+// ---------------------------------------------------------------------------
+// Cloison entre données de démonstration et données réelles.
+// Régression constatée en recette : une mission du seek de démo apparaissait
+// à un vrai intérimaire.
+// ---------------------------------------------------------------------------
+
+describe("missions — données de démonstration", () => {
+  let demoCompanyId = "";
+  let demoWorker = "";
+  let demoMissionId = "";
+  let realMissionId = "";
+
+  beforeAll(async () => {
+    // Un compte entreprise et un compte intérimaire marqués « démo », comme
+    // ceux que produit `db:seed`.
+    demoCompanyId = (
+      await db.query<{ id: string }>(
+        "INSERT INTO profiles(email,role,demo) VALUES('demo.company@example.test','company',true) RETURNING id",
+      )
+    ).rows[0].id;
+    const demoWorkerId = (
+      await db.query<{ id: string }>(
+        "INSERT INTO profiles(email,role,demo) VALUES('demo.worker@example.test','worker',true) RETURNING id",
+      )
+    ).rows[0].id;
+    demoWorker = (await accounts.issue(db, demoWorkerId)).access_token;
+
+    // Une mission fictive, créée comme le seed la crée.
+    demoMissionId = await missions.create(
+      demoCompanyId,
+      draft({ title: "Mission fictive du seed" }),
+      { demo: true },
+    );
+    await db.query(
+      "UPDATE missions SET status='open', published_at=now() WHERE id=$1",
+      [demoMissionId],
+    );
+
+    // Et une vraie mission publiée, pour vérifier que la cloison joue des deux côtés.
+    realMissionId = await missions.create(
+      bossId,
+      draft({ title: "Mission réelle" }),
+    );
+    await db.query(
+      "UPDATE missions SET status='open', published_at=now() WHERE id=$1",
+      [realMissionId],
+    );
+  });
+
+  const ids = async (token: string) =>
+    (
+      await auth(request(app).get("/api/v1/workers/me/missions"), token)
+    ).body.missions.map((m: { id: string }) => m.id);
+
+  it("n'expose aucune mission fictive à un intérimaire réel", async () => {
+    // La mission fictive satisfait toutes les autres conditions de visibilité :
+    // publiée, à venir. Seul son marqueur `demo` peut donc l'exclure, et c'est
+    // ce que ce test vérifie réellement.
+    const fictive = (
+      await db.query<{ status: string; ends_at: Date; demo: boolean }>(
+        "SELECT status, ends_at, demo FROM missions WHERE id=$1",
+        [demoMissionId],
+      )
+    ).rows[0];
+    expect(fictive.status).toBe("open");
+    expect(fictive.demo).toBe(true);
+    expect(new Date(fictive.ends_at).getTime()).toBeGreaterThan(Date.now());
+
+    const visible = await ids(worker);
+    expect(visible).toContain(realMissionId);
+    expect(visible).not.toContain(demoMissionId);
+  });
+
+  it("garde la mission fictive introuvable par son identifiant direct", async () => {
+    const r = await auth(
+      request(app).get("/api/v1/workers/me/missions/" + demoMissionId),
+      worker,
+    );
+    expect(r.status).toBe(404);
+  });
+
+  it("ne renvoie jamais de mission marquée démo à un compte réel", async () => {
+    const r = await auth(
+      request(app).get("/api/v1/workers/me/missions"),
+      worker,
+    );
+    for (const mission of r.body.missions) expect(mission.demo).toBe(false);
+  });
+
+  it("laisse un compte de démonstration voir les missions de démonstration", async () => {
+    // C'est à cela que sert le compte de démo : le priver de ses données le
+    // rendrait inutile pour une présentation.
+    const visible = await ids(demoWorker);
+    expect(visible).toContain(demoMissionId);
+    expect(visible).not.toContain(realMissionId);
+    expect(
+      (
+        await auth(
+          request(app).get("/api/v1/workers/me/missions/" + demoMissionId),
+          demoWorker,
+        )
+      ).status,
+    ).toBe(200);
+  });
+
+  it("garde la mission réelle introuvable pour un compte de démonstration", async () => {
+    // La cloison joue dans les deux sens, détail compris : un compte fictif ne
+    // doit pas davantage atteindre une vraie mission par son identifiant.
+    expect(
+      (
+        await auth(
+          request(app).get("/api/v1/workers/me/missions/" + realMissionId),
+          demoWorker,
+        )
+      ).status,
+    ).toBe(404);
+  });
+
+  it("ne laisse pas le client choisir de quel côté de la cloison il se place", async () => {
+    // Le marqueur vient de la session : ni un paramètre de requête ni un corps
+    // ne doivent pouvoir le forcer, sur la liste comme sur le détail.
+    const forcedList = await auth(
+      request(app).get("/api/v1/workers/me/missions?demo=true"),
+      worker,
+    ).send({ demo: true });
+    expect(forcedList.status).toBe(200);
+    expect(
+      forcedList.body.missions.map((m: { id: string }) => m.id),
+    ).not.toContain(demoMissionId);
+
+    const forcedDetail = await auth(
+      request(app).get(
+        `/api/v1/workers/me/missions/${demoMissionId}?demo=true`,
+      ),
+      worker,
+    ).send({ demo: true });
+    expect(forcedDetail.status).toBe(404);
+  });
+
+  it("n'assouplit aucune des règles de statut de son côté de la cloison", async () => {
+    // La cloison s'ajoute aux règles SL2c, elle ne les remplace pas : un
+    // brouillon fictif reste invisible, même d'un compte fictif.
+    const fictifNonPublie = await missions.create(
+      demoCompanyId,
+      draft({ title: "Brouillon fictif" }),
+      { demo: true },
+    );
+    const visible = await ids(demoWorker);
+    expect(visible).not.toContain(fictifNonPublie);
+    expect(
+      (
+        await auth(
+          request(app).get("/api/v1/workers/me/missions/" + fictifNonPublie),
+          demoWorker,
+        )
+      ).status,
+    ).toBe(404);
+  });
+});
