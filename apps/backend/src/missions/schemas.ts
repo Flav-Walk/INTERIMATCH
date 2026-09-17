@@ -144,6 +144,26 @@ export interface MissionSkill {
   required: boolean;
 }
 
+/**
+ * Ce qu'un intérimaire voit d'une mission publiée.
+ *
+ * `company_id` n'y figure pas : l'identifiant interne de l'entreprise ne lui
+ * sert à rien. De l'établissement, seules les informations que l'entreprise
+ * destine explicitement aux intérimaires sont reprises — son nom, son secteur
+ * et sa présentation. Le téléphone, la raison sociale et l'adresse du siège
+ * restent hors de cette vue : ce sont des coordonnées de contact, et rien ne
+ * justifie de les donner avant une mise en relation.
+ */
+export interface OpenMissionCompany {
+  establishment_name: string | null;
+  sector: string | null;
+  description: string | null;
+}
+
+export interface OpenMission extends Omit<Mission, "company_id"> {
+  company: OpenMissionCompany;
+}
+
 export interface Mission {
   id: string;
   company_id: string;

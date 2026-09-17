@@ -632,3 +632,174 @@ describe("missions — publication", () => {
     expect((await missions.get(bossId, id)).status).toBe("open");
   });
 });
+
+// ---------------------------------------------------------------------------
+// SL2c — ce qu'un intérimaire voit des missions.
+// ---------------------------------------------------------------------------
+
+describe("missions — espace intérimaire", () => {
+  /** Publie une mission pour de bon, par le chemin réel de l'entreprise. */
+  const publish = async (over: Record<string, unknown> = {}) => {
+    const id = await missions.create(bossId, draft(over));
+    await publishMission(id);
+    return id;
+  };
+
+  const openList = (token = worker) =>
+    auth(request(app).get("/api/v1/workers/me/missions"), token);
+
+  const openOne = (id: string, token = worker) =>
+    auth(request(app).get("/api/v1/workers/me/missions/" + id), token);
+
+  it("refuse tout accès sans authentification", async () => {
+    for (const call of [
+      request(app).get("/api/v1/workers/me/missions"),
+      request(app).get(
+        "/api/v1/workers/me/missions/c0ffee00-0000-4000-8000-000000000001",
+      ),
+    ])
+      expect((await call).status).toBe(401);
+  });
+
+  it("ferme l'espace intérimaire à une entreprise", async () => {
+    expect((await openList(boss)).status).toBe(403);
+  });
+
+  it("montre une mission publiée", async () => {
+    const id = await publish({ title: "Renfort service du midi" });
+    const r = await openList();
+    expect(r.status).toBe(200);
+    expect(r.body.missions.map((m: { id: string }) => m.id)).toContain(id);
+  });
+
+  it("ne montre jamais un brouillon, ni dans la liste ni par son identifiant", async () => {
+    const id = await missions.create(bossId, draft({ title: "Jamais publié" }));
+    const r = await openList();
+    expect(r.body.missions.map((m: { id: string }) => m.id)).not.toContain(id);
+    // Introuvable, et non « interdit » : rien ne révèle que ce brouillon existe.
+    const detail = await openOne(id);
+    expect(detail.status).toBe(404);
+    expect(detail.body.error.code).toBe("MISSION_NOT_FOUND");
+  });
+
+  it("ne montre que des missions ouvertes et encore à venir", async () => {
+    const r = await openList();
+    expect(r.body.missions.length).toBeGreaterThan(0);
+    for (const mission of r.body.missions) {
+      expect(mission.status).toBe("open");
+      expect(Date.parse(mission.ends_at)).toBeGreaterThan(Date.now());
+    }
+  });
+
+  it("écarte une mission publiée dont le créneau est passé", async () => {
+    const id = await missions.create(bossId, draft({ title: "Déjà terminée" }));
+    // Publiée quand elle était à venir, puis rattrapée par le temps.
+    await publishMission(id);
+    await db.query(
+      "UPDATE missions SET starts_at = now() - interval '2 days', ends_at = now() - interval '1 day' WHERE id=$1",
+      [id],
+    );
+    expect(
+      (await openList()).body.missions.map((m: { id: string }) => m.id),
+    ).not.toContain(id);
+    expect((await openOne(id)).status).toBe(404);
+  });
+
+  it("montre les missions de toutes les entreprises, pas d'une seule", async () => {
+    const mine = await publish({ title: "Chez le boss" });
+    const theirs = await missions.create(
+      rivalId,
+      draft({ title: "Chez le rival" }),
+    );
+    await auth(
+      request(app).post(`/api/v1/missions/${theirs}/publish`),
+      rival,
+    ).send({});
+    const ids = (await openList()).body.missions.map(
+      (m: { id: string }) => m.id,
+    );
+    expect(ids).toContain(mine);
+    expect(ids).toContain(theirs);
+  });
+
+  it("renvoie le détail d'une mission offerte, compétences comprises", async () => {
+    const id = await publish({
+      title: "Chef de rang — banquet",
+      description: "Service à l'assiette.",
+      headcount: 3,
+      min_years_experience: 2,
+      pay_amount: 15.5,
+      pay_unit: "hour",
+      required_skill_ids: [skillIds[0]],
+      desired_skill_ids: [skillIds[1]],
+    });
+    const r = await openOne(id);
+    expect(r.status).toBe(200);
+    expect(r.body.title).toBe("Chef de rang — banquet");
+    expect(r.body.description).toBe("Service à l'assiette.");
+    expect(r.body.headcount).toBe(3);
+    expect(Number(r.body.min_years_experience)).toBe(2);
+    expect(Number(r.body.pay_amount)).toBe(15.5);
+    expect(r.body.pay_unit).toBe("hour");
+    expect(r.body.city).toBe("Lyon");
+    expect(
+      r.body.skills.filter((s: { required: boolean }) => s.required),
+    ).toHaveLength(1);
+    expect(
+      r.body.skills.filter((s: { required: boolean }) => !s.required),
+    ).toHaveLength(1);
+  });
+
+  it("répond introuvable pour une mission inexistante et refuse un identifiant mal formé", async () => {
+    expect((await openOne("c0ffee00-0000-4000-8000-000000000009")).status).toBe(
+      404,
+    );
+    expect((await openOne("pas-un-uuid")).status).toBe(400);
+  });
+
+  it("joint les informations que l'établissement destine aux intérimaires", async () => {
+    await db.query(
+      `INSERT INTO company_profiles(profile_id,legal_name,establishment_name,sector,address,city,postal_code,latitude,longitude,phone,description)
+       VALUES($1,'Brasserie du Quai SARL','Brasserie du Quai','brasserie','12 quai Rambaud','Lyon','69002',45.75,4.85,'+33400000000','Cuisine de marché, 120 couverts.')
+       ON CONFLICT(profile_id) DO UPDATE SET establishment_name=EXCLUDED.establishment_name`,
+      [bossId],
+    );
+    const id = await publish({ title: "Avec établissement" });
+    const r = await openOne(id);
+    expect(r.body.company).toEqual({
+      establishment_name: "Brasserie du Quai",
+      sector: "brasserie",
+      description: "Cuisine de marché, 120 couverts.",
+    });
+  });
+
+  it("ne divulgue ni les coordonnées de contact ni l'identifiant de l'entreprise", async () => {
+    const id = await publish({ title: "Sans fuite" });
+    const r = await openOne(id);
+    // Le téléphone, la raison sociale et l'adresse du siège sont des données de
+    // contact : rien ne justifie de les donner avant une mise en relation.
+    const serialized = JSON.stringify(r.body);
+    expect(serialized).not.toContain("+33400000000");
+    expect(serialized).not.toContain("Brasserie du Quai SARL");
+    expect(r.body.company_id).toBeUndefined();
+    expect(Object.keys(r.body.company).sort()).toEqual([
+      "description",
+      "establishment_name",
+      "sector",
+    ]);
+  });
+
+  it("supporte une entreprise qui n'a pas encore présenté son établissement", async () => {
+    const orphan = await missions.create(
+      rivalId,
+      draft({ title: "Sans vitrine" }),
+    );
+    await auth(
+      request(app).post(`/api/v1/missions/${orphan}/publish`),
+      rival,
+    ).send({});
+    const r = await openOne(orphan);
+    expect(r.status).toBe(200);
+    expect(r.body.company.establishment_name).toBeNull();
+  });
+});

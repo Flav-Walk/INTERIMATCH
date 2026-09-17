@@ -53,3 +53,13 @@ survivre à un redémarrage du backend.
 
 Prérequis n8n avant production : remplacer le stockage interne de déduplication du
 workflow par un stockage persistant imposant une contrainte d'unicité sur `event_id`.
+
+## Administration
+
+Les routes `/api/v1/admin/users` sont réservées au rôle `admin`, déjà prévu par
+le schéma de données. Un administrateur ne peut pas retirer son propre rôle afin
+d'éviter de perdre accidentellement le dernier accès à l'administration.
+
+Cette fonctionnalité ne promeut aucun compte existant automatiquement. Le premier
+compte administrateur doit être désigné explicitement par une opération contrôlée
+sur l'environnement concerné avant que l'interface `/admin` puisse être utilisée.

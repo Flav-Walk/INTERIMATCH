@@ -12,9 +12,19 @@ import {
 const identifier = z.uuid();
 
 /**
- * Espace missions de l'entreprise. Monté derrière `requireAuth` par le routeur
- * de comptes : `res.locals.profile` est la seule source d'identité, et
- * `company_id` n'est jamais lu depuis la requête.
+ * Missions, vues des deux côtés.
+ *
+ * Monté derrière `requireAuth` par le routeur de comptes : `res.locals.profile`
+ * est la seule source d'identité, et `company_id` n'est jamais lu depuis la
+ * requête.
+ *
+ * Deux espaces distincts, servis par le même service :
+ *  - `/missions…` pour l'entreprise, qui voit et gère **ses** missions, quel
+ *    que soit leur statut ;
+ *  - `/workers/me/missions…` pour l'intérimaire, qui voit les missions
+ *    **offertes**, sans jamais accéder à celles d'un autre statut. Le chemin dit
+ *    « pour moi » : c'est là que le rapprochement viendra les ordonner, sans
+ *    changer l'URL ni le contrat.
  *
  * Les transitions `filled`, `completed` et `cancelled` ne sont pas exposées :
  * elles viendront avec la candidature et l'attribution.
@@ -22,6 +32,7 @@ const identifier = z.uuid();
 export function missionRouter(missions: MissionService) {
   const router = Router();
   const company = requireRole("company");
+  const worker = requireRole("worker");
   const me = (res: { locals: Record<string, unknown> }) =>
     (res.locals.profile as Profile).id;
 
@@ -63,6 +74,16 @@ export function missionRouter(missions: MissionService) {
   router.post("/missions/:id/publish", company, async (req, res) =>
     // Sans corps : la date de publication est décidée par le serveur.
     res.json(await missions.publish(me(res), identifier.parse(req.params.id))),
+  );
+
+  // --- Espace intérimaire : lecture seule des missions offertes. ---
+
+  router.get("/workers/me/missions", worker, async (_req, res) =>
+    res.json({ missions: await missions.listOpen() }),
+  );
+
+  router.get("/workers/me/missions/:id", worker, async (req, res) =>
+    res.json(await missions.getOpen(identifier.parse(req.params.id))),
   );
 
   return router;
