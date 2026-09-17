@@ -5,8 +5,26 @@ import { api } from "../../services/session";
 import {
   listCandidates,
   type CandidateList as Candidates,
+  type MatchingInactive,
 } from "../../services/missions";
 import { MatchBadge } from "./MatchBadge";
+
+/**
+ * Pourquoi aucun profil n'est cherché.
+ *
+ * Le rapprochement suit la visibilité : une mission qu'aucun intérimaire ne
+ * peut voir ne peut pas non plus lui proposer de candidats. Le dire évite la
+ * lecture fausse d'un vivier vide — jusqu'ici, un brouillon affichait des
+ * profils que personne n'aurait pu contacter.
+ */
+const inactiveText: Record<MatchingInactive, string> = {
+  draft:
+    "Le rapprochement commence à la publication. Tant que cette mission reste un brouillon, aucun intérimaire ne la voit — et aucun profil ne lui est rapproché.",
+  ended:
+    "Cette mission est terminée. Elle n’est plus proposée aux intérimaires, et le rapprochement ne s’y applique plus.",
+  closed:
+    "Cette mission n’est plus ouverte. Le rapprochement ne s’y applique plus.",
+};
 
 /**
  * Profils rapprochés d'une mission.
@@ -71,6 +89,8 @@ export function CandidateList({
         <p className="quiet" role="status">
           Recherche des profils…
         </p>
+      ) : data?.inactive ? (
+        <p className="quiet">{inactiveText[data.inactive]}</p>
       ) : !data || data.candidates.length === 0 ? (
         <p className="quiet">
           Aucun profil ne correspond encore à cette mission. Les compétences

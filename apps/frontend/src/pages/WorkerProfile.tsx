@@ -5,6 +5,7 @@ import {
   type FormEvent,
   type ReactNode,
 } from "react";
+import { useLocation } from "react-router-dom";
 import { Check, Plus, Trash2, Pencil } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import {
@@ -36,11 +37,14 @@ import {
  * tant que le serveur n'a pas constaté que tout le nécessaire est présent.
  */
 function Section({
+  id,
   title,
   hint,
   onSave,
   children,
 }: {
+  /** Ancre, pour qu'un lien puisse mener droit à ce bloc. */
+  id?: string;
   title: string;
   hint?: string;
   onSave: (form: FormData) => Promise<User | void>;
@@ -69,6 +73,7 @@ function Section({
 
   return (
     <form
+      id={id}
       onSubmit={(e) => void submit(e)}
       onInput={() => saved && setSaved(false)}
     >
@@ -115,6 +120,7 @@ const numberOrOmit = (f: FormData, n: string) => {
 
 export function WorkerProfile() {
   const { user } = useAuth();
+  const { hash } = useLocation();
   const [skills, setSkills] = useState<Skill[]>([]),
     [jobs, setJobs] = useState<ReferenceValue[]>([]),
     [loadError, setLoadError] = useState("");
@@ -132,6 +138,23 @@ export function WorkerProfile() {
   // permis. Deux cases à cocher indépendantes laissaient exprimer l'inverse.
   const [licence, setLicence] = useState(p.has_driving_licence ?? false);
   const [vehicle, setVehicle] = useState(p.has_vehicle ?? false);
+
+  /**
+   * Un lien peut viser un bloc précis — « modifier mes disponibilités » depuis
+   * un écran vide, par exemple. React Router ne suit pas les ancres de
+   * lui-même : sans cela, on atterrirait en haut d'un long formulaire, à
+   * charge de retrouver le bloc annoncé.
+   */
+  useEffect(() => {
+    if (!hash) return;
+    const target = document.getElementById(hash.slice(1));
+    target?.scrollIntoView({
+      block: "start",
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        ? "auto"
+        : "smooth",
+    });
+  }, [hash]);
 
   useEffect(() => {
     void Promise.all([
@@ -290,6 +313,7 @@ export function WorkerProfile() {
       </Section>
 
       <Section
+        id="competences"
         title="Vos compétences"
         hint="Au moins une compétence est nécessaire : c’est le critère le plus important du rapprochement."
         onSave={(f) => putSkills(f.getAll("skill_ids").map(String))}
@@ -489,6 +513,7 @@ export function WorkerProfile() {
       </Section>
 
       <Section
+        id="mobilite"
         title="Votre mobilité"
         hint="Indiquez simplement votre ville : les coordonnées nécessaires au rapprochement sont retrouvées automatiquement."
         onSave={(f) =>
@@ -582,6 +607,7 @@ export function WorkerProfile() {
       <AvailabilitySection slots={slots} />
 
       <Section
+        id="recherche"
         title="Votre recherche"
         hint="Mettez votre recherche en pause sans perdre votre profil."
         onSave={(f) =>
@@ -674,7 +700,7 @@ function AvailabilitySection({ slots }: { slots: Availability[] }) {
   }
 
   return (
-    <form ref={formRef} onSubmit={(e) => void save(e)}>
+    <form id="disponibilites" ref={formRef} onSubmit={(e) => void save(e)}>
       <fieldset disabled={busy}>
         <legend>Vos disponibilités</legend>
         <p className="quiet">

@@ -1,10 +1,15 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { BriefcaseBusiness, Check } from "lucide-react";
+import { ArrowRight, BriefcaseBusiness, Check } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { errorMessage } from "../services/session";
 import { MissionCard } from "../components/mission/MissionCard";
-import { listOpenMissions, type OpenMission } from "../services/missions";
+import {
+  explainEmpty,
+  listOpenMissions,
+  type Exclusions,
+  type OpenMission,
+} from "../services/missions";
 
 /** Rappel de ce qui se passera ensuite, pour l'écran resté vide. */
 const steps = [
@@ -23,6 +28,7 @@ const steps = [
 export function Missions() {
   const { user, revision } = useAuth();
   const [missions, setMissions] = useState<OpenMission[]>([]),
+    [excluded, setExcluded] = useState<Exclusions>(),
     [loading, setLoading] = useState(true),
     [error, setError] = useState("");
 
@@ -33,6 +39,7 @@ export function Missions() {
       .then((r) => {
         if (!live) return;
         setMissions(r.missions);
+        setExcluded(r.excluded);
         setError("");
       })
       .catch((e) => live && setError(errorMessage(e)))
@@ -45,6 +52,9 @@ export function Missions() {
   }, [revision]);
 
   if (!user || user.role !== "worker") return null;
+  // Le serveur a déjà fait le tri : on n'affiche qu'une raison, celle qui
+  // explique le plus grand nombre de missions manquantes.
+  const reason = explainEmpty(excluded);
 
   return (
     <section className="page-wide">
@@ -86,17 +96,23 @@ export function Missions() {
         <>
           <div className="empty">
             <BriefcaseBusiness aria-hidden="true" />
-            <h2>Aucune mission disponible pour le moment</h2>
+            <h2>{reason ? reason.title : "Aucune mission disponible pour le moment"}</h2>
             <p>
-              Aucune mission publiée ne correspond pour l’instant à votre
-              métier, à vos compétences, à vos disponibilités et à votre zone de
-              déplacement. Compléter votre profil élargit ce qui peut vous être
-              proposé.
+              {reason
+                ? reason.detail
+                : "Aucune mission n’est publiée pour l’instant. Dès qu’un établissement en publie une qui vous correspond, elle apparaît ici."}
             </p>
-            {!user.onboarding_completed && (
-              <Link className="button" to="/worker/profile">
-                Compléter mon profil
+            {reason ? (
+              <Link className="button" to={reason.action.to}>
+                {reason.action.label}
+                <ArrowRight size={16} aria-hidden="true" />
               </Link>
+            ) : (
+              !user.onboarding_completed && (
+                <Link className="button" to="/worker/profile">
+                  Compléter mon profil
+                </Link>
+              )
             )}
           </div>
 

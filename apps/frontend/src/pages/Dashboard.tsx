@@ -16,7 +16,12 @@ import {
 } from "../services/profile";
 import { errorMessage } from "../services/session";
 import { MissionCard } from "../components/mission/MissionCard";
-import { listOpenMissions, type OpenMission } from "../services/missions";
+import {
+  explainEmpty,
+  listOpenMissions,
+  type Exclusions,
+  type OpenMission,
+} from "../services/missions";
 
 /**
  * Rappel de complétion. Il n'apparaît que tant qu'il reste quelque chose à
@@ -55,6 +60,7 @@ function ProfileStatus({
 export function Dashboard() {
   const { user, revision } = useAuth();
   const [open, setOpen] = useState<OpenMission[]>([]);
+  const [excluded, setExcluded] = useState<Exclusions>();
   const [missionsError, setMissionsError] = useState("");
   const isWorker = user?.role === "worker";
 
@@ -64,7 +70,11 @@ export function Dashboard() {
     if (!isWorker) return;
     let live = true;
     void listOpenMissions()
-      .then((r) => live && setOpen(r.missions))
+      .then((r) => {
+        if (!live) return;
+        setOpen(r.missions);
+        setExcluded(r.excluded);
+      })
       .catch((e) => live && setMissionsError(errorMessage(e)));
     return () => {
       live = false;
@@ -77,6 +87,9 @@ export function Dashboard() {
     complete = user.onboarding_completed,
     upcoming = upcomingAvailabilities(p.availabilities);
   const name = user.first_name || (worker ? "à vous" : "à votre équipe");
+  // Une seule phrase ici : l'explication complète et son action vivent sur
+  // l'écran des missions, que le lien « Tout voir » atteint déjà.
+  const reason = worker ? explainEmpty(excluded) : null;
 
   return (
     <>
@@ -155,12 +168,14 @@ export function Dashboard() {
                 <BriefcaseBusiness aria-hidden="true" />
                 <h3>
                   {worker
-                    ? "Aucune mission disponible pour le moment"
+                    ? (reason?.title ??
+                      "Aucune mission disponible pour le moment")
                     : "Votre première mission commence ici"}
                 </h3>
                 <p>
                   {worker
-                    ? "Dès qu’un établissement publie une mission, elle apparaît ici."
+                    ? (reason?.detail ??
+                      "Dès qu’un établissement publie une mission qui vous correspond, elle apparaît ici.")
                     : "La création et la gestion des missions seront disponibles au prochain lot."}
                 </p>
               </div>
@@ -185,17 +200,30 @@ export function Dashboard() {
                         <li key={slot.id}>{formatSlot(slot)}</li>
                       ))}
                     </ul>
-                    {upcoming.length > 3 && (
-                      <Link className="quiet" to="/worker/profile">
-                        Voir les {upcoming.length} créneaux
-                      </Link>
-                    )}
+                    {/* Un profil complet n'exige qu'un créneau à venir ;
+                        une mission, elle, doit tenir entièrement dans l'un
+                        d'eux. Le dire ici évite de lire « profil complété »
+                        comme une promesse de propositions. */}
+                    <p className="quiet">
+                      Une mission ne vous est proposée que si l’un de ces
+                      créneaux la couvre entièrement.
+                    </p>
+                    <Link className="quiet" to="/worker/profile#disponibilites">
+                      {upcoming.length > 3
+                        ? `Voir et modifier les ${upcoming.length} créneaux`
+                        : "Modifier mes disponibilités"}
+                    </Link>
                   </>
                 ) : (
-                  <p>
-                    Aucun créneau enregistré. Vos disponibilités se renseignent
-                    depuis votre profil.
-                  </p>
+                  <>
+                    <p>
+                      Aucun créneau enregistré. Sans disponibilité, aucune
+                      mission ne peut vous être proposée.
+                    </p>
+                    <Link className="quiet" to="/worker/profile#disponibilites">
+                      Ajouter un créneau
+                    </Link>
+                  </>
                 )}
               </section>
               <section className="side-panel pale">

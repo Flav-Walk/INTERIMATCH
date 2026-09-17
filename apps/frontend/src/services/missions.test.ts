@@ -3,6 +3,7 @@ import {
   canEdit,
   canPublish,
   emptyMission,
+  explainEmpty,
   formToMission,
   missionDaysOfMonth,
   missionDiff,
@@ -401,5 +402,66 @@ describe("actions proposées selon le statut", () => {
     expect(canEdit(mission({ status: "open" }))).toBe(true);
     expect(canEdit(mission({ status: "completed" }))).toBe(false);
     expect(canEdit(mission({ status: "cancelled" }))).toBe(false);
+  });
+});
+
+describe("explication d'un écran vide", () => {
+  it("ne dit rien quand aucune mission n'a été écartée", () => {
+    // Il n'y a alors rien à expliquer : aucune mission n'est publiée, et
+    // inventer un motif tromperait.
+    expect(explainEmpty({ total: 0, reasons: {} })).toBeNull();
+    expect(explainEmpty(undefined)).toBeNull();
+  });
+
+  it("nomme la disponibilité quand c'est elle qui bloque", () => {
+    // Le cas vécu en production : profil complet, compatible, mais dont le
+    // créneau commence après la mission.
+    const reason = explainEmpty({ total: 1, reasons: { unavailable: 1 } });
+    expect(reason?.code).toBe("unavailable");
+    expect(reason?.title).toContain("disponibilités");
+    expect(reason?.action.to).toBe("/worker/profile#disponibilites");
+  });
+
+  it("accorde le texte au nombre de missions concernées", () => {
+    expect(
+      explainEmpty({ total: 1, reasons: { out_of_range: 1 } })?.detail,
+    ).toContain("1 mission ouverte se situe");
+    expect(
+      explainEmpty({ total: 3, reasons: { out_of_range: 3 } })?.detail,
+    ).toContain("3 missions ouvertes se situent");
+  });
+
+  it("retient le motif qui explique le plus de missions", () => {
+    expect(
+      explainEmpty({
+        total: 5,
+        reasons: { unavailable: 1, missing_required_skills: 4 },
+      })?.code,
+    ).toBe("missing_required_skills");
+  });
+
+  it("fait passer la pause avant tout le reste", () => {
+    // Elle coupe l'ensemble des propositions : corriger un autre motif ne
+    // changerait rien tant qu'elle dure.
+    expect(
+      explainEmpty({
+        total: 9,
+        reasons: { paused: 9, unavailable: 8, out_of_range: 7 },
+      })?.code,
+    ).toBe("paused");
+  });
+
+  it("ne promet jamais de mission", () => {
+    // Un état vide explique ce qui bloque ; il ne garantit pas ce qui suivra.
+    for (const reasons of [
+      { paused: 1 },
+      { unavailable: 2 },
+      { out_of_range: 2 },
+      { missing_required_skills: 2 },
+    ]) {
+      const reason = explainEmpty({ total: 2, reasons });
+      expect(reason).not.toBeNull();
+      expect(reason!.detail).not.toMatch(/garanti|assur|vous recevrez|obtiendrez/i);
+    }
   });
 });

@@ -88,11 +88,20 @@ export interface Candidate {
   match: MatchResult;
 }
 
+/**
+ * Pourquoi le rapprochement ne tourne pas sur une mission, tel que le serveur
+ * le nomme. Une mission qui n'est offerte à aucun intérimaire ne peut pas non
+ * plus proposer de profils : les deux espaces suivent la même règle.
+ */
+export type MatchingInactive = "draft" | "ended" | "closed";
+
 export interface CandidateList {
   /** Palier retenu — 70, 60 ou 50 — ou null si personne n'atteint 50. */
   band: number | null;
   band_label: string | null;
   candidates: Candidate[];
+  /** `null` quand le rapprochement a bien tourné. */
+  inactive: MatchingInactive | null;
 }
 
 /**
@@ -108,10 +117,127 @@ export const listCandidates = (missionId: string) =>
  * et ordonnera cette même liste sans changer l'appel.
  */
 export const listOpenMissions = () =>
-  api<{ missions: OpenMission[] }>("/workers/me/missions");
+  api<{ missions: OpenMission[]; excluded: Exclusions }>(
+    "/workers/me/missions",
+  );
+
+/**
+ * Décompte des missions ouvertes qui n'ont pas été proposées, par motif.
+ *
+ * Des nombres seulement : le serveur ne livre rien d'une mission incompatible.
+ * C'est assez pour expliquer un écran vide, et pas assez pour divulguer une
+ * offre qui ne concerne pas ce profil.
+ *
+ * Une mission cumulant deux bloqueurs pèse une fois dans `total` et une fois
+ * dans chaque motif : la somme des motifs peut donc dépasser le total.
+ */
+export interface Exclusions {
+  total: number;
+  reasons: Partial<Record<BlockerCode, number>>;
+}
 
 export const getOpenMission = (id: string) =>
   api<OpenMission>("/workers/me/missions/" + id);
+
+/**
+ * Ce qu'on dit à un intérimaire dont l'écran reste vide.
+ *
+ * L'écran annonçait jusqu'ici « aucune mission disponible » et énumérait les
+ * quatre critères possibles, sans dire lequel jouait. La recette de production
+ * a montré le coût de ce silence : un profil complet, compatible à 100 %, à qui
+ * il manquait un créneau — et qui n'avait aucun moyen de le deviner.
+ *
+ * Trois règles de rédaction, à tenir si ces textes évoluent :
+ *  - ne jamais promettre une mission. Corriger le motif élargit ce qui **peut**
+ *    être proposé, rien de plus ;
+ *  - ne jamais nommer une mission. On explique un vide, on ne montre pas ce
+ *    qu'on refuse de montrer ;
+ *  - une seule raison à l'écran. Plusieurs paragraphes de motifs feraient de
+ *    l'état vide un rapport, alors qu'il doit tenir en un regard.
+ */
+export interface EmptyReason {
+  code: BlockerCode;
+  /** Missions ouvertes écartées pour ce motif. */
+  count: number;
+  title: string;
+  detail: string;
+  action: { label: string; to: string };
+}
+
+/**
+ * Ordre de départage, à nombre de missions égal : du motif le plus large au
+ * plus ponctuel. La pause vient à part — elle coupe tout, quel que soit le
+ * reste, et c'est la seule dont l'intérimaire tient l'interrupteur.
+ */
+const blockerOrder: BlockerCode[] = [
+  "unavailable",
+  "out_of_range",
+  "missing_required_skills",
+];
+
+const plural = (n: number, word: string) => (n > 1 ? word : "");
+
+const copy: Record<
+  BlockerCode,
+  (n: number) => Omit<EmptyReason, "code" | "count">
+> = {
+  paused: () => ({
+    title: "Votre recherche est en pause",
+    detail:
+      "Tant que votre recherche est en pause, aucune mission ne vous est proposée. Vous pouvez la réactiver depuis votre profil.",
+    action: {
+      label: "Réactiver ma recherche",
+      to: "/worker/profile#recherche",
+    },
+  }),
+  unavailable: (n) => ({
+    title: "Aucune mission ne correspond à vos disponibilités",
+    detail: `${n} mission${plural(n, "s")} ouverte${plural(n, "s")} ne vous ${n > 1 ? "sont" : "est"} pas proposée${plural(n, "s")} faute de créneau qui ${n > 1 ? "les couvre" : "la couvre"}. Ajouter ou modifier vos disponibilités élargit ce qui peut vous être proposé.`,
+    action: {
+      label: "Modifier mes disponibilités",
+      to: "/worker/profile#disponibilites",
+    },
+  }),
+  out_of_range: (n) => ({
+    title: "Aucune mission dans votre zone de déplacement",
+    detail: `${n} mission${plural(n, "s")} ouverte${plural(n, "s")} se ${n > 1 ? "situent" : "situe"} au-delà de votre rayon de déplacement. Élargir ce rayon ou changer de ville modifie ce qui peut vous être proposé.`,
+    action: { label: "Modifier ma mobilité", to: "/worker/profile#mobilite" },
+  }),
+  missing_required_skills: (n) => ({
+    title: "Aucune mission ne correspond à vos compétences",
+    detail: `${n} mission${plural(n, "s")} ouverte${plural(n, "s")} ${n > 1 ? "exigent" : "exige"} une compétence qui ne figure pas sur votre profil. Complétez vos compétences pour élargir ce qui peut vous être proposé.`,
+    action: {
+      label: "Compléter mes compétences",
+      to: "/worker/profile#competences",
+    },
+  }),
+};
+
+/**
+ * Le motif dominant, ou `null` quand aucune mission ouverte n'a été écartée —
+ * auquel cas il n'y a rien à expliquer : il n'y a simplement pas de mission.
+ *
+ * La pause l'emporte toujours : elle explique l'intégralité du vide à elle
+ * seule, et aucun autre motif n'est actionnable tant qu'elle dure. Les autres
+ * se départagent au nombre de missions concernées.
+ */
+export function explainEmpty(
+  excluded: Exclusions | undefined,
+): EmptyReason | null {
+  const reasons = excluded?.reasons;
+  if (!reasons) return null;
+  const at = (code: BlockerCode) => reasons[code] ?? 0;
+
+  const code = at("paused")
+    ? "paused"
+    : blockerOrder
+        .filter((c) => at(c) > 0)
+        .sort((a, b) => at(b) - at(a))[0];
+  if (!code) return null;
+
+  const count = at(code);
+  return { code, count, ...copy[code](count) };
+}
 
 /**
  * Exactement ce que `POST /missions` accepte. Ni `company_id`, ni `status`, ni
