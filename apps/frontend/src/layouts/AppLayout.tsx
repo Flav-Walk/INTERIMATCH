@@ -28,6 +28,7 @@ const links: Record<Role, { to: string; label: string }[]> = {
     { to: "/worker", label: "Tableau de bord" },
     { to: "/worker/profile", label: "Mon profil" },
     { to: "/worker/missions", label: "Missions" },
+    { to: "/worker/applications", label: "Mes candidatures" },
   ],
   company: [
     { to: "/company", label: "Accueil" },

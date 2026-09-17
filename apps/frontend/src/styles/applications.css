@@ -1,0 +1,161 @@
+.application-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  padding: 5px 10px;
+  border-radius: 99px;
+  font-size: 0.82rem;
+  font-weight: 650;
+}
+.application-status.is-pending {
+  background: oklch(0.94 0.05 85);
+  color: oklch(0.38 0.1 70);
+}
+.application-status.is-accepted {
+  background: var(--tint);
+  color: var(--forest);
+}
+.application-status.is-rejected {
+  background: oklch(0.95 0.035 25);
+  color: oklch(0.43 0.14 25);
+}
+
+.application-action {
+  display: grid;
+  gap: 14px;
+}
+.application-action .rail-head,
+.mission-applications .rail-head {
+  margin-bottom: 0;
+}
+.application-action > p {
+  margin: 0;
+}
+.application-submit {
+  min-height: 44px;
+  justify-content: center;
+}
+.application-action .form-error {
+  margin: 0;
+}
+
+.mission-applications {
+  display: grid;
+  gap: 18px;
+}
+.application-candidate-list,
+.worker-application-list {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.application-candidate-list > li,
+.worker-application-list > li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 18px 0;
+  border-top: 1px solid var(--border);
+}
+.application-candidate-list > li:first-child,
+.worker-application-list > li:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+.application-candidate-list > li:last-child,
+.worker-application-list > li:last-child {
+  padding-bottom: 0;
+}
+.application-candidate-main,
+.worker-application-main {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+.application-candidate-main > strong {
+  font-size: 1rem;
+}
+.application-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px 16px;
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+.application-meta > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.application-candidate-decision,
+.worker-application-side {
+  display: grid;
+  justify-items: end;
+  gap: 10px;
+  flex: none;
+}
+.application-candidate-actions {
+  display: flex;
+  gap: 8px;
+}
+.application-candidate-actions .button,
+.application-candidate-actions .secondary-button {
+  min-height: 44px;
+  padding: 8px 14px;
+}
+.application-empty p {
+  margin: 0;
+}
+.application-empty p + p {
+  margin-top: 6px;
+}
+
+.applications-page .section-head {
+  margin-bottom: 24px;
+}
+.applications-page .section-head p,
+.worker-application-main h2 {
+  margin: 0;
+}
+.worker-application-list {
+  padding: 22px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.worker-application-main h2 {
+  font-size: 1.05rem;
+}
+.worker-application-side .link-more {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.application-page-empty .button {
+  display: inline-flex;
+  text-decoration: none;
+}
+
+@media (max-width: 680px) {
+  .application-candidate-list > li,
+  .worker-application-list > li {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .application-candidate-decision,
+  .worker-application-side {
+    justify-items: start;
+  }
+  .application-candidate-actions {
+    width: 100%;
+  }
+  .application-candidate-actions .button,
+  .application-candidate-actions .secondary-button {
+    flex: 1;
+    justify-content: center;
+  }
+}

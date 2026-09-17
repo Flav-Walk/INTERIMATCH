@@ -146,6 +146,7 @@ export function Dashboard() {
                     key={mission.id}
                     mission={mission}
                     basePath="/worker/missions"
+                    score={mission.match.score}
                   />
                 ))}
               </div>
