@@ -7,7 +7,8 @@ import { readConfig } from "../config.js";
 import type { Db } from "../db.js";
 import { AccountService } from "../auth/service.js";
 import { WorkerService } from "../worker/service.js";
-import { MissionService } from "./service.js";
+import { MissionService, notOpenToWorkers } from "./service.js";
+import { MatchingService } from "../matching/service.js";
 import { missionCreateSchema } from "./schemas.js";
 
 const pg = new PGlite();
@@ -27,6 +28,7 @@ const geocode = vi.fn(async () => ({ latitude: 45.75, longitude: 4.85 }));
 const accounts = new AccountService(db);
 const workers = new WorkerService(db, geocode);
 const missions = new MissionService(db, geocode);
+const matching = new MatchingService(db, missions);
 const app = createApp(
   readConfig({
     NODE_ENV: "test",
@@ -1018,6 +1020,10 @@ describe("rapprochement — espace intérimaire", () => {
     (await auth(request(app).get("/api/v1/workers/me/missions"), token)).body
       .missions;
 
+  const excluded = async (token = worker) =>
+    (await auth(request(app).get("/api/v1/workers/me/missions"), token)).body
+      .excluded;
+
   it("ne propose rien à un compte sans profil intérimaire", async () => {
     // Un compte fraîchement créé n'a rien à rapprocher : mieux vaut une liste
     // vide qu'une proposition fondée sur du vide.
@@ -1140,6 +1146,72 @@ describe("rapprochement — espace intérimaire", () => {
     expect(r.body.title).toBe("Détail malgré tout");
     expect(r.body.match.compatible).toBe(false);
     expect(r.body.match.blockers).toContain("paused");
+  });
+
+  it("dit combien de missions sont écartées, et pour quel motif", async () => {
+    // Le cas vécu en production : un profil complet, compatible en tout point,
+    // mais dont aucun créneau ne couvre les missions ouvertes. L'écran vide
+    // doit pouvoir nommer ce motif plutôt que d'énumérer quatre hypothèses.
+    const sansCreneau = (
+      await accounts.register("sanscreneau@example.test", password)
+    ).access_token;
+    const sansCreneauId = (await accounts.authenticate(sansCreneau)).id;
+    await makeEmployable(sansCreneauId);
+    await db.query("DELETE FROM availabilities WHERE profile_id=$1", [
+      sansCreneauId,
+    ]);
+    await publish({ title: "Ouverte mais hors créneau" });
+
+    expect(await proposed(sansCreneau)).toEqual([]);
+    const motifs = await excluded(sansCreneau);
+    expect(motifs.total).toBeGreaterThan(0);
+    // Le compte n'a aucun créneau : la disponibilité bloque donc la totalité
+    // des missions écartées. D'autres motifs peuvent s'y ajouter — une mission
+    // hors rayon posée par un test précédent en cumule deux — ce qui est
+    // précisément ce que l'agrégat doit savoir représenter.
+    expect(motifs.reasons.unavailable).toBe(motifs.total);
+  });
+
+  it("propose la mission dès qu'un créneau la couvre", async () => {
+    const tardif = (await accounts.register("tardif@example.test", password))
+      .access_token;
+    const tardifId = (await accounts.authenticate(tardif)).id;
+    await makeEmployable(tardifId);
+    await db.query("DELETE FROM availabilities WHERE profile_id=$1", [
+      tardifId,
+    ]);
+    const mission = await publish({ title: "Couverte après coup" });
+    expect((await proposed(tardif)).map((m: { id: string }) => m.id)).not.toContain(
+      mission,
+    );
+
+    // Le créneau est posé autour des dates réelles de la mission : c'est la
+    // seule chose qui change entre les deux appels.
+    const { starts_at, ends_at } = (
+      await db.query<{ starts_at: string; ends_at: string }>(
+        "SELECT starts_at, ends_at FROM missions WHERE id=$1",
+        [mission],
+      )
+    ).rows[0];
+    await db.query(
+      `INSERT INTO availabilities(profile_id, starts_at, ends_at, status)
+       VALUES($1, $2::timestamptz - interval '1 hour',
+                  $3::timestamptz + interval '1 hour', 'available')`,
+      [tardifId, starts_at, ends_at],
+    );
+
+    expect((await proposed(tardif)).map((m: { id: string }) => m.id)).toContain(
+      mission,
+    );
+    expect((await excluded(tardif)).reasons.unavailable ?? 0).toBe(0);
+  });
+
+  it("ne compte aucune exclusion pour un compte sans profil intérimaire", async () => {
+    // Rien n'est évaluable : annoncer un motif serait une affirmation sans
+    // fondement. L'écran a déjà de quoi dire quoi faire.
+    const neuf = (await accounts.register("vierge2@example.test", password))
+      .access_token;
+    expect(await excluded(neuf)).toEqual({ total: 0, reasons: {} });
   });
 
   it("garde un brouillon invisible, rapprochement ou non", async () => {
@@ -1284,5 +1356,154 @@ describe("rapprochement — candidats côté entreprise", () => {
     expect(r.body.candidates.map((c: { id: string }) => c.id)).not.toContain(
       demoWorkerProfileId,
     );
+  });
+
+  it("rapproche des profils tant que la mission est offerte", async () => {
+    const r = await candidates();
+    expect(r.body.inactive).toBeNull();
+    expect(r.body.candidates.length).toBeGreaterThan(0);
+  });
+
+  it("ne rapproche personne d'un brouillon", async () => {
+    // Un brouillon n'est visible d'aucun intérimaire : lui proposer des
+    // « profils compatibles » ferait croire à un vivier qui ne peut pas
+    // répondre. La mission reste consultable, seul le rapprochement s'arrête.
+    const brouillon = await missions.create(
+      bossId,
+      draft({ title: "Brouillon sans candidats" }),
+    );
+    const r = await candidates(brouillon);
+    expect(r.status).toBe(200);
+    expect(r.body.inactive).toBe("draft");
+    expect(r.body.candidates).toEqual([]);
+    expect(r.body.band).toBeNull();
+    // Le détail, lui, reste accessible à l'entreprise propriétaire.
+    expect(
+      (await auth(request(app).get("/api/v1/missions/" + brouillon), boss))
+        .status,
+    ).toBe(200);
+  });
+
+  it("ne rapproche personne d'une mission terminée", async () => {
+    const passee = await missions.create(
+      bossId,
+      draft({ title: "Déjà terminée" }),
+    );
+    await publishMission(passee);
+    // La publication refuse une mission déjà commencée : on la fait vieillir
+    // après coup, comme le temps le ferait en production.
+    await db.query(
+      `UPDATE missions SET starts_at = now() - interval '2 days',
+                           ends_at = now() - interval '1 day' WHERE id = $1`,
+      [passee],
+    );
+    const r = await candidates(passee);
+    expect(r.status).toBe(200);
+    expect(r.body.inactive).toBe("ended");
+    expect(r.body.candidates).toEqual([]);
+    // Et surtout : elle n'est pas devenue introuvable pour sa propriétaire.
+    expect(
+      (await auth(request(app).get("/api/v1/missions/" + passee), boss)).status,
+    ).toBe(200);
+  });
+
+  it("reste introuvable pour une autre entreprise, même terminée", async () => {
+    const passee = await missions.create(bossId, draft({ title: "Passée" }));
+    await publishMission(passee);
+    await db.query(
+      `UPDATE missions SET starts_at = now() - interval '2 days',
+                           ends_at = now() - interval '1 day' WHERE id = $1`,
+      [passee],
+    );
+    expect((await candidates(passee, rival)).status).toBe(404);
+  });
+});
+
+/**
+ * L'asymétrie que la recette de production a révélée : les deux espaces
+ * doivent parler des mêmes missions et des mêmes profils.
+ *
+ * L'invariant porte sur la compatibilité métier, pas sur les listes affichées.
+ * Les paliers 70 / 60 / 50 écartent volontairement des profils compatibles de
+ * la liste entreprise ; l'inclusion n'est donc vérifiée que dans un sens —
+ * quiconque figure dans la sélection entreprise doit voir la mission.
+ */
+describe("rapprochement — symétrie des deux espaces", () => {
+  it("accorde le prédicat SQL et son pendant TypeScript", async () => {
+    // `openToWorkers` et `notOpenToWorkers` disent la même chose ou le
+    // rapprochement se désynchronise à nouveau. Confrontation sur l'ensemble
+    // des missions réelles de la base.
+    const { rows } = await db.query<{
+      id: string;
+      status: "draft" | "open" | "filled" | "completed" | "cancelled";
+      ends_at: string;
+    }>("SELECT id, status, ends_at FROM missions WHERE demo = false");
+    const offertes = new Set(
+      (await missions.listOpen(false)).map((m) => m.id as string),
+    );
+    for (const row of rows)
+      expect([row.id, notOpenToWorkers(row) === null]).toEqual([
+        row.id,
+        offertes.has(row.id),
+      ]);
+  });
+
+  it("montre à chaque profil retenu la mission pour laquelle il est retenu", async () => {
+    const mission = await missions.create(
+      bossId,
+      draft({
+        title: "Symétrie des deux espaces",
+        required_skill_ids: [skillIds[0]],
+        desired_skill_ids: [skillIds[1]],
+      }),
+    );
+    await publishMission(mission);
+
+    const selection = await matching.candidatesForMission(
+      bossId,
+      mission,
+      false,
+    );
+    expect(selection.inactive).toBeNull();
+    expect(selection.candidates.length).toBeGreaterThan(0);
+
+    for (const candidate of selection.candidates) {
+      const { matches } = await matching.missionsForWorker(candidate.id, false);
+      expect([candidate.id, matches.map((m) => m.mission.id)]).toEqual([
+        candidate.id,
+        expect.arrayContaining([mission]),
+      ]);
+    }
+  });
+
+  it("n'oublie aucun profil compatible au passage des paliers", async () => {
+    // L'écart entre « compatible » et « affiché » doit rester le seul fait des
+    // paliers : tout profil absent de la sélection l'est parce qu'il est
+    // incompatible, ou parce que son score n'atteint pas le palier retenu.
+    const mission = await missions.create(
+      bossId,
+      draft({ title: "Paliers et rien d'autre" }),
+    );
+    await publishMission(mission);
+    const selection = await matching.candidatesForMission(
+      bossId,
+      mission,
+      false,
+    );
+    const retenus = new Set(selection.candidates.map((c) => c.id));
+
+    const { rows } = await db.query<{ id: string }>(
+      `SELECT p.id FROM profiles p JOIN worker_profiles w ON w.profile_id = p.id
+        WHERE p.role = 'worker' AND p.active = true AND p.demo = false`,
+    );
+    for (const { id } of rows) {
+      const { matches } = await matching.missionsForWorker(id, false);
+      const entry = matches.find((m) => m.mission.id === mission);
+      if (!entry || retenus.has(id)) continue;
+      expect([id, entry.match.score < (selection.band ?? 50)]).toEqual([
+        id,
+        true,
+      ]);
+    }
   });
 });

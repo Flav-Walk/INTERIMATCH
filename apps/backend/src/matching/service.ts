@@ -1,9 +1,14 @@
 import type { Db } from "../db.js";
-import type { MissionService } from "../missions/service.js";
+import {
+  notOpenToWorkers,
+  type MissionService,
+  type NotOpenReason,
+} from "../missions/service.js";
 import type { OpenMission } from "../missions/schemas.js";
 import {
   evaluate,
   selectByBands,
+  type BlockerCode,
   type MatchResult,
   type MissionCriteria,
   type WorkerCriteria,
@@ -42,6 +47,37 @@ export interface Candidate {
 export interface MissionMatch {
   mission: OpenMission;
   match: MatchResult;
+}
+
+/**
+ * Ce que l'intérimaire n'a pas reçu, et pourquoi.
+ *
+ * Des nombres, rien d'autre. Une mission incompatible ne doit pas franchir la
+ * frontière : ni son intitulé, ni son établissement, ni sa date. Compter les
+ * motifs suffit à écrire une phrase utile — « aucune mission ne correspond à
+ * vos disponibilités » — sans rien divulguer d'une offre qui ne le concerne pas.
+ *
+ * `total` compte les missions, `reasons` les motifs : une mission qui cumule
+ * deux bloqueurs pèse une fois dans `total` et une fois dans chacun des deux.
+ * La somme des motifs peut donc dépasser le total, ce qui est voulu.
+ */
+export interface Exclusions {
+  total: number;
+  reasons: Partial<Record<BlockerCode, number>>;
+}
+
+export interface WorkerMissions {
+  matches: MissionMatch[];
+  excluded: Exclusions;
+}
+
+/** Profils rapprochés d'une mission, ou le motif pour lequel on n'a rien cherché. */
+export interface CandidateSelection {
+  band: number | null;
+  band_label: string | null;
+  candidates: Candidate[];
+  /** `null` quand le rapprochement a bien tourné. */
+  inactive: NotOpenReason | null;
 }
 
 interface WorkerRow {
@@ -170,18 +206,36 @@ export class MatchingService {
    * candidats et doit élargir faute d'en trouver ; un intérimaire, lui, veut
    * voir ce qui lui est accessible, pas un sous-ensemble arbitraire.
    */
-  async missionsForWorker(workerId: string, demo: boolean) {
+  async missionsForWorker(
+    workerId: string,
+    demo: boolean,
+  ): Promise<WorkerMissions> {
     const open = await this.missions.listOpen(demo);
     const criteria = await this.workerCriteria(workerId);
-    // Profil intérimaire absent : rien n'est évaluable, donc rien n'est proposé.
-    if (!criteria) return [] as MissionMatch[];
-    return open
-      .map((mission) => ({
-        mission,
-        match: evaluate(criteriaOf(mission), criteria),
-      }))
-      .filter((entry) => entry.match.compatible)
-      .sort((a, b) => b.match.score - a.match.score);
+    // Profil intérimaire absent : rien n'est évaluable, donc rien n'est
+    // proposé — et rien n'est écarté non plus, car aucun motif ne serait
+    // fondé. L'écran a déjà de quoi dire quoi faire : compléter le profil.
+    if (!criteria) return { matches: [], excluded: { total: 0, reasons: {} } };
+
+    const evaluated = open.map((mission) => ({
+      mission,
+      match: evaluate(criteriaOf(mission), criteria),
+    }));
+
+    const excluded: Exclusions = { total: 0, reasons: {} };
+    for (const { match } of evaluated) {
+      if (match.compatible) continue;
+      excluded.total += 1;
+      for (const code of match.blockers)
+        excluded.reasons[code] = (excluded.reasons[code] ?? 0) + 1;
+    }
+
+    return {
+      matches: evaluated
+        .filter((entry) => entry.match.compatible)
+        .sort((a, b) => b.match.score - a.match.score),
+      excluded,
+    };
   }
 
   /**
@@ -206,13 +260,27 @@ export class MatchingService {
    * La propriété est vérifiée par `MissionService.get`, qui répond 404 pour la
    * mission d'une autre entreprise : aucune société ne peut donc obtenir les
    * candidats d'une mission qui ne lui appartient pas.
+   *
+   * Le rapprochement ne tourne que sur une mission réellement offerte. Sans
+   * cette condition, les deux côtés ne parlaient pas de la même chose : une
+   * entreprise voyait des « profils compatibles » pour un brouillon ou pour une
+   * mission déjà terminée, alors qu'aucun intérimaire ne pouvait voir cette
+   * mission — et donc qu'aucun de ces profils n'aurait pu se manifester.
+   *
+   * La mission reste consultable pour autant : `get` a déjà répondu, et c'est
+   * le motif qui est renvoyé, pas une erreur. Une mission qui appartient bien à
+   * l'entreprise ne devient pas introuvable parce qu'elle est passée.
    */
   async candidatesForMission(
     companyId: string,
     missionId: string,
     demo: boolean,
-  ) {
+  ): Promise<CandidateSelection> {
     const mission = await this.missions.get(companyId, missionId);
+    const inactive = notOpenToWorkers(mission);
+    if (inactive)
+      return { band: null, band_label: null, candidates: [], inactive };
+
     const criteria = criteriaOf(mission);
 
     const { rows } = await this.db.query<WorkerRow>(
@@ -247,6 +315,7 @@ export class MatchingService {
       band: selection.band,
       band_label: selection.label,
       candidates: selection.results.map((entry) => entry.candidate),
+      inactive: null,
     };
   }
 }
