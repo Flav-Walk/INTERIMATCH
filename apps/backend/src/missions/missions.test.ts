@@ -66,6 +66,9 @@ let bossId = "";
 let rival = "";
 let rivalId = "";
 let worker = "";
+let workerId = "";
+/** Renseigné par la suite « données de démonstration », relu par le SL3a. */
+let demoWorkerProfileId = "";
 let skillIds: string[] = [];
 
 beforeAll(async () => {
@@ -84,12 +87,45 @@ beforeAll(async () => {
   rivalId = (await accounts.authenticate(rival)).id;
   worker = (await accounts.register("worker@example.test", password))
     .access_token;
+  workerId = (await accounts.authenticate(worker)).id;
   skillIds = (
     await db.query<{ id: string }>(
       "SELECT id FROM skills ORDER BY name LIMIT 3",
     )
   ).rows.map((r) => r.id);
+  await makeEmployable(workerId);
 }, 30000);
+
+/**
+ * Donne à un intérimaire de quoi être rapproché : un métier, une position, un
+ * rayon large, toutes les compétences et une disponibilité qui couvre le mois.
+ *
+ * Depuis le SL3a, une mission n'est plus visible parce qu'elle est publiée mais
+ * parce qu'elle est compatible. Un compte sans profil n'a donc rien à voir, ce
+ * qui est le comportement attendu — les tests de visibilité doivent partir d'un
+ * profil réel, comme en production.
+ */
+async function makeEmployable(profileId: string) {
+  await db.query(
+    `INSERT INTO worker_profiles(profile_id, city, postal_code, latitude, longitude,
+       mobility_radius_km, main_job, open_to_missions)
+     VALUES($1,'Lyon','69002',45.75,4.85,250,'serveur',true)
+     ON CONFLICT(profile_id) DO UPDATE SET open_to_missions=true`,
+    [profileId],
+  );
+  await db.query(
+    `INSERT INTO worker_skills(profile_id, skill_id)
+     SELECT $1, id FROM skills ON CONFLICT DO NOTHING`,
+    [profileId],
+  );
+  // Une seule plage très large : les missions des tests se situent toutes à
+  // quelques semaines, et la couverture doit être totale pour ne rien bloquer.
+  await db.query(
+    `INSERT INTO availabilities(profile_id, starts_at, ends_at, status)
+     VALUES($1, now() - interval '30 days', now() + interval '120 days', 'available')`,
+    [profileId],
+  );
+}
 
 afterAll(() => pg.close());
 
@@ -824,12 +860,13 @@ describe("missions — données de démonstration", () => {
         "INSERT INTO profiles(email,role,demo) VALUES('demo.company@example.test','company',true) RETURNING id",
       )
     ).rows[0].id;
-    const demoWorkerId = (
+    demoWorkerProfileId = (
       await db.query<{ id: string }>(
         "INSERT INTO profiles(email,role,demo) VALUES('demo.worker@example.test','worker',true) RETURNING id",
       )
     ).rows[0].id;
-    demoWorker = (await accounts.issue(db, demoWorkerId)).access_token;
+    demoWorker = (await accounts.issue(db, demoWorkerProfileId)).access_token;
+    await makeEmployable(demoWorkerProfileId);
 
     // Une mission fictive, créée comme le seed la crée.
     demoMissionId = await missions.create(
@@ -961,5 +998,291 @@ describe("missions — données de démonstration", () => {
         )
       ).status,
     ).toBe(404);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// SL3a — rapprochement. Les règles de calcul sont couvertes unitairement dans
+// `matching/score.test.ts` ; ici on vérifie leur branchement réel : ce que les
+// deux espaces reçoivent, et ce qu'ils ne doivent jamais recevoir.
+// ---------------------------------------------------------------------------
+
+describe("rapprochement — espace intérimaire", () => {
+  const publish = async (over: Record<string, unknown> = {}) => {
+    const id = await missions.create(bossId, draft(over));
+    await publishMission(id);
+    return id;
+  };
+
+  const proposed = async (token = worker) =>
+    (await auth(request(app).get("/api/v1/workers/me/missions"), token)).body
+      .missions;
+
+  it("ne propose rien à un compte sans profil intérimaire", async () => {
+    // Un compte fraîchement créé n'a rien à rapprocher : mieux vaut une liste
+    // vide qu'une proposition fondée sur du vide.
+    const neuf = (await accounts.register("vierge@example.test", password))
+      .access_token;
+    const r = await auth(request(app).get("/api/v1/workers/me/missions"), neuf);
+    expect(r.status).toBe(200);
+    expect(r.body.missions).toEqual([]);
+  });
+
+  it("joint un score et son détail à chaque mission proposée", async () => {
+    await publish({ title: "Avec score" });
+    const list = await proposed();
+    expect(list.length).toBeGreaterThan(0);
+    for (const m of list) {
+      expect(m.match.compatible).toBe(true);
+      expect(m.match.score).toBeGreaterThanOrEqual(0);
+      expect(m.match.score).toBeLessThanOrEqual(100);
+      expect(Array.isArray(m.match.dimensions)).toBe(true);
+      expect(m.match.blockers).toEqual([]);
+    }
+  });
+
+  it("classe les propositions de la plus compatible à la moins compatible", async () => {
+    const scores = (await proposed()).map(
+      (m: { match: { score: number } }) => m.match.score,
+    );
+    expect(scores).toEqual([...scores].sort((a, b) => b - a));
+  });
+
+  it("écarte une mission dont une compétence obligatoire manque", async () => {
+    // Un intérimaire dépourvu de la compétence exigée ne doit pas la voir.
+    const demuni = (await accounts.register("demuni@example.test", password))
+      .access_token;
+    const demuniId = (await accounts.authenticate(demuni)).id;
+    await makeEmployable(demuniId);
+    await db.query("DELETE FROM worker_skills WHERE profile_id=$1", [demuniId]);
+
+    const exigeante = await publish({
+      title: "Exige une compétence",
+      required_skill_ids: [skillIds[0]],
+    });
+    expect(
+      (await proposed(demuni)).map((m: { id: string }) => m.id),
+    ).not.toContain(exigeante);
+    // Le même intérimaire, pourvu de la compétence, la voit.
+    expect((await proposed()).map((m: { id: string }) => m.id)).toContain(
+      exigeante,
+    );
+  });
+
+  it("écarte une mission hors du rayon de mobilité", async () => {
+    const lointain = (
+      await accounts.register("lointain@example.test", password)
+    ).access_token;
+    const lointainId = (await accounts.authenticate(lointain)).id;
+    await makeEmployable(lointainId);
+    // Rayon réduit à 5 km : Lyon reste accessible, Paris non.
+    await db.query(
+      "UPDATE worker_profiles SET mobility_radius_km=5 WHERE profile_id=$1",
+      [lointainId],
+    );
+    const parisienne = await publish({
+      title: "Mission parisienne",
+      city: "Paris",
+      postal_code: "75012",
+    });
+    await db.query(
+      "UPDATE missions SET latitude=48.8566, longitude=2.3522 WHERE id=$1",
+      [parisienne],
+    );
+    expect(
+      (await proposed(lointain)).map((m: { id: string }) => m.id),
+    ).not.toContain(parisienne);
+  });
+
+  it("écarte une mission qu'aucune disponibilité ne couvre", async () => {
+    const indispo = (await accounts.register("indispo@example.test", password))
+      .access_token;
+    const indispoId = (await accounts.authenticate(indispo)).id;
+    await makeEmployable(indispoId);
+    await db.query("DELETE FROM availabilities WHERE profile_id=$1", [
+      indispoId,
+    ]);
+    const mission = await publish({ title: "Personne n'est libre" });
+    expect(
+      (await proposed(indispo)).map((m: { id: string }) => m.id),
+    ).not.toContain(mission);
+  });
+
+  it("écarte les missions d'une recherche mise en pause", async () => {
+    const pause = (await accounts.register("pause@example.test", password))
+      .access_token;
+    const pauseId = (await accounts.authenticate(pause)).id;
+    await makeEmployable(pauseId);
+    await db.query(
+      "UPDATE worker_profiles SET open_to_missions=false WHERE profile_id=$1",
+      [pauseId],
+    );
+    expect(await proposed(pause)).toEqual([]);
+  });
+
+  it("laisse le détail accessible et explique l'incompatibilité", async () => {
+    // Arriver par un lien sur une mission qui ne convient pas doit apprendre
+    // pourquoi, plutôt que de renvoyer une erreur muette.
+    const pause = (await accounts.register("pause2@example.test", password))
+      .access_token;
+    const pauseId = (await accounts.authenticate(pause)).id;
+    await makeEmployable(pauseId);
+    await db.query(
+      "UPDATE worker_profiles SET open_to_missions=false WHERE profile_id=$1",
+      [pauseId],
+    );
+    const mission = await publish({ title: "Détail malgré tout" });
+    const r = await auth(
+      request(app).get("/api/v1/workers/me/missions/" + mission),
+      pause,
+    );
+    expect(r.status).toBe(200);
+    expect(r.body.title).toBe("Détail malgré tout");
+    expect(r.body.match.compatible).toBe(false);
+    expect(r.body.match.blockers).toContain("paused");
+  });
+
+  it("garde un brouillon invisible, rapprochement ou non", async () => {
+    const brouillon = await missions.create(
+      bossId,
+      draft({ title: "Brouillon SL3a" }),
+    );
+    expect((await proposed()).map((m: { id: string }) => m.id)).not.toContain(
+      brouillon,
+    );
+    expect(
+      (
+        await auth(
+          request(app).get("/api/v1/workers/me/missions/" + brouillon),
+          worker,
+        )
+      ).status,
+    ).toBe(404);
+  });
+});
+
+describe("rapprochement — candidats côté entreprise", () => {
+  let missionId = "";
+
+  beforeAll(async () => {
+    missionId = await missions.create(
+      bossId,
+      draft({
+        title: "Mission à pourvoir pour candidats",
+        required_skill_ids: [skillIds[0]],
+        desired_skill_ids: [skillIds[1]],
+      }),
+    );
+    await publishMission(missionId);
+  });
+
+  const candidates = (id = missionId, token = boss) =>
+    auth(request(app).get(`/api/v1/missions/${id}/candidates`), token);
+
+  it("refuse tout accès sans authentification", async () => {
+    expect(
+      (await request(app).get(`/api/v1/missions/${missionId}/candidates`))
+        .status,
+    ).toBe(401);
+  });
+
+  it("ferme l'accès à un intérimaire", async () => {
+    // Un intérimaire ne doit jamais atteindre les autres intérimaires.
+    expect((await candidates(missionId, worker)).status).toBe(403);
+  });
+
+  it("traite comme introuvable la mission d'une autre entreprise", async () => {
+    expect((await candidates(missionId, rival)).status).toBe(404);
+  });
+
+  it("renvoie les candidats rapprochés de sa propre mission", async () => {
+    const r = await candidates();
+    expect(r.status).toBe(200);
+    expect(Array.isArray(r.body.candidates)).toBe(true);
+    expect(r.body.candidates.length).toBeGreaterThan(0);
+    for (const c of r.body.candidates) {
+      expect(c.match.compatible).toBe(true);
+      expect(c.match.score).toBeGreaterThanOrEqual(50);
+    }
+  });
+
+  it("annonce le palier retenu", async () => {
+    const r = await candidates();
+    expect([70, 60, 50]).toContain(r.body.band);
+    expect(typeof r.body.band_label).toBe("string");
+  });
+
+  it("classe du meilleur au moins bon", async () => {
+    const scores = (await candidates()).body.candidates.map(
+      (c: { match: { score: number } }) => c.match.score,
+    );
+    expect(scores).toEqual([...scores].sort((a: number, b: number) => b - a));
+  });
+
+  it("ne divulgue ni nom complet ni moyen de contact", async () => {
+    const r = await candidates();
+    const serialized = JSON.stringify(r.body);
+    expect(serialized).not.toContain("worker@example.test");
+    expect(serialized).not.toContain("@example.test");
+    for (const c of r.body.candidates) {
+      expect(Object.keys(c).sort()).toEqual([
+        "city",
+        "first_name",
+        "id",
+        "last_initial",
+        "main_job",
+        "match",
+        "matched_skills",
+        "years_experience",
+      ]);
+      expect(c.last_initial.length).toBeLessThanOrEqual(1);
+    }
+  });
+
+  it("n'expose que les compétences de la mission réellement détenues", async () => {
+    const r = await candidates();
+    const missionSkills = new Set([skillIds[0], skillIds[1]]);
+    for (const c of r.body.candidates)
+      for (const s of c.matched_skills)
+        expect(missionSkills.has(s.id)).toBe(true);
+  });
+
+  it("écarte un intérimaire incompatible du rapprochement", async () => {
+    const demuni = (await accounts.register("sanscomp@example.test", password))
+      .access_token;
+    const demuniId = (await accounts.authenticate(demuni)).id;
+    await makeEmployable(demuniId);
+    await db.query("DELETE FROM worker_skills WHERE profile_id=$1", [demuniId]);
+    const r = await candidates();
+    expect(r.body.candidates.map((c: { id: string }) => c.id)).not.toContain(
+      demuniId,
+    );
+  });
+
+  it("ne renvoie personne quand aucun profil ne convient", async () => {
+    // Une compétence neuve, que personne ne possède : plus sûr que de retirer
+    // une compétence existante, qui fausserait les tests suivants.
+    const inedite = (
+      await db.query<{ id: string }>(
+        "INSERT INTO skills(name) VALUES('Sommellerie rare') RETURNING id",
+      )
+    ).rows[0].id;
+    const impossible = await missions.create(
+      bossId,
+      draft({ title: "Introuvable", required_skill_ids: [inedite] }),
+    );
+    await publishMission(impossible);
+    const r = await candidates(impossible);
+    expect(r.status).toBe(200);
+    expect(r.body.candidates).toEqual([]);
+    expect(r.body.band).toBeNull();
+  });
+
+  it("sépare les candidats de démonstration des candidats réels", async () => {
+    // La cloison du SL2c vaut aussi pour les profils rapprochés.
+    const r = await candidates();
+    expect(r.body.candidates.map((c: { id: string }) => c.id)).not.toContain(
+      demoWorkerProfileId,
+    );
   });
 });

@@ -3,6 +3,7 @@ import { z } from "zod";
 import type { Profile } from "../auth/schemas.js";
 import { requireRole } from "../auth/routes.js";
 import { MissionService } from "./service.js";
+import { MatchingService } from "../matching/service.js";
 import {
   missionCreateSchema,
   missionListSchema,
@@ -31,6 +32,14 @@ const identifier = z.uuid();
  */
 export function missionRouter(missions: MissionService) {
   const router = Router();
+  /**
+   * Le rapprochement se construit ici, à partir du service missions et de sa
+   * connexion. Il pourra être injecté depuis `createApp` comme les autres si le
+   * besoin s'en fait sentir ; le monter localement évite pour l'instant de
+   * traverser quatre fichiers d'assemblage pour une dépendance interne à ce
+   * routeur, et garde le rapprochement là où sont ses deux seuls consommateurs.
+   */
+  const matching = new MatchingService(missions.db, missions);
   const company = requireRole("company");
   const worker = requireRole("worker");
   const me = (res: { locals: Record<string, unknown> }) =>
@@ -83,17 +92,49 @@ export function missionRouter(missions: MissionService) {
     res.json(await missions.publish(me(res), identifier.parse(req.params.id))),
   );
 
-  // --- Espace intérimaire : lecture seule des missions offertes. ---
-
-  router.get("/workers/me/missions", worker, async (_req, res) =>
-    res.json({ missions: await missions.listOpen(isDemo(res)) }),
-  );
-
-  router.get("/workers/me/missions/:id", worker, async (req, res) =>
+  /**
+   * Candidats rapprochés d'une mission de l'entreprise.
+   *
+   * La propriété est vérifiée en amont par le service, qui répond « introuvable »
+   * pour la mission d'une autre société : personne ne peut obtenir les candidats
+   * d'une mission qui ne lui appartient pas.
+   */
+  router.get("/missions/:id/candidates", company, async (req, res) =>
     res.json(
-      await missions.getOpen(identifier.parse(req.params.id), isDemo(res)),
+      await matching.candidatesForMission(
+        me(res),
+        identifier.parse(req.params.id),
+        isDemo(res),
+      ),
     ),
   );
+
+  // --- Espace intérimaire : missions offertes, rapprochées du profil. ---
+
+  /**
+   * Seules les missions réellement compatibles, de la plus proche du profil à
+   * la moins proche. Un intérimaire ne reçoit plus tout ce qui est publié.
+   */
+  router.get("/workers/me/missions", worker, async (_req, res) => {
+    const matches = await matching.missionsForWorker(me(res), isDemo(res));
+    res.json({
+      missions: matches.map(({ mission, match }) => ({ ...mission, match })),
+    });
+  });
+
+  /**
+   * Le détail reste accessible pour toute mission offerte, compatible ou non :
+   * arriver par un lien et n'y trouver qu'une erreur n'apprend rien, alors que
+   * le motif de l'incompatibilité, lui, est utile.
+   */
+  router.get("/workers/me/missions/:id", worker, async (req, res) => {
+    const { mission, match } = await matching.evaluateForWorker(
+      me(res),
+      identifier.parse(req.params.id),
+      isDemo(res),
+    );
+    res.json({ ...mission, match });
+  });
 
   return router;
 }
