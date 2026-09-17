@@ -98,6 +98,11 @@ export function missionRouter(missions: MissionService) {
    * La propriété est vérifiée en amont par le service, qui répond « introuvable »
    * pour la mission d'une autre société : personne ne peut obtenir les candidats
    * d'une mission qui ne lui appartient pas.
+   *
+   * Une mission qui n'est plus offerte aux intérimaires répond 200 avec une
+   * liste vide et le champ `inactive` : elle appartient bien à l'entreprise, on
+   * ne la déclare donc pas introuvable — on dit simplement pourquoi le
+   * rapprochement ne s'y applique pas.
    */
   router.get("/missions/:id/candidates", company, async (req, res) =>
     res.json(
@@ -116,9 +121,16 @@ export function missionRouter(missions: MissionService) {
    * la moins proche. Un intérimaire ne reçoit plus tout ce qui est publié.
    */
   router.get("/workers/me/missions", worker, async (_req, res) => {
-    const matches = await matching.missionsForWorker(me(res), isDemo(res));
+    const { matches, excluded } = await matching.missionsForWorker(
+      me(res),
+      isDemo(res),
+    );
     res.json({
       missions: matches.map(({ mission, match }) => ({ ...mission, match })),
+      // Le décompte des missions écartées, par motif. Il permet d'expliquer un
+      // écran vide sans rien révéler des missions concernées : des nombres, pas
+      // des offres. Voir `Exclusions` dans le service de rapprochement.
+      excluded,
     });
   });
 

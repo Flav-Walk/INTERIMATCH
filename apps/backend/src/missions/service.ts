@@ -78,6 +78,37 @@ const OPEN_COLUMNS = `m.id, m.title, m.description, m.job,
 const openToWorkers = (demoParam: string) =>
   `m.status = 'open' AND m.ends_at > now() AND m.demo = ${demoParam}`;
 
+/** Pourquoi une mission n'est pas offerte aux intérimaires. */
+export type NotOpenReason = "draft" | "ended" | "closed";
+
+/**
+ * Pendant TypeScript de `openToWorkers`, pour les décisions qui ne passent pas
+ * par une requête — typiquement : faut-il rapprocher des profils de cette
+ * mission ? Le SQL répond « oui / non » ; ici on veut aussi le motif, pour
+ * pouvoir le dire à l'entreprise plutôt que de lui servir une liste vide.
+ *
+ * Les deux prédicats doivent rester d'accord. `missions.test.ts` le vérifie en
+ * confrontant, sur les mêmes missions, ce que `listOpen` retient et ce que
+ * cette fonction déclare offert.
+ *
+ * La cloison démo n'est pas reprise : elle sépare deux univers de comptes, et
+ * une entreprise consulte toujours ses propres missions, donc son propre
+ * univers. Le partage démo / réel reste appliqué là où il a un sens, sur
+ * l'ensemble des intérimaires interrogés.
+ *
+ * `ended` passe avant le statut : un brouillon dont le créneau est passé ne se
+ * publie plus, et lui répondre « publiez-la » serait faux.
+ */
+export function notOpenToWorkers(
+  mission: { status: MissionStatus; ends_at: string | Date },
+  now: Date = new Date(),
+): NotOpenReason | null {
+  if (new Date(mission.ends_at) <= now) return "ended";
+  if (mission.status === "draft") return "draft";
+  if (mission.status !== "open") return "closed";
+  return null;
+}
+
 /**
  * Missions d'une entreprise.
  *
