@@ -45,6 +45,15 @@ describe("API foundation", () => {
       .send("{");
     expect(res.body.error.message).toBe("Requête invalide.");
   });
+  it("interdit toute mise en cache des réponses de l'API", async () => {
+    // Chaque réponse dépend de la session qui l'a demandée : ni le navigateur
+    // ni un intermédiaire ne doit pouvoir en resservir une. Sans cet en-tête,
+    // Express n'envoyait qu'un ETag, ce qui autorise la mise en cache.
+    const res = await request(createApp(config)).get("/api/v1/health");
+    expect(res.headers["cache-control"]).toBe("no-store");
+    expect(res.headers.etag).toBeUndefined();
+  });
+
   it("never leaks internal detail in the error envelope", async () => {
     // Le champ `detail` d'une HttpError sert aux logs : il ne doit jamais sortir.
     const res = await request(createApp(config)).get("/missing");

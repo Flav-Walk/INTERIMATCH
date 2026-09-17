@@ -15,8 +15,9 @@ import {
 const config = readConfig(process.env);
 const db = config.DATABASE_URL ? createDatabase(config) : null;
 const google = createGoogleBridge(config);
-const accounts = db ? new AccountService(db, google) : undefined;
+// Un seul géocodeur pour les trois services : comptes, intérimaires, missions.
 const geocoder = createAddressGeocoder();
+const accounts = db ? new AccountService(db, google, geocoder) : undefined;
 const eventLogger = pino({
   level: config.NODE_ENV === "test" ? "silent" : "info",
 });
