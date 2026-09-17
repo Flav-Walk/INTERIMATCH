@@ -1215,6 +1215,13 @@ test("matching connects a published mission to a compatible intérimaire", async
   await page.getByRole("button", { name: "Enregistrer le brouillon" }).click();
   await page.waitForURL(/\/company\/missions\/[0-9a-f-]{36}$/);
   const missionUrl = page.url();
+
+  // Un brouillon n'est visible d'aucun intérimaire : lui rapprocher des profils
+  // laisserait croire à un vivier qui ne peut pas répondre. Le rapprochement ne
+  // démarre qu'à la publication, et l'écran le dit.
+  const profils = page.locator(".layout-rail");
+  await expect(profils).toContainText(/rapprochement commence à la publication/);
+
   await page.getByRole("button", { name: "Publier la mission" }).click();
   await page
     .getByRole("dialog")
@@ -1258,6 +1265,40 @@ test("matching connects a published mission to a compatible intérimaire", async
   await mobilite.getByLabel("Code postal").fill("69002");
   await mobilite.getByLabel(/Rayon de mobilité/).fill("30");
   await save(page, "Votre mobilité");
+
+  // ---- Tout est rempli sauf les créneaux : l'écran doit le dire ----
+  // C'est le cas rencontré en recette : un profil complet, compatible en tout
+  // point, à qui il ne manque qu'une disponibilité — et qui lisait jusqu'ici un
+  // « aucune mission disponible » qui ne lui apprenait rien.
+  await page.goto("/worker/missions");
+  await expect(
+    page.getByRole("heading", {
+      name: "Aucune mission ne correspond à vos disponibilités",
+    }),
+  ).toBeVisible();
+  // Le nombre dépend des missions publiées par les autres scénarios sur le
+  // serveur d'essai partagé : c'est la phrase et son accord qui sont vérifiés,
+  // pas un décompte qui varierait d'une exécution à l'autre.
+  await expect(page.locator(".empty")).toContainText(
+    /\d+ missions? ouvertes? ne vous (est|sont) pas proposées? faute de créneau/,
+  );
+  // Rien de la mission écartée ne doit transparaître : on explique un vide, on
+  // ne montre pas ce qu'on refuse de montrer.
+  await expect(page.locator(".empty")).not.toContainText(titre);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+  await page.screenshot({
+    path: testInfo.outputPath("worker-empty-unavailable.png"),
+    fullPage: true,
+  });
+
+  // L'action mène droit au bloc concerné, sans laisser chercher dans le
+  // formulaire.
+  await page.getByRole("link", { name: "Modifier mes disponibilités" }).click();
+  await expect(page).toHaveURL(/\/worker\/profile#disponibilites$/);
 
   const dispos = section(page, "Vos disponibilités");
   await dispos.getByLabel("Début").fill("2027-10-15T08:00");
