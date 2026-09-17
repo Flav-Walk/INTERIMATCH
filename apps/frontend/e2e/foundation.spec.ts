@@ -807,3 +807,208 @@ test("a company drafts, edits and publishes a mission", async ({
   ).toBe(true);
   expect(errors).toEqual([]);
 });
+
+// Recette — mot de passe : affichage, masquage, force.
+test("password visibility and strength guide the sign-up", async ({
+  page,
+}, testInfo) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.goto("/register");
+
+  const field = page.getByLabel("Mot de passe", { exact: true });
+  const confirmField = page.getByLabel("Confirmer le mot de passe");
+  const reveal = page.getByRole("button", { name: "Afficher le mot de passe" });
+
+  // Masqué par défaut, des deux côtés.
+  await expect(field).toHaveAttribute("type", "password");
+  await expect(confirmField).toHaveAttribute("type", "password");
+  await expect(reveal).toHaveAttribute("aria-pressed", "false");
+
+  // L'exigence du serveur est annoncée avant toute saisie.
+  await expect(page.getByText("12 caractères au minimum.")).toBeVisible();
+
+  // Un mot de passe trop court reste bas, même varié : l'indicateur ne doit
+  // pas laisser croire qu'il passera.
+  await field.fill("Aa1!Aa1!");
+  await expect(page.getByText(/Encore 4 caractères/)).toBeVisible();
+  await expect(
+    page.getByRole("img", { name: /Force du mot de passe/ }),
+  ).toHaveAttribute("aria-label", /Très faible|Faible/);
+
+  // La barre progresse pendant la saisie, une fois l'exigence remplie.
+  await field.fill("Mercredi-Bleu-92!x");
+  await expect(page.getByText("Longueur suffisante.")).toBeVisible();
+  await expect(
+    page.getByRole("img", { name: "Force du mot de passe : Solide" }),
+  ).toBeVisible();
+
+  // La bascule révèle la valeur sans la modifier ni soumettre le formulaire.
+  await reveal.click();
+  await expect(field).toHaveAttribute("type", "text");
+  await expect(field).toHaveValue("Mercredi-Bleu-92!x");
+  await expect(page).toHaveURL(/\/register$/);
+  const hide = page.getByRole("button", { name: "Masquer le mot de passe" });
+  await expect(hide).toHaveAttribute("aria-pressed", "true");
+
+  // Utilisable au clavier.
+  await hide.press("Enter");
+  await expect(field).toHaveAttribute("type", "password");
+  await expect(field).toHaveValue("Mercredi-Bleu-92!x");
+
+  // La confirmation a sa propre bascule, indépendante.
+  await confirmField.fill("Mercredi-Bleu-92!x");
+  await page
+    .getByRole("button", { name: "Afficher la confirmation du mot de passe" })
+    .click();
+  await expect(confirmField).toHaveAttribute("type", "text");
+  await expect(field).toHaveAttribute("type", "password");
+
+  // L'inscription fonctionne toujours.
+  const email = `pw.${testInfo.project.name}.${Date.now()}@example.test`;
+  await page.getByLabel("Email", { exact: true }).fill(email);
+  await page
+    .getByRole("button", { name: "Créer mon compte", exact: true })
+    .click();
+  await expect(page).toHaveURL(/\/worker$/);
+  await completeTour(page);
+
+  // Et la connexion aussi, avec la même bascule.
+  await openAccount(page);
+  await page.getByRole("button", { name: "Se déconnecter" }).click();
+  await expect(page).toHaveURL(/\/login$/);
+  await page.getByLabel("Email", { exact: true }).fill(email);
+  await page
+    .getByLabel("Mot de passe", { exact: true })
+    .fill("Mercredi-Bleu-92!x");
+  await page.getByRole("button", { name: "Afficher le mot de passe" }).click();
+  await expect(page.getByLabel("Mot de passe", { exact: true })).toHaveValue(
+    "Mercredi-Bleu-92!x",
+  );
+  await page.getByRole("button", { name: "Me connecter", exact: true }).click();
+  await expect(page).toHaveURL(/\/worker$/);
+  expect(errors).toEqual([]);
+});
+
+// Recette — établissement : une adresse, jamais des coordonnées.
+test("the establishment is located from its address alone", async ({
+  page,
+}, testInfo) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await register(page, `place.${testInfo.project.name}@example.test`);
+  await expect(page).toHaveURL(/\/company$/);
+  await completeTour(page);
+
+  await page.getByRole("link", { name: "Entreprise", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: /Présentons votre établissement/ }),
+  ).toBeVisible();
+
+  // Aucune donnée technique n'est demandée à l'utilisateur.
+  for (const technique of ["Latitude", "Longitude"])
+    await expect(page.getByLabel(technique, { exact: true })).toHaveCount(0);
+  for (const champ of ["latitude", "longitude", "geocoded_at"])
+    await expect(page.locator(`[name="${champ}"]`)).toHaveCount(0);
+
+  await page.getByLabel("Prénom", { exact: true }).fill("Camille");
+  await page.getByLabel("Nom", { exact: true }).fill("Durand");
+  await page.getByLabel("Raison sociale").fill("Brasserie du Quai SARL");
+  await page.getByLabel("Nom de l’établissement").fill("Brasserie du Quai");
+  await page.getByLabel("Adresse", { exact: true }).fill("12 quai Rambaud");
+  await page.getByLabel("Téléphone", { exact: true }).fill("+33400000000");
+  await page.getByLabel("Ville", { exact: true }).fill("Lyon");
+  await page.getByLabel("Code postal", { exact: true }).fill("69002");
+  await page.getByRole("button", { name: "Enregistrer" }).click();
+
+  // L'onboarding terminé renvoie vers l'espace entreprise.
+  await expect(page).toHaveURL(/\/company$/);
+  // L'établissement est persisté : la maquette le reprend dans son bandeau.
+  await expect(page.locator(".hero-badge")).toHaveText("Brasserie du Quai");
+  await expect(
+    page.getByRole("link", { name: "Créer une mission" }).first(),
+  ).toBeEnabled();
+  expect(errors).toEqual([]);
+});
+
+// Recette — le tableau de bord suit les écritures sans rechargement.
+test("the company dashboard reflects mission changes without reloading", async ({
+  page,
+}, testInfo) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await register(page, `fresh.${testInfo.project.name}@example.test`);
+  await expect(page).toHaveURL(/\/company$/);
+  await completeTour(page);
+
+  const draftsTab = page.getByRole("button", { name: /^Brouillons/ });
+  const openTab = page.getByRole("button", { name: /^À pourvoir/ });
+  await expect(draftsTab).toContainText("0");
+
+  // Le CTA du tableau de bord mène directement au formulaire : passer par
+  // l'onglet Missions ne doit pas être obligatoire.
+  await page.getByRole("link", { name: "Créer une mission" }).first().click();
+  await expect(page).toHaveURL(/\/company\/missions\/new$/);
+
+  await page.getByLabel("Intitulé de la mission").fill("Service du réveillon");
+  await page.getByLabel("Métier recherché").selectOption("serveur");
+  await page.getByLabel("Début").fill("2027-12-31T18:00");
+  await page.getByLabel("Fin").fill("2028-01-01T02:00");
+  await page.getByLabel("Ville").fill("Lyon");
+  await page.getByLabel("Code postal").fill("69002");
+  await page.getByRole("button", { name: "Enregistrer le brouillon" }).click();
+  await expect(page).toHaveURL(/\/company\/missions\/[0-9a-f-]{36}$/);
+  const missionUrl = page.url();
+
+  // Retour au tableau de bord par NAVIGATION, sans rechargement de page.
+  await page.getByRole("link", { name: "Accueil", exact: true }).click();
+  await expect(page).toHaveURL(/\/company$/);
+  await expect(draftsTab).toContainText("1");
+  await draftsTab.click();
+  await expect(
+    page.getByRole("heading", { name: "Service du réveillon" }),
+  ).toBeVisible();
+  // Le planning suit aussi.
+  await expect(page.locator(".agenda-item")).toHaveCount(1);
+
+  // Modification, puis navigation ailleurs et retour.
+  await page.goto(missionUrl);
+  await page.getByRole("link", { name: "Modifier" }).click();
+  await page
+    .getByLabel("Intitulé de la mission")
+    .fill("Service du réveillon — 20 h");
+  await page
+    .getByRole("button", { name: "Enregistrer les modifications" })
+    .click();
+  await expect(page).toHaveURL(/\/company\/missions\/[0-9a-f-]{36}$/);
+  await page.getByRole("link", { name: "Accueil", exact: true }).click();
+  await expect(page).toHaveURL(/\/company$/);
+  await draftsTab.click();
+  await expect(
+    page.getByRole("heading", { name: "Service du réveillon — 20 h" }),
+  ).toBeVisible();
+
+  // Publication, puis retour : la mission bascule d'onglet et les compteurs suivent.
+  await page.goto(missionUrl);
+  await page.getByRole("button", { name: "Publier la mission" }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Publier" })
+    .click();
+  await expect(page.locator(".mission-status")).toHaveText("À pourvoir");
+  await page.getByRole("link", { name: "Accueil", exact: true }).click();
+  await expect(page).toHaveURL(/\/company$/);
+  await expect(openTab).toContainText("1");
+  await expect(draftsTab).toContainText("0");
+  await expect(
+    page.getByRole("heading", { name: "Service du réveillon — 20 h" }),
+  ).toBeVisible();
+
+  // Rien de tout cela ne doit dépendre d'un rechargement : l'état affiché est
+  // déjà celui qu'un F5 montrerait.
+  const avant = await page.locator(".mission-card").count();
+  await page.reload();
+  await expect(openTab).toContainText("1");
+  expect(await page.locator(".mission-card").count()).toBe(avant);
+  expect(errors).toEqual([]);
+});

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { ArrowRight, BriefcaseBusiness, SearchX } from "lucide-react";
 import { errorMessage } from "../services/session";
+import { useAuth } from "../hooks/useAuth";
 import { MissionCard } from "../components/mission/MissionCard";
 import {
   listMissions,
@@ -16,6 +17,7 @@ import {
  * La recherche de l'en-tête arrive par `?q=` et filtre les missions chargées.
  */
 export function CompanyMissions() {
+  const { revision } = useAuth();
   const [params, setParams] = useSearchParams();
   const query = params.get("q") ?? "";
   const [data, setData] = useState<Mission[]>([]),
@@ -39,7 +41,7 @@ export function CompanyMissions() {
     return () => {
       live = false;
     };
-  }, []);
+  }, [revision]);
 
   const filtered = searchMissions(
     tab === "all" ? data : data.filter((m) => m.status === tab),

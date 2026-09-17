@@ -70,20 +70,28 @@ export function AppLayout() {
     onDashboard &&
     (replay || shouldRunTour(user!.tour_version));
 
-  async function closeTour() {
+  /**
+   * Fin de la visite guidée.
+   *
+   * Noter qu'elle a été vue est une préférence d'affichage, pas une donnée
+   * métier : rien ne justifie de faire patienter l'utilisateur le temps d'un
+   * aller-retour. L'interface se ferme donc immédiatement, et l'écriture part
+   * derrière. Si elle échoue, la visite se represente à la prochaine session —
+   * sans conséquence, et sans message d'erreur qui n'apprendrait rien.
+   *
+   * `PUT /me/tour` renvoie déjà le profil à jour : le `GET /me` qui suivait
+   * était un second aller-retour pour une information déjà en main.
+   */
+  function closeTour() {
     setReplay(false);
-    if (user && user.tour_version < CURRENT_TOUR_VERSION) {
-      try {
-        await api("/me/tour", {
-          method: "PUT",
-          body: JSON.stringify({ version: CURRENT_TOUR_VERSION }),
-        });
-        await auth.reload();
-      } catch (e) {
-        // Ne jamais bloquer l'interface parce que la progression n'a pas pu être notée.
-        setError(errorMessage(e));
-      }
-    }
+    if (!user || user.tour_version >= CURRENT_TOUR_VERSION) return;
+    auth.setUser({ ...user, tour_version: CURRENT_TOUR_VERSION });
+    void api<User>("/me/tour", {
+      method: "PUT",
+      body: JSON.stringify({ version: CURRENT_TOUR_VERSION }),
+    })
+      .then((updated) => auth.setUser(updated))
+      .catch(() => undefined);
   }
 
   function search(event: FormEvent<HTMLFormElement>) {
@@ -222,7 +230,7 @@ export function AppLayout() {
       {runTour && user && (
         <GuidedTour
           steps={tourFor(user.role)}
-          onClose={() => void closeTour()}
+          onClose={closeTour}
           label={
             user.role === "company"
               ? "Visite guidée de l’espace entreprise"

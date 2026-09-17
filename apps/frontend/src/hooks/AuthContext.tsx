@@ -1,5 +1,6 @@
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useState,
@@ -15,6 +16,15 @@ interface Auth {
   /** Applique la charge utile renvoyée par une écriture, sans second aller-retour. */
   setUser: (user: User) => void;
   reload: () => Promise<void>;
+  /**
+   * Numéro de version des données serveur. Les écrans qui lisent l'API le
+   * placent dans les dépendances de leur effet : ils relisent alors après
+   * chaque écriture, et au retour sur l'onglet, sans que personne ait à
+   * recharger la page.
+   */
+  revision: number;
+  /** À appeler après une écriture réussie : marque les lectures comme périmées. */
+  invalidate: () => void;
   login: (email: string, password: string, register?: boolean) => Promise<User>;
   google: (jwt: string) => Promise<User>;
   logout: () => Promise<void>;
@@ -23,7 +33,9 @@ const Context = createContext<Auth | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null),
     [loading, setLoading] = useState(true),
-    [loadError, setLoadError] = useState(false);
+    [loadError, setLoadError] = useState(false),
+    [revision, setRevision] = useState(0);
+  const invalidate = useCallback(() => setRevision((n) => n + 1), []);
   const reload = async () => {
     const u = await api<User>("/me");
     setUser(u);
@@ -66,6 +78,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     await supabase?.auth.signOut({ scope: "local" });
   };
+  // Un onglet laissé ouvert pendant qu'on agit ailleurs — autre onglet, autre
+  // appareil — affiche sinon un état figé au moment où on l'a quitté. Le
+  // retour de focus est le moment naturel pour relire.
+  useEffect(() => {
+    const again = () => {
+      if (document.visibilityState === "visible") invalidate();
+    };
+    window.addEventListener("focus", again);
+    document.addEventListener("visibilitychange", again);
+    return () => {
+      window.removeEventListener("focus", again);
+      document.removeEventListener("visibilitychange", again);
+    };
+  }, [invalidate]);
+
   return (
     <Context.Provider
       value={{
@@ -74,6 +101,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         loadError,
         setUser,
         reload,
+        revision,
+        invalidate,
         login: (email, password, register = false) =>
           authenticate(register ? "/auth/register" : "/auth/login", {
             email,

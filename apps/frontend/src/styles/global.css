@@ -1183,3 +1183,86 @@ small {
     justify-content: center;
   }
 }
+
+/* ---- Mot de passe : bascule d'affichage et indicateur de force ---- */
+
+.password-input {
+  position: relative;
+  display: grid;
+}
+/* La réserve à droite empêche le texte de passer sous le bouton. */
+.password-input input {
+  padding-right: 48px;
+}
+.password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+.password-toggle:hover {
+  color: var(--forest);
+  background: var(--tint);
+}
+
+.password-meter {
+  display: grid;
+  gap: 8px;
+  margin-top: -4px;
+}
+.password-rule {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+/* L'exigence remplie se signale, sans crier : elle n'est pas une réussite en
+   soi, seulement une condition levée. */
+.password-rule.is-met {
+  color: var(--forest);
+}
+.strength-bar {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+}
+.strength-bar span {
+  height: 4px;
+  border-radius: 99px;
+  background: var(--border);
+  transition: background-color 160ms ease-out;
+}
+/* Une seule teinte par niveau : la couleur dit la force, la longueur remplie
+   la répète. Le libellé écrit reste la source lisible pour tous. */
+.strength-bar span.is-filled[data-level="0"] {
+  background: oklch(0.6 0.17 25);
+}
+.strength-bar span.is-filled[data-level="1"] {
+  background: oklch(0.7 0.15 60);
+}
+.strength-bar span.is-filled[data-level="2"] {
+  background: oklch(0.68 0.13 110);
+}
+.strength-bar span.is-filled[data-level="3"] {
+  background: var(--forest);
+}
+.strength-note {
+  margin: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .strength-bar span {
+    transition: none;
+  }
+}

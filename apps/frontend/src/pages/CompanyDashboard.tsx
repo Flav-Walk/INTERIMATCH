@@ -27,7 +27,7 @@ import {
  * aucun bouton factice ne doit figurer dans le produit.
  */
 export function CompanyDashboard() {
-  const { user } = useAuth();
+  const { user, revision } = useAuth();
   const [data, setData] = useState<Mission[]>([]),
     [counts, setCounts] = useState<Partial<Record<MissionTab, number>>>({}),
     [tab, setTab] = useState<MissionTab>("open"),
@@ -49,7 +49,9 @@ export function CompanyDashboard() {
     return () => {
       live = false;
     };
-  }, []);
+    // `revision` change après chaque écriture et au retour sur l'onglet : la
+    // liste et les compteurs suivent alors l'état réel du serveur.
+  }, [revision]);
 
   if (!user) return null;
   const p = user.profile;
@@ -76,14 +78,10 @@ export function CompanyDashboard() {
                 Publiez une mission en quelques minutes et trouvez des talents
                 qualifiés près de chez vous.
               </p>
-              <button
-                className="button"
-                disabled
-                title="La création de mission arrive au prochain sous-lot"
-              >
+              <Link className="button" to="/company/missions/new">
                 Créer une mission
                 <ArrowRight size={18} aria-hidden="true" />
-              </button>
+              </Link>
             </div>
             <div className="hero-media" aria-hidden="true">
               <Utensils />
@@ -135,13 +133,9 @@ export function CompanyDashboard() {
                   Créez une mission pour commencer à recevoir des candidats
                   compatibles.
                 </p>
-                <button
-                  className="button"
-                  disabled
-                  title="La création de mission arrive au prochain sous-lot"
-                >
+                <Link className="button" to="/company/missions/new">
                   Créer une mission
-                </button>
+                </Link>
               </div>
             )}
           </section>
