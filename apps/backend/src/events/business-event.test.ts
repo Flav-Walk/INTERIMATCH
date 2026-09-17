@@ -28,6 +28,16 @@ describe("business event envelope", () => {
         .success,
     ).toBe(false);
   });
+  it("accepte les événements du profil intérimaire", () => {
+    // Les deux seuls types dont la source métier existe aujourd'hui.
+    for (const event_type of [
+      "worker.profile.updated",
+      "worker.onboarding.completed",
+    ] as const)
+      expect(
+        businessEventSchema.parse({ ...envelope, event_type }).event_type,
+      ).toBe(event_type);
+  });
   it("refuses an unknown event type and undeclared fields", () => {
     expect(
       businessEventSchema.safeParse({ ...envelope, event_type: "mission.sold" })

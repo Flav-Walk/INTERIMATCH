@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { sectorValues } from "../domain/reference.js";
+import { sectorValues, jobs, jobValues } from "../domain/reference.js";
 const text = z.string().trim().min(1).max(120);
 export const loginSchema = z
   .object({
@@ -28,7 +28,18 @@ export const workerSchema = z
   .object({
     ...identity,
     ...location,
-    main_job: text,
+    main_job: text
+      .transform((value) => {
+        const normalized = value.toLocaleLowerCase("fr");
+        return (
+          jobs.find(
+            (job) =>
+              job.value === normalized ||
+              job.label.toLocaleLowerCase("fr") === normalized,
+          )?.value ?? normalized
+        );
+      })
+      .pipe(z.enum(jobValues)),
     mobility_radius_km: z.number().int().min(0).max(250),
     skill_ids: z.array(z.uuid()).min(1).max(20),
     experiences: z

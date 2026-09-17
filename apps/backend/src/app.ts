@@ -127,7 +127,7 @@ export function createApp(
         status,
         code,
         method: req.method,
-        path: req.originalUrl,
+        path: req.path,
         origin: req.headers.origin,
         detail: err instanceof HttpError ? err.detail : undefined,
         cause: status === 500 && err instanceof Error ? err.name : undefined,

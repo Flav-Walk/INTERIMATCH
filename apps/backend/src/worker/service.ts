@@ -107,11 +107,11 @@ export class WorkerService {
         patch.postal_code !== current?.postal_code);
     const missingCoordinates = !current || current.latitude === null;
     if (!city || !postalCode || !(changed || missingCoordinates))
-      return { changed, coordinates: null };
+      return { changed, city, postalCode, coordinates: null };
     const coordinates = this.geocode
       ? await this.geocode(city, postalCode)
       : null;
-    return { changed, coordinates };
+    return { changed, city, postalCode, coordinates };
   }
 
   private async writePatch(
@@ -120,10 +120,58 @@ export class WorkerService {
     patch: WorkerPatch,
     located: {
       changed: boolean;
+      city: string | null;
+      postalCode: string | null;
       coordinates: { latitude: number; longitude: number } | null;
     },
   ) {
     await this.ensureProfile(db, id);
+    // La ligne du profil est verrouillée : valider l'état fusionné, pas seulement
+    // les champs présents dans le PATCH (ni un état lu avant la transaction).
+    const current = (
+      await db.query<{
+        city: string | null;
+        postal_code: string | null;
+        has_driving_licence: boolean;
+        has_vehicle: boolean;
+        main_job: string | null;
+        secondary_jobs: string[];
+      }>(
+        "SELECT city,postal_code,has_driving_licence,has_vehicle,main_job,secondary_jobs FROM worker_profiles WHERE profile_id=$1",
+        [id],
+      )
+    ).rows[0];
+    if (
+      ((located.changed || located.coordinates) &&
+        ((patch.city ?? current.city) !== located.city ||
+          (patch.postal_code ?? current.postal_code) !== located.postalCode)) ||
+      (!located.changed &&
+        !located.coordinates &&
+        ((patch.city !== undefined && patch.city !== current.city) ||
+          (patch.postal_code !== undefined &&
+            patch.postal_code !== current.postal_code)))
+    )
+      throw new HttpError(
+        409,
+        "LOCATION_CHANGED",
+        "La localisation a changé pendant l’enregistrement. Rechargez le profil puis réessayez.",
+      );
+    const licence = patch.has_driving_licence ?? current.has_driving_licence;
+    const vehicle = patch.has_vehicle ?? current.has_vehicle;
+    if (vehicle && !licence)
+      throw new HttpError(
+        400,
+        "INVALID_REQUEST",
+        "Un véhicule nécessite le permis.",
+      );
+    const mainJob = patch.main_job ?? current.main_job;
+    const secondaryJobs = patch.secondary_jobs ?? current.secondary_jobs;
+    if (mainJob && secondaryJobs.includes(mainJob))
+      throw new HttpError(
+        400,
+        "INVALID_REQUEST",
+        "Le métier principal ne peut pas être un métier secondaire.",
+      );
     const columns: string[] = [];
     const values: unknown[] = [id];
     const set = (column: string, value: unknown) => {

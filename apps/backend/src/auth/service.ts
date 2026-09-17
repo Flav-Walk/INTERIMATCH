@@ -207,7 +207,7 @@ export class AccountService {
       ).rows;
       detail.certifications = (
         await this.db.query(
-          "SELECT id,name,issuer,obtained_on FROM certifications WHERE profile_id=$1 ORDER BY name",
+          "SELECT id,name,issuer,to_char(obtained_on, 'YYYY-MM-DD') AS obtained_on FROM certifications WHERE profile_id=$1 ORDER BY name",
           [p.id],
         )
       ).rows;
@@ -226,24 +226,28 @@ export class AccountService {
     const now = Date.now();
     const slots = detail.availabilities as
       { ends_at: string; status: string }[] | undefined;
+    const missing = missingRules({
+      first_name: p.first_name,
+      last_name: p.last_name,
+      city: (detail.city as string | null) ?? null,
+      postal_code: (detail.postal_code as string | null) ?? null,
+      mobility_radius_km: (detail.mobility_radius_km as number | null) ?? null,
+      main_job: (detail.main_job as string | null) ?? null,
+      skill_count: ((detail.skills as unknown[]) ?? []).length,
+      upcoming_availability_count: (slots ?? []).filter(
+        (s) => s.status === "available" && Date.parse(s.ends_at) > now,
+      ).length,
+    });
     return {
       ...p,
       profile: detail,
-      missing_requirements: missingRules({
-        first_name: p.first_name,
-        last_name: p.last_name,
-        city: (detail.city as string | null) ?? null,
-        postal_code: (detail.postal_code as string | null) ?? null,
-        mobility_radius_km:
-          (detail.mobility_radius_km as number | null) ?? null,
-        main_job: (detail.main_job as string | null) ?? null,
-        skill_count: ((detail.skills as unknown[]) ?? []).length,
-        upcoming_availability_count: (slots ?? []).filter(
-          (s) => s.status === "available" && Date.parse(s.ends_at) > now,
-        ).length,
-      }),
+      // L'expiration d'un créneau ne déclenche pas de mutation : la lecture
+      // doit refléter l'état courant, sans écrire lors d'un GET.
+      onboarding_completed: missing.length === 0,
+      missing_requirements: missing,
     };
   }
+
   // Guided tour progress. Storing the highest completed version lets a later tour be
   // shown again to existing accounts by raising CURRENT_TOUR_VERSION; 0 replays it.
   async setTourVersion(id: string, version: number) {

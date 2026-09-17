@@ -61,7 +61,12 @@ export function readCoordinates(payload: unknown): Coordinates | null {
   )?.geometry?.coordinates;
   if (!Array.isArray(coordinates) || coordinates.length < 2) return null;
   const [longitude, latitude] = coordinates;
-  if (typeof longitude !== "number" || typeof latitude !== "number")
+  if (
+    typeof longitude !== "number" ||
+    typeof latitude !== "number" ||
+    !Number.isFinite(longitude) ||
+    !Number.isFinite(latitude)
+  )
     return null;
   if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180)
     return null;
