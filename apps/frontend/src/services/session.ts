@@ -10,6 +10,68 @@ export interface ReferenceValue {
   label: string;
 }
 export type Role = "worker" | "company" | "admin";
+/** Règles de complétion calculées par le serveur ; jamais décidées ici. */
+export type CompletionRule =
+  | "identity"
+  | "location"
+  | "mobility_radius"
+  | "main_job"
+  | "skills"
+  | "availability";
+
+export interface Availability {
+  id: string;
+  starts_at: string;
+  ends_at: string;
+  status: "available" | "unavailable";
+}
+export interface Experience {
+  id?: string;
+  job_title: string;
+  employer: string;
+  years: number;
+}
+export interface Certification {
+  id?: string;
+  name: string;
+  issuer: string;
+  obtained_on: string | null;
+}
+
+export interface WorkerProfileData {
+  city?: string | null;
+  postal_code?: string | null;
+  // Dérivées du géocodage serveur : jamais saisies, jamais envoyées.
+  latitude?: number | null;
+  longitude?: number | null;
+  geocoded_at?: string | null;
+  main_job?: string | null;
+  secondary_jobs?: string[];
+  years_experience?: number | null;
+  phone?: string | null;
+  mobility_radius_km?: number | null;
+  has_driving_licence?: boolean;
+  has_vehicle?: boolean;
+  open_to_missions?: boolean;
+  skills?: Skill[];
+  experiences?: Experience[];
+  availabilities?: Availability[];
+  certifications?: Certification[];
+}
+
+export interface CompanyProfileData {
+  establishment_name?: string;
+  legal_name?: string;
+  sector?: string;
+  address?: string;
+  city?: string;
+  postal_code?: string;
+  latitude?: number;
+  longitude?: number;
+  phone?: string;
+  description?: string;
+}
+
 export interface User {
   id: string;
   email: string;
@@ -20,23 +82,9 @@ export interface User {
   onboarding_completed: boolean;
   tour_version: number;
   demo: boolean;
-  profile: {
-    city?: string;
-    postal_code?: string;
-    latitude?: number;
-    longitude?: number;
-    main_job?: string;
-    mobility_radius_km?: number;
-    skills?: Skill[];
-    experiences?: { job_title: string; employer: string; years: number }[];
-    availabilities?: { id: string; starts_at: string; ends_at: string }[];
-    establishment_name?: string;
-    legal_name?: string;
-    sector?: string;
-    address?: string;
-    phone?: string;
-    description?: string;
-  };
+  /** Renseigné par les routes intérimaire : ce qu'il reste à compléter. */
+  missing_requirements?: CompletionRule[];
+  profile: WorkerProfileData & CompanyProfileData;
 }
 let token: string | null = null;
 const raw = createApiClient(config?.VITE_API_URL, () => token);

@@ -12,6 +12,8 @@ interface Auth {
   user: User | null;
   loading: boolean;
   loadError: boolean;
+  /** Applique la charge utile renvoyée par une écriture, sans second aller-retour. */
+  setUser: (user: User) => void;
   reload: () => Promise<void>;
   login: (email: string, password: string, register?: boolean) => Promise<User>;
   google: (jwt: string) => Promise<User>;
@@ -70,6 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         loading,
         loadError,
+        setUser,
         reload,
         login: (email, password, register = false) =>
           authenticate(register ? "/auth/register" : "/auth/login", {

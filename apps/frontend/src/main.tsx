@@ -9,6 +9,7 @@ import { Login } from "./pages/Login";
 import { Callback } from "./pages/Callback";
 import { Dashboard } from "./pages/Dashboard";
 import { ProfileForm } from "./pages/ProfileForm";
+import { WorkerProfile } from "./pages/WorkerProfile";
 import { Missions } from "./pages/Missions";
 import { Candidates } from "./pages/Candidates";
 import "./styles/global.css";
@@ -29,7 +30,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
             <Route element={<ProtectedRoute role="worker" />}>
               <Route path="worker">
                 <Route index element={<Dashboard />} />
-                <Route path="profile" element={<ProfileForm role="worker" />} />
+                <Route path="profile" element={<WorkerProfile />} />
                 <Route path="missions" element={<Missions />} />
               </Route>
             </Route>
@@ -37,10 +38,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
             <Route element={<ProtectedRoute role="company" />}>
               <Route path="company">
                 <Route index element={<Dashboard />} />
-                <Route
-                  path="profile"
-                  element={<ProfileForm role="company" />}
-                />
+                <Route path="profile" element={<ProfileForm />} />
                 <Route path="missions" element={<Missions />} />
                 <Route path="candidates" element={<Candidates />} />
               </Route>

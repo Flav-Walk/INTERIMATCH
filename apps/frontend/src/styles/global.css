@@ -746,3 +746,76 @@ small {
     transition: none;
   }
 }
+
+/* ---- Profil intérimaire : sections enregistrables ---- */
+.section-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+.repeat-row {
+  display: grid;
+  grid-template-columns: 2fr 2fr 1fr auto;
+  gap: 12px;
+  align-items: end;
+}
+.icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--muted);
+  cursor: pointer;
+}
+.icon-button:hover {
+  border-color: var(--forest);
+  color: var(--forest);
+}
+.slot-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 8px;
+}
+.slot-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--tint);
+  border-radius: 8px;
+  font-size: 0.92rem;
+}
+.slot-list.plain li {
+  background: none;
+  padding: 0;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+.lead-figure {
+  font-weight: 650;
+  color: var(--ink);
+  margin-bottom: 8px;
+}
+.onboarding form + form {
+  margin-top: 20px;
+}
+.onboarding .side-panel .steps-list li,
+[data-tour="profile-status"] .steps-list li {
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+@media (max-width: 720px) {
+  .repeat-row {
+    grid-template-columns: 1fr 1fr;
+  }
+  .repeat-row .icon-button {
+    grid-column: 2;
+    justify-self: end;
+  }
+}
