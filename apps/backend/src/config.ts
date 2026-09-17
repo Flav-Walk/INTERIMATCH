@@ -56,6 +56,10 @@ export function readConfig(env: NodeJS.ProcessEnv): Config {
       `Configuration invalide : ${result.error.issues.map((i) => i.path.join(".")).join(", ")}`,
     );
   const config = result.data;
+  if (Boolean(config.N8N_WEBHOOK_URL) !== Boolean(config.N8N_WEBHOOK_SECRET))
+    throw new Error(
+      "Configuration invalide : N8N_WEBHOOK_URL et N8N_WEBHOOK_SECRET doivent être définis ensemble",
+    );
   if (new URL(config.FRONTEND_URL).origin !== config.FRONTEND_URL)
     throw new Error("FRONTEND_URL doit être une origine sans chemin");
   return {
