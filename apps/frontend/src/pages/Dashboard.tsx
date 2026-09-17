@@ -14,40 +14,36 @@ import {
   upcomingAvailabilities,
 } from "../services/profile";
 
+/**
+ * Rappel de complétion. Il n'apparaît que tant qu'il reste quelque chose à
+ * faire : une fois le profil complet, l'information devient secondaire et cède
+ * la place aux disponibilités, à la mobilité et aux propositions. Le lien vers
+ * le profil reste accessible depuis l'accueil et la navigation.
+ */
 function ProfileStatus({
-  complete,
   to,
-  done,
   todo,
   missing = [],
 }: {
-  complete: boolean;
   to: string;
-  done: string;
   todo: string;
   missing?: (keyof typeof requirementLabels)[];
 }) {
   return (
     <section className="section side-panel" data-tour="profile-status">
-      <h2>{complete ? "Votre profil" : "Complétez votre profil"}</h2>
-      <p>{complete ? done : todo}</p>
-      {!complete && missing.length > 0 && (
+      <h2>Complétez votre profil</h2>
+      <p>{todo}</p>
+      {missing.length > 0 && (
         <ul className="steps-list">
           {missing.map((rule) => (
             <li key={rule}>{requirementLabels[rule]}</li>
           ))}
         </ul>
       )}
-      <Link className={complete ? "secondary-button inline" : "button"} to={to}>
-        {complete ? "Voir mon profil" : "Compléter mon profil"}
+      <Link className="button" to={to}>
+        Compléter mon profil
         <ArrowRight size={16} aria-hidden="true" />
       </Link>
-      {complete && (
-        <p className="welcome-note ink">
-          <Check size={16} aria-hidden="true" />
-          Profil complété
-        </p>
-      )}
     </section>
   );
 }
@@ -86,23 +82,29 @@ export function Dashboard() {
                   ? "Votre établissement est prêt pour ses prochains recrutements."
                   : "Présentez votre établissement pour préparer vos premiers recrutements."}
             </p>
+            {complete && (
+              <Link
+                className="welcome-action"
+                to={"/" + user.role + "/profile"}
+                data-tour="profile-status"
+              >
+                <Check size={15} aria-hidden="true" />
+                Profil complété · Modifier mon profil
+              </Link>
+            )}
           </div>
 
-          <ProfileStatus
-            complete={complete}
-            missing={user.missing_requirements}
-            to={"/" + user.role + "/profile"}
-            done={
-              worker
-                ? "Métier, compétences, mobilité et disponibilités sont enregistrés. Vous pouvez les modifier à tout moment."
-                : "Les informations de votre établissement sont enregistrées. Vous pouvez les modifier à tout moment."
-            }
-            todo={
-              worker
-                ? `Ces informations décident des missions qui vous seront proposées : sans elles, ${name} ne recevrez rien.`
-                : "Secteur, adresse et description : les intérimaires verront ces informations avant de répondre à vos missions."
-            }
-          />
+          {!complete && (
+            <ProfileStatus
+              missing={user.missing_requirements}
+              to={"/" + user.role + "/profile"}
+              todo={
+                worker
+                  ? `Ces informations décident des missions qui vous seront proposées : sans elles, ${name} ne recevrez rien.`
+                  : "Secteur, adresse et description : les intérimaires verront ces informations avant de répondre à vos missions."
+              }
+            />
+          )}
 
           <section className="section" data-tour="missions">
             <div className="section-heading">

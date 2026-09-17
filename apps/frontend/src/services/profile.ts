@@ -61,6 +61,65 @@ export const updateAvailability = (
 export const removeAvailability = (id: string) =>
   api<void>("/workers/me/availabilities/" + id, { method: "DELETE" });
 
+/**
+ * Retire les champs vides d'une modification partielle.
+ *
+ * Les sections du profil regroupent des champs indépendants : cocher un métier
+ * secondaire ne doit pas exiger d'avoir déjà choisi son métier principal. On
+ * n'envoie donc que ce qui est réellement renseigné, et `PATCH /workers/me`
+ * laisse le reste intact. Les règles métier du serveur ne changent pas : un
+ * profil sans métier principal reste incomplet.
+ *
+ * `null` est conservé : c'est un effacement volontaire (téléphone, expérience).
+ */
+export function partial(values: Record<string, unknown>) {
+  return Object.fromEntries(
+    Object.entries(values).filter(([, value]) => {
+      if (value === undefined) return false;
+      if (typeof value === "string") return value.trim() !== "";
+      if (typeof value === "number") return Number.isFinite(value);
+      return true;
+    }),
+  );
+}
+
+/** Noms des champs de l'API vers les libellés affichés dans le formulaire. */
+const fieldLabels: Record<string, string> = {
+  first_name: "Prénom",
+  last_name: "Nom",
+  phone: "Téléphone",
+  main_job: "Métier principal",
+  secondary_jobs: "Autres métiers exercés",
+  years_experience: "Années d’expérience",
+  city: "Ville",
+  postal_code: "Code postal",
+  mobility_radius_km: "Rayon de mobilité",
+  has_driving_licence: "Permis de conduire",
+  has_vehicle: "Véhicule",
+  skill_ids: "Compétences",
+  experiences: "Expériences",
+  certifications: "Certifications",
+  starts_at: "Début",
+  ends_at: "Fin",
+  status: "Statut",
+};
+
+/**
+ * Le serveur nomme les champs invalides avec leurs identifiants d'API. On les
+ * remplace par les libellés que l'utilisateur voit à l'écran, pour qu'il sache
+ * quoi corriger sans deviner.
+ */
+export function humaniseError(message: string) {
+  const match = /^Donnée invalide : (.+)\.$/.exec(message);
+  if (!match) return message;
+  const labels = match[1]
+    .split(", ")
+    .map((field) => fieldLabels[field.split(".")[0]] ?? field);
+  return labels.length > 1
+    ? `Vérifiez ces champs : ${labels.join(", ")}.`
+    : `Vérifiez le champ « ${labels[0]} ».`;
+}
+
 /** Libellés des règles de complétion, alignés sur completion.ts côté serveur. */
 export const requirementLabels: Record<CompletionRule, string> = {
   identity: "Votre prénom et votre nom",

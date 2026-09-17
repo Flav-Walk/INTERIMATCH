@@ -38,6 +38,11 @@ async function completeTour(page: Page) {
   await expect(tour(page)).toBeHidden();
 }
 
+/** Le bloc compte de la maquette est un menu dépliant. */
+async function openAccount(page: Page) {
+  await page.locator('summary[aria-label="Mon compte"]').click();
+}
+
 /** Un fieldset est exposé comme un groupe nommé par sa légende. */
 const section = (page: Page, name: string) => page.getByRole("group", { name });
 
@@ -100,6 +105,7 @@ test("a new account becomes an intérimaire, is toured once, and cannot reach th
   await page.reload();
   await expect(page.getByRole("heading", { name: "Bienvenue," })).toBeVisible();
   await expect(tour(page)).toBeHidden();
+  await openAccount(page);
   await page.getByRole("button", { name: "Se déconnecter" }).click();
   await expect(page).toHaveURL(/\/login$/);
   await signIn(page, email);
@@ -107,6 +113,7 @@ test("a new account becomes an intérimaire, is toured once, and cannot reach th
   await expect(tour(page)).toBeHidden();
 
   // La visite reste rejouable à la demande.
+  await openAccount(page);
   await page.getByRole("button", { name: "Revoir la visite" }).click();
   await expect(tour(page)).toBeVisible();
   await page.keyboard.press("Escape");
@@ -184,6 +191,7 @@ test("a new account becomes an intérimaire, is toured once, and cannot reach th
   await expect(page.getByText(/1 créneau à venir/)).toBeVisible();
 
   // Déconnexion puis reconnexion : les données sont toujours là.
+  await openAccount(page);
   await page.getByRole("button", { name: "Se déconnecter" }).click();
   await signIn(page, email);
   await expect(page).toHaveURL(/\/worker$/);
@@ -225,6 +233,7 @@ test("the allowlisted address gets the company space and its own tour", async ({
   await completeTour(page);
 
   // CAS 6 : pas de relance après reconnexion.
+  await openAccount(page);
   await page.getByRole("button", { name: "Se déconnecter" }).click();
   await signIn(page, email);
   await expect(page).toHaveURL(/\/company$/);
@@ -460,4 +469,341 @@ test("profile lists persist, reject incomplete rows, and allow slot editing", as
   await page.reload();
   await expect(experiences.getByLabel("Poste", { exact: true })).toHaveCount(1);
   await expect(certs.getByLabel("Intitulé")).toHaveCount(1);
+});
+
+// SL1 — espace entreprise : composition de la maquette sur des données réelles.
+test("the company workspace lists real missions with the maquette layout", async ({
+  page,
+}, testInfo) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await signIn(page, `missions.${testInfo.project.name}@example.test`);
+  await expect(page).toHaveURL(/\/company$/);
+  await completeTour(page);
+
+  // En-tête de la maquette : navigation, recherche et bloc compte.
+  const header = page.getByRole("banner");
+  for (const label of ["Accueil", "Missions", "Candidats", "Entreprise"])
+    await expect(
+      header.getByRole("link", { name: label, exact: true }),
+    ).toBeVisible();
+  await expect(header.getByRole("searchbox")).toBeVisible();
+  await expect(header.locator(".avatar")).toBeVisible();
+
+  // Carte héros et son appel à l'action.
+  await expect(
+    page.getByRole("heading", { name: /Prêt à renforcer votre équipe/ }),
+  ).toBeVisible();
+
+  // Les missions publiées par la fixture sont réellement affichées.
+  const openTab = page.getByRole("button", { name: /^À pourvoir/ });
+  await expect(openTab).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator(".mission-card")).toHaveCount(2);
+  await expect(
+    page.getByRole("heading", { name: "Serveur en restauration" }),
+  ).toBeVisible();
+
+  // Le filtre Brouillons change réellement la liste.
+  await page.getByRole("button", { name: /^Brouillons/ }).click();
+  await expect(page.locator(".mission-card")).toHaveCount(1);
+  await expect(
+    page.getByRole("heading", { name: "Commis de cuisine brunch" }),
+  ).toBeVisible();
+
+  // Planning : le rail droit affiche l'agenda réel.
+  await expect(
+    page.getByRole("heading", { name: "Votre planning" }),
+  ).toBeVisible();
+  await expect(page.locator(".agenda-item").first()).toBeVisible();
+
+  await page.screenshot({
+    path: testInfo.outputPath("company-dashboard.png"),
+    fullPage: true,
+  });
+
+  // Liste complète et recherche depuis l'en-tête.
+  await header.getByRole("link", { name: "Missions", exact: true }).click();
+  await expect(page).toHaveURL(/\/company\/missions$/);
+  await expect(page.locator(".mission-card")).toHaveCount(3);
+  await header.getByRole("searchbox").fill("villeurbanne");
+  await header.getByRole("searchbox").press("Enter");
+  await expect(page).toHaveURL(/q=villeurbanne/);
+  await expect(page.locator(".mission-card")).toHaveCount(1);
+  await page.getByRole("button", { name: "Effacer la recherche" }).click();
+  await expect(page.locator(".mission-card")).toHaveCount(3);
+
+  // Détail d'une mission, en lecture seule à ce stade.
+  await page.locator(".mission-card").first().click();
+  await expect(page).toHaveURL(/\/company\/missions\/[0-9a-f-]{36}$/);
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  // Le détail reprend les informations de la mission, pas seulement son titre.
+  await expect(page.locator(".detail-grid")).toContainText("poste");
+  await expect(page.getByRole("link", { name: "Vos missions" })).toBeVisible();
+
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+  expect(errors).toEqual([]);
+});
+
+// Régression signalée en recette : « Please select an item in the list ».
+test("secondary jobs and licence save without the main job blocking the form", async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await register(page, `jobs.${crypto.randomUUID()}@example.test`);
+  await expect(page).toHaveURL(/\/worker$/);
+  await completeTour(page);
+  await page.goto("/worker/profile");
+
+  // Profil neuf : aucun métier principal choisi. Cocher un métier secondaire
+  // seul doit s'enregistrer, sans blocage de la validation native du navigateur.
+  const job = section(page, "Votre métier");
+  await job.getByLabel("Barman / Barmaid", { exact: true }).check();
+  await save(page, "Votre métier");
+  expect(
+    await page.evaluate(() => {
+      const s = document.querySelector<HTMLSelectElement>(
+        'select[name="main_job"]',
+      );
+      return { valid: s?.checkValidity(), required: s?.required };
+    }),
+  ).toEqual({ valid: true, required: false });
+
+  // La règle métier ne bouge pas : sans métier principal le profil est incomplet.
+  await expect(
+    page.getByText("Votre métier principal", { exact: true }),
+  ).toBeVisible();
+
+  await page.reload();
+  await expect(
+    section(page, "Votre métier").getByLabel("Barman / Barmaid", {
+      exact: true,
+    }),
+  ).toBeChecked();
+
+  // Métier principal enregistré, puis modification des seuls secondaires :
+  // la valeur déjà enregistrée doit rester intacte.
+  await section(page, "Votre métier")
+    .getByLabel("Métier principal")
+    .selectOption("serveur");
+  await save(page, "Votre métier");
+  await page.reload();
+  await section(page, "Votre métier")
+    .getByLabel("Chef de rang", { exact: true })
+    .check();
+  await save(page, "Votre métier");
+  await page.reload();
+  await expect(
+    section(page, "Votre métier").getByLabel("Métier principal"),
+  ).toHaveValue("serveur");
+  await expect(
+    section(page, "Votre métier").getByLabel("Chef de rang", { exact: true }),
+  ).toBeChecked();
+
+  // Mobilité : les choix permis/véhicule sont exclusifs et cohérents.
+  const mobility = section(page, "Votre mobilité");
+  const vehicle = mobility.getByLabel("J’ai un véhicule");
+  await expect(vehicle).toBeDisabled();
+  await mobility.getByLabel("J’ai le permis").check();
+  await expect(vehicle).toBeEnabled();
+  await vehicle.check();
+  // Repasser sans permis retire le véhicule au lieu de laisser deux réponses
+  // contradictoires que le serveur refuserait.
+  await mobility.getByLabel("Je n’ai pas le permis").check();
+  await expect(vehicle).not.toBeChecked();
+  await expect(vehicle).toBeDisabled();
+
+  // Enregistrer le seul permis, sans ville ni code postal, doit fonctionner.
+  await mobility.getByLabel("J’ai le permis").check();
+  await vehicle.check();
+  await save(page, "Votre mobilité");
+  await page.reload();
+  const mobility2 = section(page, "Votre mobilité");
+  await expect(mobility2.getByLabel("J’ai le permis")).toBeChecked();
+  await expect(mobility2.getByLabel("J’ai un véhicule")).toBeChecked();
+  await expect(
+    page.getByText("Votre ville et votre code postal", { exact: true }),
+  ).toBeVisible();
+
+  expect(errors).toEqual([]);
+});
+
+// SL2b — parcours complet : créer un brouillon, le modifier, puis le publier.
+test("a company drafts, edits and publishes a mission", async ({
+  page,
+}, testInfo) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await register(page, `crud.${testInfo.project.name}@example.test`);
+  await expect(page).toHaveURL(/\/company$/);
+  await completeTour(page);
+
+  await page.goto("/company/missions");
+  await expect(page.locator(".mission-card")).toHaveCount(0);
+
+  // ---- Création -----------------------------------------------------------
+  await page.getByRole("link", { name: "Créer une mission" }).first().click();
+  await expect(page).toHaveURL(/\/company\/missions\/new$/);
+  await expect(
+    page.getByRole("heading", { name: "Créer une mission" }),
+  ).toBeVisible();
+
+  // Les sections de la maquette structurent la saisie.
+  for (const legend of [
+    "Informations générales",
+    "Date et horaires",
+    "Lieu",
+    "Profil recherché",
+    "Compétences",
+    "Rémunération",
+  ])
+    await expect(page.getByRole("group", { name: legend })).toBeVisible();
+
+  // Aucun champ décidé par le serveur n'est proposé à la saisie.
+  for (const forbidden of [
+    "company_id",
+    "status",
+    "latitude",
+    "longitude",
+    "geocoded_at",
+    "published_at",
+  ])
+    await expect(page.locator(`[name="${forbidden}"]`)).toHaveCount(0);
+
+  // Un envoi incomplet est retenu côté navigateur, avec un message par champ.
+  await page.getByRole("button", { name: "Enregistrer le brouillon" }).click();
+  await expect(
+    page.getByText("Donnez un intitulé à la mission."),
+  ).toBeVisible();
+  await expect(page).toHaveURL(/\/company\/missions\/new$/);
+
+  // Dates fixes : le parcours ne dépend pas de l'heure d'exécution.
+  await page.getByLabel("Intitulé de la mission").fill("Chef de rang — gala");
+  await page.getByLabel("Métier recherché").selectOption("serveur");
+  await page.getByLabel("Début").fill("2027-06-12T18:00");
+  await page.getByLabel("Fin").fill("2027-06-13T02:00");
+  await page.getByLabel("Ville").fill("Lyon");
+  await page.getByLabel("Code postal").fill("69002");
+  await page.getByLabel("Nombre de personnes").fill("3");
+
+  // Un montant sans unité est refusé, et le message le dit.
+  await page.getByLabel("Montant en euros").fill("15");
+  await page.getByRole("button", { name: "Enregistrer le brouillon" }).click();
+  await expect(
+    page.getByText(/Précisez si ce montant est horaire/),
+  ).toBeVisible();
+  await page.getByLabel("Unité").selectOption("hour");
+  // Le reproche portait sur deux champs : corriger l'unité doit l'effacer,
+  // sans attendre un nouvel envoi qui contredirait ce qu'on vient de choisir.
+  await expect(
+    page.getByText(/Précisez si ce montant est horaire/),
+  ).toHaveCount(0);
+
+  // Une compétence ne peut porter qu'un seul niveau : choisir « souhaitée »
+  // après « obligatoire » remplace le choix au lieu de s'y ajouter.
+  const serviceRequired = page.getByRole("radio", {
+    name: "Service en salle : obligatoire",
+  });
+  await serviceRequired.check();
+  await page
+    .getByRole("radio", { name: "Relation client : souhaitée" })
+    .check();
+  await expect(serviceRequired).toBeChecked();
+  await expect(
+    page.getByRole("radio", { name: "Service en salle : souhaitée" }),
+  ).not.toBeChecked();
+
+  await page.screenshot({
+    path: testInfo.outputPath("mission-form.png"),
+    fullPage: true,
+  });
+
+  await page.getByRole("button", { name: "Enregistrer le brouillon" }).click();
+
+  // ---- Le brouillon existe, sans avoir été publié -------------------------
+  await expect(page).toHaveURL(/\/company\/missions\/[0-9a-f-]{36}$/);
+  await expect(page.getByText(/enregistrée en brouillon/)).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Chef de rang — gala" }),
+  ).toBeVisible();
+  await expect(page.locator(".mission-status")).toHaveText("Brouillon");
+  const missionUrl = page.url();
+
+  // Il apparaît immédiatement dans le filtre Brouillons.
+  await page.goto("/company/missions");
+  await page.getByRole("button", { name: /^Brouillons/ }).click();
+  await expect(page.locator(".mission-card")).toHaveCount(1);
+  await expect(
+    page.getByRole("heading", { name: "Chef de rang — gala" }),
+  ).toBeVisible();
+
+  // ---- Modification -------------------------------------------------------
+  await page.goto(missionUrl);
+  await page.getByRole("link", { name: "Modifier" }).click();
+  await expect(page).toHaveURL(/\/edit$/);
+  // Le formulaire est prérempli avec ce qui a été enregistré.
+  await expect(page.getByLabel("Intitulé de la mission")).toHaveValue(
+    "Chef de rang — gala",
+  );
+  await expect(page.getByLabel("Ville")).toHaveValue("Lyon");
+  await expect(page.getByLabel("Début")).toHaveValue("2027-06-12T18:00");
+  await expect(
+    page.getByRole("radio", { name: "Service en salle : obligatoire" }),
+  ).toBeChecked();
+
+  await page.getByLabel("Nombre de personnes").fill("5");
+  await page
+    .getByRole("button", { name: "Enregistrer les modifications" })
+    .click();
+  await expect(page).toHaveURL(/\/company\/missions\/[0-9a-f-]{36}$/);
+  await expect(page.getByText("Modifications enregistrées.")).toBeVisible();
+  await expect(page.locator(".detail-grid")).toContainText("5 postes");
+  // Enregistrer ne publie pas.
+  await expect(page.locator(".mission-status")).toHaveText("Brouillon");
+
+  // ---- Publication, distincte de l'enregistrement --------------------------
+  await page.getByRole("button", { name: "Publier la mission" }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toBeVisible();
+  await expect(dialog).toContainText("Publier cette mission ?");
+
+  // On peut renoncer : la mission reste un brouillon.
+  await dialog.getByRole("button", { name: "Annuler" }).click();
+  await expect(dialog).toBeHidden();
+  await expect(page.locator(".mission-status")).toHaveText("Brouillon");
+
+  await page.getByRole("button", { name: "Publier la mission" }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Publier" })
+    .click();
+
+  // L'interface reflète immédiatement l'état établi par le serveur.
+  await expect(page.locator(".mission-status")).toHaveText("À pourvoir");
+  // Ciblé sur la bannière : la boîte de confirmation emploie les mêmes mots.
+  await expect(page.locator(".form-success")).toContainText("Mission publiée.");
+  // L'action qui n'a plus lieu d'être disparaît.
+  await expect(
+    page.getByRole("button", { name: "Publier la mission" }),
+  ).toHaveCount(0);
+
+  // Les compteurs de la liste suivent.
+  await page.goto("/company/missions");
+  await expect(page.getByRole("button", { name: /^Brouillons/ })).toContainText(
+    "0",
+  );
+  await expect(page.getByRole("button", { name: /^À pourvoir/ })).toContainText(
+    "1",
+  );
+
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+  expect(errors).toEqual([]);
 });

@@ -2,6 +2,8 @@
   --forest: oklch(0.32 0.065 165);
   --orange: oklch(0.75 0.17 43);
   --orange-hover: oklch(0.8 0.14 43);
+  /* Orange assombri pour le texte : l'orange de marque ne passe pas 4,5:1. */
+  --orange-ink: oklch(0.52 0.16 43);
   --background: oklch(0.975 0.003 165);
   --surface: oklch(1 0 0);
   --ink: oklch(0.23 0.02 160);
@@ -9,6 +11,10 @@
   --border: oklch(0.88 0.008 160);
   --tint: oklch(0.94 0.025 160);
   --radius: 12px;
+  /* Gabarit de page partagé par l'en-tête, le contenu et le pied, pour qu'ils
+     s'alignent sur la même gouttière quelle que soit la largeur d'écran. */
+  --page-max: 1440px;
+  --page-gutter: 28px;
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;

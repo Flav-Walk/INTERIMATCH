@@ -1,4 +1,5 @@
 @import "./tokens.css";
+@import "./shell.css";
 * {
   box-sizing: border-box;
 }
@@ -98,9 +99,14 @@ nav a.active {
   text-decoration: none;
 }
 main {
-  max-width: 1440px;
+  max-width: var(--page-max);
   margin: auto;
-  padding: 24px 4% 56px;
+  /* <main> est déjà borné et centré : une gouttière fixe suffit. L'en-tête,
+     lui, est pleine largeur et recalcule la même marge — les trois s'alignent.
+     Avec box-sizing: border-box, un padding en pourcentage rognerait la
+     largeur utile du contenu. */
+  padding-block: 24px 56px;
+  padding-inline: var(--page-gutter);
   min-height: calc(100vh - 170px);
 }
 .workspace {
@@ -827,4 +833,353 @@ small {
   display: flex;
   gap: 8px;
   margin-left: auto;
+}
+
+/* ---- Pages larges de l'espace entreprise ---- */
+.page-wide {
+  max-width: 1320px;
+  margin: 0 auto;
+}
+.page-wide > .section-head h1 {
+  margin: 0;
+  font-size: 1.75rem;
+}
+.link-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 14px;
+  font-size: 0.84rem;
+  color: var(--muted);
+  text-decoration: none;
+}
+.link-back:hover {
+  color: var(--forest);
+}
+.search-note {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.mission-status.is-inline {
+  position: static;
+}
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 12px 24px;
+}
+.detail-description {
+  margin: 18px 0 0;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+.rail-card + .rail-card,
+.layout-main > .rail-card + .rail-card {
+  margin-top: 0;
+}
+.rail-card .skill-options {
+  margin-top: 6px;
+}
+
+/* Emplacement en attente : centré et borné, pour garder le rythme de la
+   maquette là où une rangée de cartes prendra place. */
+.empty.is-placeholder {
+  display: grid;
+  justify-items: center;
+  text-align: center;
+  padding: 34px 24px;
+}
+.empty.is-placeholder p {
+  max-width: 52ch;
+}
+
+/* ---- Profil intérimaire : choix explicites et champs nécessaires ---- */
+.choice-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-self: start;
+  gap: 8px 12px;
+}
+.choice-label {
+  flex-basis: 100%;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+.choice-group label,
+.choice-single {
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  /* Les intitulés sont courts : les couper sur deux lignes rendrait le choix
+     moins lisible que la question elle-même. */
+  white-space: nowrap;
+  gap: 8px;
+  padding: 9px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  font-weight: 500;
+  font-size: 0.92rem;
+  cursor: pointer;
+}
+.choice-group label:has(input:checked) {
+  border-color: var(--forest);
+  background: var(--tint);
+  font-weight: 600;
+}
+.choice-single:has(input:disabled) {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.choice-single:has(input:checked) {
+  border-color: var(--forest);
+  background: var(--tint);
+  font-weight: 600;
+}
+.choice-group input,
+.choice-single input {
+  accent-color: var(--forest);
+}
+/* Action compacte du tableau de bord quand le profil est complet. */
+.welcome-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  padding: 8px 14px;
+  border: 1px solid oklch(1 0 0 / 0.28);
+  border-radius: 99px;
+  font-size: 0.85rem;
+  color: oklch(0.95 0.02 160);
+  text-decoration: none;
+}
+.welcome-action:hover {
+  background: oklch(1 0 0 / 0.1);
+  color: #fff;
+}
+.form-legend {
+  margin-bottom: 18px;
+}
+
+/* ---- Missions entreprise : formulaire, choix des compétences, confirmation ---- */
+
+.page-form {
+  max-width: 880px;
+  margin: 0 auto;
+}
+.page-form h1 {
+  margin: 0 0 8px;
+  font-size: 1.75rem;
+}
+.page-lead {
+  margin: 0 0 28px;
+  max-width: 62ch;
+}
+/* Deux sujets différents doivent s'éloigner davantage que deux champs du même
+   sujet, sans quoi le découpage en sections ne se voit plus. */
+.page-form fieldset + fieldset {
+  margin-top: 28px;
+}
+.page-form fieldset + fieldset,
+.page-form fieldset {
+  gap: 18px;
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+.field > label {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+.field-hint {
+  margin: 0;
+}
+.field-error {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: oklch(0.45 0.16 25);
+}
+.field :is(input, select, textarea)[aria-invalid="true"] {
+  border-color: oklch(0.55 0.17 25);
+}
+.page-form textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+
+.form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+  margin-top: 28px;
+}
+/* Le lien d'annulation doit peser autant qu'un bouton pour ne pas se perdre. */
+.form-actions .secondary-button {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+/* Une ligne par compétence, une seule réponse possible : l'exclusivité entre
+   « obligatoire » et « souhaitée » est portée par la forme du choix. */
+.skill-matrix {
+  display: grid;
+  gap: 8px;
+}
+.skill-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+.skill-name {
+  font-weight: 600;
+  font-size: 0.92rem;
+}
+.skill-levels {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.skill-choice {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 12px;
+  border: 1px solid var(--border);
+  border-radius: 99px;
+  background: var(--surface);
+  font-size: 0.85rem;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.skill-choice input {
+  width: auto;
+  margin: 0;
+  padding: 0;
+  accent-color: var(--forest);
+}
+.skill-choice:has(input:checked) {
+  border-color: var(--forest);
+  background: var(--tint);
+  font-weight: 650;
+}
+/* Une pastille non retenue reste en retrait, pour que le regard n'ait à
+   parcourir que les choix réellement faits. */
+.skill-choice:not(:has(input:checked)) {
+  color: var(--muted);
+}
+/* « Non » est l'état de départ de toutes les lignes. Le teinter en vert comme
+   les deux autres ferait lire une exigence là où il n'y en a pas, et noierait
+   les compétences réellement retenues. Il doit malgré tout se voir comme
+   sélectionné : c'est la seule marque d'état quand le bouton radio est masqué,
+   sur écran étroit. */
+.skill-choice[data-level="none"]:has(input:checked) {
+  border-color: var(--muted);
+  background: var(--surface);
+  color: var(--ink);
+}
+.skill-row:has(.skill-choice[data-level="required"] input:checked) {
+  border-color: var(--forest);
+}
+
+.head-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.head-actions .secondary-button,
+.head-actions .button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+}
+
+.confirm {
+  /* Sur un écran étroit, `max-width` seul laisse la boîte toucher les deux
+     bords : la marge doit être retirée de la largeur, pas espérée. */
+  max-width: min(460px, calc(100vw - 32px));
+  padding: 26px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink);
+}
+.confirm::backdrop {
+  background: oklch(0.23 0.02 160 / 0.5);
+}
+.confirm h2 {
+  margin: 0 0 10px;
+  font-size: 1.2rem;
+}
+.confirm p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+.confirm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+@media (max-width: 620px) {
+  /* Sur un écran étroit, la ligne se lit en deux temps : le nom, puis les trois
+     réponses réparties sur toute la largeur. Mesuré à 390 px, les trois
+     pastilles réclament 290 px pour 275 px disponibles : le bouton radio ne
+     tient pas à côté de son libellé. C'est donc la pastille qui porte l'état —
+     teinte, bordure et graisse le disent déjà sans ambiguïté — tandis que
+     l'input, étendu à toute sa surface, reste la cible réelle du clic, du
+     focus et des flèches du clavier. */
+  .skill-row {
+    justify-content: flex-start;
+  }
+  .skill-levels {
+    width: 100%;
+    justify-content: space-between;
+    gap: 6px;
+  }
+  .skill-choice {
+    justify-content: center;
+    padding: 10px 12px;
+    font-size: 0.84rem;
+  }
+  .skill-choice input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+  .skill-choice:has(input:focus-visible) {
+    outline: 3px solid var(--forest);
+    outline-offset: 2px;
+  }
+  .form-actions > * {
+    flex: 1 1 100%;
+    justify-content: center;
+  }
 }
