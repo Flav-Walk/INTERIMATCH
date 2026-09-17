@@ -1,4 +1,4 @@
-import { beforeAll, afterAll, describe, it, expect } from "vitest";
+import { beforeAll, afterAll, describe, it, expect, vi } from "vitest";
 import { PGlite } from "@electric-sql/pglite";
 import { readFile, readdir } from "node:fs/promises";
 import request from "supertest";
@@ -20,12 +20,11 @@ const db: Db = {
       }),
     ),
 };
-const service = new AccountService(db);
-// Géocodeur déterministe : aucun appel réseau dans les tests.
-const workers = new WorkerService(db, async () => ({
-  latitude: 45.75,
-  longitude: 4.85,
-}));
+// Géocodeur déterministe, partagé par les comptes et les intérimaires :
+// aucun appel réseau dans les tests.
+const geocode = vi.fn(async () => ({ latitude: 45.75, longitude: 4.85 }));
+const service = new AccountService(db, undefined, geocode);
+const workers = new WorkerService(db, geocode);
 const app = createApp(readConfig({ NODE_ENV: "test" }), service, workers);
 const origin = "http://localhost:5173";
 const password = "Test-only-password-42!";
@@ -183,8 +182,6 @@ describe("auth and onboarding with real SQL engine", () => {
       last_name: "Demo",
       city: "Lyon",
       postal_code: "69002",
-      latitude: 45.75,
-      longitude: 4.85,
       main_job: "Serveur",
       mobility_radius_km: 15,
       skill_ids: [skills[0].id],
@@ -276,8 +273,6 @@ describe("auth and onboarding with real SQL engine", () => {
       last_name: "Company",
       city: "Lyon",
       postal_code: "69002",
-      latitude: 45.75,
-      longitude: 4.85,
       legal_name: "Demo SARL",
       establishment_name: "Brasserie fictive",
       sector: "brasserie",
@@ -291,6 +286,81 @@ describe("auth and onboarding with real SQL engine", () => {
     expect((await auth(request(app).get("/api/v1/me"))).body.last_name).toBe(
       "Demo",
     );
+  });
+
+  /** Un établissement se situe par son adresse, jamais par des coordonnées saisies. */
+  const establishment = (over: Record<string, unknown> = {}) => ({
+    first_name: "Jimmy",
+    last_name: "Company",
+    city: "Lyon",
+    postal_code: "69002",
+    legal_name: "Demo SARL",
+    establishment_name: "Brasserie fictive",
+    sector: "brasserie",
+    address: "1 rue de démonstration",
+    phone: "+33000000000",
+    description: "Établissement de test",
+    ...over,
+  });
+
+  const saveEstablishment = (over: Record<string, unknown> = {}) =>
+    auth(request(app).put("/api/v1/onboarding/company"), company).send(
+      establishment(over),
+    );
+
+  it("dérive les coordonnées de l'établissement de sa ville", async () => {
+    geocode.mockClear();
+    const r = await saveEstablishment({ city: "Paris", postal_code: "75012" });
+    expect(r.status).toBe(200);
+    expect(geocode).toHaveBeenCalledWith("Paris", "75012");
+    expect(r.body.profile.latitude).toBe(45.75);
+    expect(r.body.profile.longitude).toBe(4.85);
+  });
+
+  it("refuse des coordonnées fournies par le client", async () => {
+    // Les accepter laisserait croire qu'elles sont prises en compte.
+    for (const injected of [{ latitude: 0 }, { longitude: 0 }])
+      expect((await saveEstablishment(injected)).status).toBe(400);
+  });
+
+  it("ne regéocode pas un établissement qui n'a pas déménagé", async () => {
+    await saveEstablishment({ city: "Lyon", postal_code: "69002" });
+    geocode.mockClear();
+    const r = await saveEstablishment({
+      city: "Lyon",
+      postal_code: "69002",
+      description: "Description mise à jour",
+    });
+    expect(r.status).toBe(200);
+    expect(geocode).not.toHaveBeenCalled();
+    // Les coordonnées connues sont conservées, pas réécrites à null.
+    expect(r.body.profile.latitude).toBe(45.75);
+  });
+
+  it("conserve les coordonnées connues si le géocodeur est en panne", async () => {
+    await saveEstablishment({ city: "Lyon", postal_code: "69002" });
+    geocode.mockResolvedValueOnce(null as never);
+    const r = await saveEstablishment({
+      city: "Lyon",
+      postal_code: "69002",
+      phone: "+33111111111",
+    });
+    expect(r.status).toBe(200);
+    expect(r.body.profile.latitude).toBe(45.75);
+  });
+
+  it("enregistre l'établissement même si le géocodage échoue", async () => {
+    geocode.mockResolvedValueOnce(null as never);
+    const r = await saveEstablishment({
+      city: "Introuvable",
+      postal_code: "69100",
+    });
+    // Une panne du service d'adresses ne doit pas empêcher une entreprise de
+    // se présenter. Les anciennes coordonnées désignaient Lyon : les garder
+    // serait plus trompeur que de les laisser vides.
+    expect(r.status).toBe(200);
+    expect(r.body.profile.city).toBe("Introuvable");
+    expect(r.body.profile.latitude).toBeNull();
   });
   it("revokes bearer and refresh on logout", async () => {
     expect(

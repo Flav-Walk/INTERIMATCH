@@ -114,6 +114,18 @@ export function createApp(
     }),
   );
   app.use(express.json({ limit: "100kb" }));
+  /**
+   * Rien de ce que sert cette API n'est mutualisable : chaque réponse dépend de
+   * la session qui l'a demandée. Sans en-tête explicite, Express n'envoyait
+   * qu'un ETag, ce qui autorise navigateurs et intermédiaires à conserver et à
+   * resservir une réponse — donc à montrer à un utilisateur un état périmé, ou
+   * pire, celui d'un autre. `no-store` l'interdit ; l'ETag devient alors inutile.
+   */
+  app.set("etag", false);
+  app.use("/api/v1", (_req, res, next) => {
+    res.set("Cache-Control", "no-store");
+    next();
+  });
   app.use("/api/v1", healthRouter);
   app.use(cookieParser());
   if (accounts)

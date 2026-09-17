@@ -35,13 +35,15 @@ await pg.exec(
      ('missions.desktop@example.test','E2E'),('missions.mobile@example.test','E2E'),
      -- Compte laissé vide : le parcours de création part d'une liste sans
      -- mission, donc ses décomptes ne dépendent d'aucune autre fixture.
-     ('crud.desktop@example.test','E2E'),('crud.mobile@example.test','E2E')
+     ('crud.desktop@example.test','E2E'),('crud.mobile@example.test','E2E'),
+     ('place.desktop@example.test','E2E'),('place.mobile@example.test','E2E'),
+     ('fresh.desktop@example.test','E2E'),('fresh.mobile@example.test','E2E')
    ON CONFLICT DO NOTHING`,
 );
 
 // Géocodeur déterministe : la suite navigateur n'appelle aucun service distant.
 const geocode = async () => ({ latitude: 45.75, longitude: 4.85 });
-const accounts = new AccountService(db);
+const accounts = new AccountService(db, undefined, geocode);
 const workers = new WorkerService(db, geocode);
 const missions = new MissionService(db, geocode);
 

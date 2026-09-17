@@ -457,10 +457,32 @@ describe("profil intérimaire", () => {
 
   it("garde la route de compatibilité alignée sur le même service", async () => {
     // Ancienne route tout-en-un : mêmes écritures, mêmes règles de complétion,
-    // et les latitude/longitude transmises sont ignorées.
+    // et coordonnées dérivées de la ville, jamais demandées à l'appelant.
     const legacy = (await accounts.register("legacy@example.test", password))
       .access_token;
     const r = await auth(
+      request(app).put("/api/v1/onboarding/worker"),
+      legacy,
+    ).send({
+      first_name: "Ancien",
+      last_name: "Parcours",
+      city: "Lyon",
+      postal_code: "69002",
+      main_job: "Serveur",
+      mobility_radius_km: 10,
+      skill_ids: [skillIds[0]],
+      experiences: [],
+      availabilities: [slot(3)],
+    });
+    expect(r.status).toBe(200);
+    expect(r.body.onboarding_completed).toBe(true);
+    // Les coordonnées viennent du géocodeur serveur, pas du corps de la requête.
+    expect(r.body.profile.latitude).toBe(45.75);
+    expect(r.body.profile.main_job).toBe("serveur");
+
+    // Et le contrat les refuse désormais explicitement : les proposer laisserait
+    // croire qu'elles sont prises en compte.
+    const refused = await auth(
       request(app).put("/api/v1/onboarding/worker"),
       legacy,
     ).send({
@@ -476,11 +498,7 @@ describe("profil intérimaire", () => {
       experiences: [],
       availabilities: [slot(3)],
     });
-    expect(r.status).toBe(200);
-    expect(r.body.onboarding_completed).toBe(true);
-    // Les coordonnées viennent du géocodeur serveur, pas du corps de la requête.
-    expect(r.body.profile.latitude).toBe(45.75);
-    expect(r.body.profile.main_job).toBe("serveur");
+    expect(refused.status).toBe(400);
   });
 });
 

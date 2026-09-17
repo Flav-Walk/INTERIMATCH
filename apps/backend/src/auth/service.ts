@@ -2,6 +2,7 @@ import { hash, verify, argon2id } from "argon2";
 import { createHash, randomBytes } from "node:crypto";
 import type { Db } from "../db.js";
 import { HttpError } from "../errors.js";
+import type { Geocoder } from "../worker/geocode.js";
 import type { Profile, CompanyInput } from "./schemas.js";
 import { missingRules } from "../worker/completion.js";
 export const digest = (token: string) =>
@@ -21,6 +22,11 @@ export class AccountService {
     private googleIdentity?: (
       jwt: string,
     ) => Promise<{ id: string; email: string }>,
+    /**
+     * Le même géocodeur que les intérimaires et les missions. Injecté, donc
+     * remplaçable en test : aucune suite n'appelle de service distant.
+     */
+    private geocode?: Geocoder,
   ) {}
   async issue(db: Db, profileId: string) {
     const access = token(),
@@ -259,11 +265,57 @@ export class AccountService {
       throw new HttpError(404, "PROFILE_NOT_FOUND", "Compte introuvable.");
     return this.me(rows[0]);
   }
+  /**
+   * Enregistre l'établissement et situe son adresse.
+   *
+   * Le géocodage a lieu hors transaction — un appel réseau ne doit pas retenir
+   * une connexion — et ne peut pas faire échouer l'enregistrement : une panne
+   * du service d'adresses ne doit pas empêcher une entreprise de se présenter.
+   *
+   * En revanche, il n'efface jamais en silence des coordonnées valides : si le
+   * géocodage échoue alors que l'emplacement n'a pas changé, les coordonnées
+   * déjà connues sont conservées. Elles ne sont remises à zéro que lorsque
+   * l'emplacement change vraiment, auquel cas les anciennes désignent un autre
+   * endroit et seraient plus trompeuses qu'une absence.
+   */
   async onboardCompany(id: string, input: CompanyInput) {
+    const { rows } = await this.db.query<{
+      city: string | null;
+      postal_code: string | null;
+      latitude: number | null;
+      longitude: number | null;
+      geocoded_at: string | null;
+    }>(
+      "SELECT city, postal_code, latitude, longitude, geocoded_at FROM company_profiles WHERE profile_id=$1",
+      [id],
+    );
+    const known = rows[0];
+    const moved =
+      !known ||
+      known.city !== input.city ||
+      known.postal_code !== input.postal_code;
+    const located = moved
+      ? ((await this.geocode?.(input.city, input.postal_code)) ?? null)
+      : {
+          latitude: known.latitude,
+          longitude: known.longitude,
+          geocoded_at: known.geocoded_at,
+        };
+    const coordinates = located
+      ? {
+          latitude: located.latitude,
+          longitude: located.longitude,
+          geocoded_at:
+            "geocoded_at" in located
+              ? located.geocoded_at
+              : new Date().toISOString(),
+        }
+      : { latitude: null, longitude: null, geocoded_at: null };
+
     return this.db.transaction(async (db) => {
       await db.query("SELECT id FROM profiles WHERE id=$1 FOR UPDATE", [id]);
       await db.query(
-        "INSERT INTO company_profiles(profile_id,legal_name,establishment_name,sector,address,city,postal_code,latitude,longitude,phone,description) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) ON CONFLICT(profile_id) DO UPDATE SET legal_name=$2,establishment_name=$3,sector=$4,address=$5,city=$6,postal_code=$7,latitude=$8,longitude=$9,phone=$10,description=$11",
+        "INSERT INTO company_profiles(profile_id,legal_name,establishment_name,sector,address,city,postal_code,latitude,longitude,geocoded_at,phone,description) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) ON CONFLICT(profile_id) DO UPDATE SET legal_name=$2,establishment_name=$3,sector=$4,address=$5,city=$6,postal_code=$7,latitude=$8,longitude=$9,geocoded_at=$10,phone=$11,description=$12",
         [
           id,
           input.legal_name,
@@ -272,8 +324,9 @@ export class AccountService {
           input.address,
           input.city,
           input.postal_code,
-          input.latitude,
-          input.longitude,
+          coordinates.latitude,
+          coordinates.longitude,
+          coordinates.geocoded_at,
           input.phone,
           input.description,
         ],

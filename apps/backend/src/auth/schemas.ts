@@ -18,11 +18,16 @@ export const tourSchema = z
   .object({ version: z.number().int().min(0).max(1000) })
   .strict();
 const identity = { first_name: text, last_name: text };
+/**
+ * Emplacement déclaré par l'utilisateur. Volontairement sans latitude ni
+ * longitude : ce sont des données techniques, dérivées de la ville et du code
+ * postal par le géocodeur du serveur, comme pour une mission. `.strict()` les
+ * refuse donc si un client les envoie, au lieu de laisser croire qu'elles
+ * seraient prises en compte.
+ */
 const location = {
   city: text,
   postal_code: z.string().regex(/^\d{5}$/),
-  latitude: z.number().min(-90).max(90),
-  longitude: z.number().min(-180).max(180),
 };
 export const workerSchema = z
   .object({
