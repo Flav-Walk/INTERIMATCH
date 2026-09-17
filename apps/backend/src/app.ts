@@ -12,6 +12,9 @@ import { AccountService } from "./auth/service.js";
 import { accountRouter } from "./auth/routes.js";
 import type { WorkerService } from "./worker/service.js";
 import type { MissionService } from "./missions/service.js";
+import type { AdminService } from "./admin/service.js";
+import { adminRouter } from "./admin/routes.js";
+import { requireAuth } from "./auth/routes.js";
 import { HttpError } from "./errors.js";
 /**
  * Message d'une requête refusée à la validation. Nommer les champs fautifs rend
@@ -59,6 +62,7 @@ export function createApp(
   accounts?: AccountService,
   workers?: WorkerService,
   missions?: MissionService,
+  admin?: AdminService,
 ) {
   const app = express();
   const logger = pino({
@@ -128,6 +132,8 @@ export function createApp(
   });
   app.use("/api/v1", healthRouter);
   app.use(cookieParser());
+  if (accounts && admin)
+    app.use("/api/v1/admin", requireAuth(accounts), adminRouter(admin));
   if (accounts)
     app.use("/api/v1", accountRouter(config, accounts, workers, missions));
   app.use((_req, res) => {

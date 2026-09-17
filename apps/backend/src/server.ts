@@ -8,6 +8,7 @@ import { createGoogleBridge } from "./auth/google.js";
 import { WorkerService } from "./worker/service.js";
 import { createAddressGeocoder } from "./worker/geocode.js";
 import { MissionService } from "./missions/service.js";
+import { AdminService } from "./admin/service.js";
 import {
   AsyncBusinessEventPublisher,
   N8nWebhookDelivery,
@@ -34,7 +35,8 @@ const events =
     : undefined;
 const workers = db ? new WorkerService(db, geocoder, events) : undefined;
 const missions = db ? new MissionService(db, geocoder) : undefined;
-const server = createApp(config, accounts, workers, missions).listen(
+const admin = db ? new AdminService(db) : undefined;
+const server = createApp(config, accounts, workers, missions, admin).listen(
   config.PORT,
   () =>
     // Capacités réellement actives : une variable manquante se voit ici, au boot,

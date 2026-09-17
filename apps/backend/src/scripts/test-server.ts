@@ -37,7 +37,8 @@ await pg.exec(
      -- mission, donc ses décomptes ne dépendent d'aucune autre fixture.
      ('crud.desktop@example.test','E2E'),('crud.mobile@example.test','E2E'),
      ('place.desktop@example.test','E2E'),('place.mobile@example.test','E2E'),
-     ('fresh.desktop@example.test','E2E'),('fresh.mobile@example.test','E2E')
+     ('fresh.desktop@example.test','E2E'),('fresh.mobile@example.test','E2E'),
+     ('open.desktop@example.test','E2E'),('open.mobile@example.test','E2E')
    ON CONFLICT DO NOTHING`,
 );
 

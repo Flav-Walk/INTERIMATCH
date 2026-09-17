@@ -6,7 +6,9 @@ import {
   type Mission,
   type MissionInput,
   type MissionPatch,
+  type MissionSkill,
   type MissionStatus,
+  type OpenMission,
 } from "./schemas.js";
 
 /**
@@ -41,6 +43,30 @@ const COLUMNS = `m.id, m.company_id, m.title, m.description, m.job,
   m.demo, m.created_at, m.updated_at`;
 
 /**
+ * Colonnes d'une mission telles qu'un intérimaire peut les voir, jointes aux
+ * informations que l'établissement destine aux intérimaires. La jointure est
+ * externe : une entreprise peut publier une mission avant d'avoir présenté son
+ * établissement, et la mission doit rester visible dans ce cas.
+ */
+const OPEN_COLUMNS = `m.id, m.title, m.description, m.job,
+  m.starts_at, m.ends_at, m.address, m.city, m.postal_code,
+  m.latitude, m.longitude, m.geocoded_at, m.pay_amount, m.pay_unit,
+  m.headcount, m.min_years_experience, m.status, m.published_at,
+  m.demo, m.created_at, m.updated_at,
+  c.establishment_name, c.sector, c.description AS company_description`;
+
+/**
+ * Seule définition de ce qu'un intérimaire a le droit de voir, partagée par la
+ * liste et le détail : une mission publiée dont le créneau n'est pas terminé.
+ *
+ * Tout le reste en est exclu par construction — un brouillon, une mission
+ * pourvue, terminée ou annulée, et une mission publiée mais déjà passée. Le
+ * détail s'appuyant sur le même prédicat, demander l'identifiant d'un brouillon
+ * répond « introuvable » : on ne révèle pas qu'il existe.
+ */
+const OPEN_TO_WORKERS = "m.status = 'open' AND m.ends_at > now()";
+
+/**
  * Missions d'une entreprise.
  *
  * Deux invariants, comme pour le profil intérimaire :
@@ -55,7 +81,9 @@ export class MissionService {
     private geocode?: Geocoder,
   ) {}
 
-  private async attachSkills(missions: Mission[]) {
+  private async attachSkills<T extends { id: string; skills: MissionSkill[] }>(
+    missions: T[],
+  ) {
     if (!missions.length) return missions;
     const { rows } = await this.db.query<{
       mission_id: string;
@@ -69,7 +97,7 @@ export class MissionService {
         ORDER BY ms.required DESC, s.name`,
       [missions.map((m) => m.id)],
     );
-    const bySkill = new Map<string, Mission["skills"]>();
+    const bySkill = new Map<string, MissionSkill[]>();
     for (const row of rows) {
       const list = bySkill.get(row.mission_id) ?? [];
       list.push({ id: row.id, name: row.name, required: row.required });
@@ -109,6 +137,52 @@ export class MissionService {
     if (!rows[0])
       throw new HttpError(404, "MISSION_NOT_FOUND", "Mission introuvable.");
     return (await this.attachSkills(rows))[0];
+  }
+
+  /** Assemble une ligne de la vue intérimaire : la mission, puis son établissement. */
+  private toOpenMission(row: Record<string, unknown>): OpenMission {
+    const { establishment_name, sector, company_description, ...mission } = row;
+    return {
+      ...(mission as Omit<OpenMission, "company">),
+      company: {
+        establishment_name: (establishment_name as string | null) ?? null,
+        sector: (sector as string | null) ?? null,
+        description: (company_description as string | null) ?? null,
+      },
+    };
+  }
+
+  /**
+   * Missions offertes aux intérimaires, de la plus proche à la plus lointaine.
+   *
+   * Aucun classement par affinité ici : le rapprochement viendra avec le moteur
+   * de matching. L'ordre est celui de la date, qui est le seul objectivement
+   * utile tant qu'aucun score n'existe.
+   */
+  async listOpen() {
+    const { rows } = await this.db.query<Record<string, unknown>>(
+      `SELECT ${OPEN_COLUMNS}
+         FROM missions m
+         LEFT JOIN company_profiles c ON c.profile_id = m.company_id
+        WHERE ${OPEN_TO_WORKERS}
+        ORDER BY m.starts_at`,
+    );
+    const missions = rows.map((row) => this.toOpenMission(row));
+    return this.attachSkills(missions);
+  }
+
+  /** Détail d'une mission offerte. Toute autre est introuvable, jamais interdite. */
+  async getOpen(missionId: string) {
+    const { rows } = await this.db.query<Record<string, unknown>>(
+      `SELECT ${OPEN_COLUMNS}
+         FROM missions m
+         LEFT JOIN company_profiles c ON c.profile_id = m.company_id
+        WHERE m.id = $1 AND ${OPEN_TO_WORKERS}`,
+      [missionId],
+    );
+    if (!rows[0])
+      throw new HttpError(404, "MISSION_NOT_FOUND", "Mission introuvable.");
+    return (await this.attachSkills([this.toOpenMission(rows[0])]))[0];
   }
 
   /**
