@@ -57,14 +57,26 @@ const OPEN_COLUMNS = `m.id, m.title, m.description, m.job,
 
 /**
  * Seule définition de ce qu'un intérimaire a le droit de voir, partagée par la
- * liste et le détail : une mission publiée dont le créneau n'est pas terminé.
+ * liste et le détail : une mission publiée, dont le créneau n'est pas terminé,
+ * et dont le caractère fictif correspond à celui du compte qui la demande.
  *
  * Tout le reste en est exclu par construction — un brouillon, une mission
  * pourvue, terminée ou annulée, et une mission publiée mais déjà passée. Le
  * détail s'appuyant sur le même prédicat, demander l'identifiant d'un brouillon
  * répond « introuvable » : on ne révèle pas qu'il existe.
+ *
+ * La dernière condition est une cloison : les missions de démonstration, créées
+ * par `db:seed` et marquées `demo`, ne doivent jamais apparaître à un vrai
+ * utilisateur. Jusqu'ici le marqueur n'était lu nulle part, parce que seule
+ * l'entreprise propriétaire voyait ses missions — une entreprise de démo ne
+ * montrait ses fictions qu'à elle-même. Ouvrir la lecture aux intérimaires a
+ * créé le premier chemin par lequel elles pouvaient atteindre un compte réel.
+ * La comparaison est symétrique, et non un simple `demo = false` : un compte de
+ * démonstration continue de voir les missions de démonstration, ce qui est
+ * précisément ce à quoi il sert.
  */
-const OPEN_TO_WORKERS = "m.status = 'open' AND m.ends_at > now()";
+const openToWorkers = (demoParam: string) =>
+  `m.status = 'open' AND m.ends_at > now() AND m.demo = ${demoParam}`;
 
 /**
  * Missions d'une entreprise.
@@ -159,26 +171,27 @@ export class MissionService {
    * de matching. L'ordre est celui de la date, qui est le seul objectivement
    * utile tant qu'aucun score n'existe.
    */
-  async listOpen() {
+  async listOpen(demo: boolean) {
     const { rows } = await this.db.query<Record<string, unknown>>(
       `SELECT ${OPEN_COLUMNS}
          FROM missions m
          LEFT JOIN company_profiles c ON c.profile_id = m.company_id
-        WHERE ${OPEN_TO_WORKERS}
+        WHERE ${openToWorkers("$1")}
         ORDER BY m.starts_at`,
+      [demo],
     );
     const missions = rows.map((row) => this.toOpenMission(row));
     return this.attachSkills(missions);
   }
 
   /** Détail d'une mission offerte. Toute autre est introuvable, jamais interdite. */
-  async getOpen(missionId: string) {
+  async getOpen(missionId: string, demo: boolean) {
     const { rows } = await this.db.query<Record<string, unknown>>(
       `SELECT ${OPEN_COLUMNS}
          FROM missions m
          LEFT JOIN company_profiles c ON c.profile_id = m.company_id
-        WHERE m.id = $1 AND ${OPEN_TO_WORKERS}`,
-      [missionId],
+        WHERE m.id = $1 AND ${openToWorkers("$2")}`,
+      [missionId, demo],
     );
     if (!rows[0])
       throw new HttpError(404, "MISSION_NOT_FOUND", "Mission introuvable.");
