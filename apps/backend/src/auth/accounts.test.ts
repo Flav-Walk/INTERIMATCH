@@ -6,6 +6,7 @@ import { createApp } from "../app.js";
 import { readConfig } from "../config.js";
 import type { Db } from "../db.js";
 import { AccountService, digest } from "./service.js";
+import { WorkerService } from "../worker/service.js";
 const pg = new PGlite();
 const db: Db = {
   query: async (sql, values) => pg.query(sql, values),
@@ -20,7 +21,12 @@ const db: Db = {
     ),
 };
 const service = new AccountService(db);
-const app = createApp(readConfig({ NODE_ENV: "test" }), service);
+// Géocodeur déterministe : aucun appel réseau dans les tests.
+const workers = new WorkerService(db, async () => ({
+  latitude: 45.75,
+  longitude: 4.85,
+}));
+const app = createApp(readConfig({ NODE_ENV: "test" }), service, workers);
 const origin = "http://localhost:5173";
 const password = "Test-only-password-42!";
 let worker = "",

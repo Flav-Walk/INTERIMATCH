@@ -2,6 +2,7 @@ import "dotenv/config";
 import { createDatabase } from "../db.js";
 import { readConfig } from "../config.js";
 import { AccountService, passwordHash } from "../auth/service.js";
+import { WorkerService } from "../worker/service.js";
 import type { Profile } from "../auth/schemas.js";
 const config = readConfig(process.env);
 if (config.NODE_ENV === "production" || process.env.ALLOW_DEMO_SEED !== "true")
@@ -12,7 +13,9 @@ const password = process.env.DEMO_PASSWORD;
 if (!password || password.length < 12)
   throw new Error("DEMO_PASSWORD local requis (12 caractères minimum).");
 const db = createDatabase(config),
-  service = new AccountService(db);
+  service = new AccountService(db),
+  // Aucun géocodeur : le seed ne doit dépendre d'aucun service externe.
+  workers = new WorkerService(db);
 try {
   for (const role of ["worker", "company"] as const) {
     const email = `jimmy.${role}@example.test`;
@@ -62,11 +65,17 @@ try {
         return {
           starts_at: start.toISOString(),
           ends_at: new Date(start.getTime() + 6 * 3600000).toISOString(),
+          status: "available" as const,
         };
       });
-      await service.onboardWorker(p.id, {
+      await workers.replaceAll(p.id, {
         ...common,
-        main_job: "Serveur / Chef de rang",
+        main_job: "serveur",
+        secondary_jobs: ["chef_de_rang"],
+        years_experience: 3,
+        phone: "+33000000000",
+        has_driving_licence: true,
+        has_vehicle: false,
         mobility_radius_km: 15,
         skill_ids: skills.map((s) => s.id),
         experiences: [

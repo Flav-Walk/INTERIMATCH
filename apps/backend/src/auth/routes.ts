@@ -15,9 +15,12 @@ import {
 } from "./schemas.js";
 import {
   sectors,
+  jobs,
   missionStatuses,
   applicationStatuses,
 } from "../domain/reference.js";
+import type { WorkerService } from "../worker/service.js";
+import { workerRouter } from "../worker/routes.js";
 export const requireAuth =
   (service: AccountService): RequestHandler =>
   async (req, res, next) => {
@@ -47,7 +50,11 @@ export const requireRole =
       );
     next();
   };
-export function accountRouter(config: Config, service: AccountService) {
+export function accountRouter(
+  config: Config,
+  service: AccountService,
+  workers?: WorkerService,
+) {
   const router = Router();
   const origin: RequestHandler = (req, _res, next) => {
     if (req.headers.origin !== config.FRONTEND_URL)
@@ -58,7 +65,7 @@ export function accountRouter(config: Config, service: AccountService) {
   };
   const limiter = rateLimit({
     windowMs: 15 * 60_000,
-    limit: 30,
+    limit: config.AUTH_RATE_LIMIT,
     standardHeaders: true,
     legacyHeaders: false,
     handler: (_req, _res, next) =>
@@ -133,6 +140,7 @@ export function accountRouter(config: Config, service: AccountService) {
   router.get("/reference", (_req, res) => {
     res.json({
       sectors,
+      jobs,
       mission_statuses: missionStatuses,
       application_statuses: applicationStatuses,
     });
@@ -142,23 +150,38 @@ export function accountRouter(config: Config, service: AccountService) {
       (await service.db.query("SELECT id,name FROM skills ORDER BY name")).rows,
     ),
   );
-  router.get("/workers/me", requireRole("worker"), async (_req, res) =>
-    res.json(await service.me(res.locals.profile as Profile)),
-  );
+  if (workers) router.use(workerRouter(service, workers));
   router.get("/companies/me", requireRole("company"), async (_req, res) =>
     res.json(await service.me(res.locals.profile as Profile)),
   );
-  router.put("/onboarding/worker", requireRole("worker"), async (req, res) => {
-    await service.onboardWorker(
-      (res.locals.profile as Profile).id,
-      workerSchema.parse(req.body),
+  // Compatibilité : ancienne route de l'onboarding en une seule fois. Elle ne
+  // porte aucune logique propre, elle délègue au service intérimaire. Les
+  // latitude/longitude éventuellement transmises sont ignorées : les coordonnées
+  // sont désormais dérivées du géocodage serveur.
+  if (workers)
+    router.put(
+      "/onboarding/worker",
+      requireRole("worker"),
+      async (req, res) => {
+        const input = workerSchema.parse(req.body);
+        const id = (res.locals.profile as Profile).id;
+        await workers.replaceAll(id, {
+          first_name: input.first_name,
+          last_name: input.last_name,
+          city: input.city,
+          postal_code: input.postal_code,
+          main_job: input.main_job,
+          mobility_radius_km: input.mobility_radius_km,
+          skill_ids: input.skill_ids,
+          experiences: input.experiences,
+          availabilities: input.availabilities.map((a) => ({
+            ...a,
+            status: "available" as const,
+          })),
+        });
+        res.json(await service.me(await service.reload(id)));
+      },
     );
-    res.json(
-      await service.me(
-        await service.authenticate(req.headers.authorization!.slice(7)),
-      ),
-    );
-  });
   router.put(
     "/onboarding/company",
     requireRole("company"),
@@ -169,7 +192,7 @@ export function accountRouter(config: Config, service: AccountService) {
       );
       res.json(
         await service.me(
-          await service.authenticate(req.headers.authorization!.slice(7)),
+          await service.reload((res.locals.profile as Profile).id),
         ),
       );
     },
