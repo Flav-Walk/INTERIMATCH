@@ -15,6 +15,9 @@ import { errorMessage, type ReferenceValue } from "../services/session";
 import { api } from "../services/session";
 import { getOpenMission, type OpenMission } from "../services/missions";
 import { missionSchedule } from "../components/mission/MissionCard";
+import { MatchExplanation } from "../components/mission/MatchExplanation";
+import { MatchBadge } from "../components/mission/MatchBadge";
+import { ApplyToMission } from "../components/applications/ApplyToMission";
 
 const payLabels: Record<string, string> = {
   hour: "de l’heure",
@@ -22,12 +25,7 @@ const payLabels: Record<string, string> = {
   mission: "pour la mission",
 };
 
-/**
- * Détail d'une mission offerte, en lecture seule.
- *
- * Aucun bouton de candidature : le backend ne sait pas encore enregistrer une
- * candidature, et une action qui ne fait rien vaut moins que pas d'action.
- */
+/** Détail d'une mission offerte et point de départ de la candidature. */
 export function WorkerMissionDetail() {
   const { id = "" } = useParams();
   const { revision } = useAuth();
@@ -94,6 +92,9 @@ export function WorkerMissionDetail() {
       <div className="section-head">
         <h1>{mission.title}</h1>
         <span className="mission-status is-inline is-open">À pourvoir</span>
+        {mission.match?.compatible && (
+          <MatchBadge score={mission.match.score} size="large" />
+        )}
       </div>
 
       <div className="layout">
@@ -175,6 +176,8 @@ export function WorkerMissionDetail() {
               </>
             )}
           </section>
+
+          {mission.match && <MatchExplanation match={mission.match} />}
         </div>
 
         <aside className="layout-rail">
@@ -200,16 +203,7 @@ export function WorkerMissionDetail() {
             )}
           </section>
 
-          <section className="rail-card pale">
-            <p className="quiet">
-              La candidature aux missions sera disponible prochainement. En
-              attendant, un profil complet est ce qui déterminera les missions
-              qui vous seront proposées.
-            </p>
-            <Link className="link-more" to="/worker/profile">
-              Voir mon profil
-            </Link>
-          </section>
+          <ApplyToMission missionId={mission.id} />
         </aside>
       </div>
     </section>

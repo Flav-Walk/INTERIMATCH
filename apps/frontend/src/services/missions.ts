@@ -52,7 +52,55 @@ export interface OpenMission extends Mission {
     sector: string | null;
     description: string | null;
   };
+  /** Rapprochement avec le profil du demandeur, calculé par le serveur. */
+  match: MatchResult;
 }
+
+/** Motifs d'incompatibilité, tels que le serveur les nomme. */
+export type BlockerCode =
+  "paused" | "missing_required_skills" | "unavailable" | "out_of_range";
+
+export interface MatchDimension {
+  key: "desired_skills" | "proximity" | "job" | "experience";
+  label: string;
+  weight: number;
+  ratio: number;
+  points: number;
+}
+
+export interface MatchResult {
+  compatible: boolean;
+  score: number;
+  blockers: BlockerCode[];
+  dimensions: MatchDimension[];
+  distance_km: number | null;
+}
+
+/** Ce qu'une entreprise voit d'un profil rapproché, avant toute candidature. */
+export interface Candidate {
+  id: string;
+  first_name: string;
+  last_initial: string;
+  main_job: string | null;
+  city: string | null;
+  years_experience: number | null;
+  matched_skills: MissionSkill[];
+  match: MatchResult;
+}
+
+export interface CandidateList {
+  /** Palier retenu — 70, 60 ou 50 — ou null si personne n'atteint 50. */
+  band: number | null;
+  band_label: string | null;
+  candidates: Candidate[];
+}
+
+/**
+ * Profils rapprochés d'une mission de l'entreprise. Le serveur applique les
+ * paliers du cahier des charges et n'élargit que faute de candidat au-dessus.
+ */
+export const listCandidates = (missionId: string) =>
+  api<CandidateList>(`/missions/${missionId}/candidates`);
 
 /**
  * Missions offertes, toutes entreprises confondues, de la plus proche à la plus

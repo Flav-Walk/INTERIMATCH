@@ -24,6 +24,8 @@ import {
   statusLabels,
   missionSchedule,
 } from "../components/mission/MissionCard";
+import { MissionApplications } from "../components/applications/MissionApplications";
+import { CandidateList } from "../components/mission/CandidateList";
 
 const payLabels: Record<string, string> = {
   hour: "de l’heure",
@@ -255,19 +257,13 @@ export function CompanyMissionDetail() {
               </p>
             )}
           </section>
+
+          <MissionApplications missionId={mission.id} />
         </div>
 
         <aside className="layout-rail">
-          <section className="rail-card">
-            <div className="rail-head">
-              <Users size={18} aria-hidden="true" />
-              <h2>Candidats compatibles</h2>
-            </div>
-            <p className="quiet">
-              Le rapprochement des profils sera disponible prochainement. Les
-              candidats seront classés par score, avec le détail des critères.
-            </p>
-          </section>
+          {/* `CandidateList` est déjà une carte : l'envelopper en imbriquerait deux. */}
+          <CandidateList missionId={mission.id} revision={revision} />
         </aside>
       </div>
     </section>

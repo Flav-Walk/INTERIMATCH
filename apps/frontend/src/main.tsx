@@ -12,6 +12,7 @@ import { ProfileForm } from "./pages/ProfileForm";
 import { WorkerProfile } from "./pages/WorkerProfile";
 import { Missions } from "./pages/Missions";
 import { WorkerMissionDetail } from "./pages/WorkerMissionDetail";
+import { WorkerApplications } from "./pages/WorkerApplications";
 import { CompanyDashboard } from "./pages/CompanyDashboard";
 import { CompanyMissions } from "./pages/CompanyMissions";
 import { CompanyMissionDetail } from "./pages/CompanyMissionDetail";
@@ -39,6 +40,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
                 <Route path="profile" element={<WorkerProfile />} />
                 <Route path="missions" element={<Missions />} />
                 <Route path="missions/:id" element={<WorkerMissionDetail />} />
+                <Route path="applications" element={<WorkerApplications />} />
               </Route>
             </Route>
 

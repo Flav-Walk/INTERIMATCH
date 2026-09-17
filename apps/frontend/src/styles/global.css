@@ -1266,3 +1266,107 @@ small {
     transition: none;
   }
 }
+
+/* ---- Rapprochement : pastille, explication, profils compatibles ---- */
+
+.match-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 99px;
+  border: 1px solid transparent;
+  font-size: 0.74rem;
+  font-weight: 650;
+  white-space: nowrap;
+}
+.match-badge.is-large {
+  padding: 5px 14px;
+  font-size: 0.85rem;
+}
+/* Trois niveaux, alignés sur les paliers. La couleur redit ce que le chiffre
+   annonce déjà : elle ne porte jamais l'information à elle seule. */
+.match-badge.is-high {
+  background: var(--tint);
+  border-color: var(--forest);
+  color: var(--forest);
+}
+.match-badge.is-mid {
+  background: oklch(0.95 0.04 95);
+  border-color: oklch(0.72 0.11 95);
+  color: oklch(0.42 0.09 95);
+}
+.match-badge.is-low {
+  background: var(--background);
+  border-color: var(--border);
+  color: var(--muted);
+}
+
+.match-card .rail-head {
+  flex-wrap: wrap;
+}
+.match-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.match-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+.match-list li svg {
+  flex: none;
+  margin-top: 2px;
+}
+.match-list li.is-good {
+  color: var(--ink);
+}
+.match-list li.is-good svg {
+  color: var(--forest);
+}
+.match-list li.is-blocked {
+  color: oklch(0.45 0.16 25);
+}
+/* Puce neutre : un critère non rempli n'est pas une erreur, seulement un point
+   qui ne joue pas en faveur du candidat. */
+.match-dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  margin: 7px 4px 0;
+  border-radius: 99px;
+  background: var(--border);
+}
+
+.candidate-list {
+  display: grid;
+  gap: 16px;
+  margin: 14px 0;
+  padding: 0;
+  list-style: none;
+}
+.candidate-list li {
+  display: grid;
+  gap: 6px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+.candidate-list li:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+.candidate-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.candidate-list .skill-options {
+  margin: 2px 0 0;
+  gap: 6px;
+}

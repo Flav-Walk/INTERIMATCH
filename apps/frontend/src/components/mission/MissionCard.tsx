@@ -10,6 +10,7 @@ import {
   Utensils,
 } from "lucide-react";
 import type { Mission, MissionStatus } from "../../services/missions";
+import { MatchBadge } from "./MatchBadge";
 
 /**
  * Carte mission de la maquette : bloc média, badge de statut en surimpression,
@@ -73,9 +74,13 @@ export function missionSchedule(mission: Mission) {
 export function MissionCard({
   mission,
   basePath = "/company/missions",
+  score,
 }: {
   mission: Mission;
   basePath?: string;
+  /** Compatibilité, côté intérimaire uniquement : une entreprise voit ses
+   *  propres missions, pour lesquelles un score n'aurait pas de sens. */
+  score?: number;
 }) {
   const seats = Array.from({ length: Math.min(mission.headcount, 3) });
   return (
@@ -103,7 +108,15 @@ export function MissionCard({
             <span key={index} />
           ))}
         </span>
-        {mission.headcount > 1 ? `${mission.headcount} postes` : "1 poste"}
+        {score === undefined ? (
+          mission.headcount > 1 ? (
+            `${mission.headcount} postes`
+          ) : (
+            "1 poste"
+          )
+        ) : (
+          <MatchBadge score={score} />
+        )}
         <span className="circle-button" aria-hidden="true">
           <ArrowRight size={15} />
         </span>

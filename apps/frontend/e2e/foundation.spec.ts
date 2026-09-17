@@ -43,6 +43,46 @@ async function openAccount(page: Page) {
   await page.locator('summary[aria-label="Mon compte"]').click();
 }
 
+/**
+ * Rend un intérimaire rapprochable : métier, zone, et une disponibilité qui
+ * couvre le créneau visé. Depuis le SL3a une mission n'est plus visible parce
+ * qu'elle est publiée, mais parce qu'elle correspond — un compte sans profil
+ * ne reçoit donc rien, et c'est le comportement attendu.
+ */
+async function makeEmployable(
+  page: Page,
+  {
+    job,
+    from,
+    to,
+    skills = [],
+  }: { job: string; from: string; to: string; skills?: string[] },
+) {
+  await page.goto("/worker/profile");
+  const metier = section(page, "Votre métier");
+  await metier.getByLabel("Métier principal").selectOption(job);
+  await save(page, "Votre métier");
+
+  if (skills.length) {
+    const competences = section(page, "Vos compétences");
+    for (const name of skills)
+      await competences.getByRole("checkbox", { name }).check();
+    await save(page, "Vos compétences");
+  }
+
+  const mobilite = section(page, "Votre mobilité");
+  await mobilite.getByLabel("Ville").fill("Lyon");
+  await mobilite.getByLabel("Code postal").fill("69002");
+  await mobilite.getByLabel(/Rayon de mobilité/).fill("50");
+  await save(page, "Votre mobilité");
+
+  const dispos = section(page, "Vos disponibilités");
+  await dispos.getByLabel("Début").fill(from);
+  await dispos.getByLabel("Fin").fill(to);
+  await dispos.getByRole("button", { name: /Ajouter ce créneau/ }).click();
+  await dispos.getByText("Créneau ajouté.").waitFor();
+}
+
 /** Un fieldset est exposé comme un groupe nommé par sa légende. */
 const section = (page: Page, name: string) => page.getByRole("group", { name });
 
@@ -1076,10 +1116,18 @@ test("a published mission becomes visible to an intérimaire", async ({
   await page.getByRole("button", { name: "Se déconnecter" }).click();
   await expect(page).toHaveURL(/\/login$/);
 
-  // ---- L'intérimaire la voit ----
+  // ---- L'intérimaire la voit, une fois son profil rapprochable ----
   await register(page, `seeker.${suffix}.${Date.now()}@example.test`);
   await expect(page).toHaveURL(/\/worker$/);
   await completeTour(page);
+  await makeEmployable(page, {
+    job: "plongeur",
+    from: "2027-09-18T16:00",
+    to: "2027-09-19T02:00",
+    // La mission exige cette compétence : sans elle, le rapprochement l'écarte.
+    skills: ["Cuisine"],
+  });
+  await page.goto("/worker");
 
   // Dès le tableau de bord, sans rechargement manuel.
   await expect(
@@ -1110,10 +1158,10 @@ test("a published mission becomes visible to an intérimaire", async ({
   await expect(page.getByText("Souhaitées —")).toBeVisible();
   await expect(page.locator(".badge").first()).toHaveText("Cuisine");
 
-  // Aucune candidature n'est proposée tant que le backend ne sait pas l'enregistrer.
-  await expect(
-    page.getByRole("button", { name: /Postuler|Candidater/ }),
-  ).toHaveCount(0);
+  // L'assertion « aucune candidature proposée » a été retirée ici : elle datait
+  // du SL2c, où le backend ne savait pas enregistrer de candidature. Ce domaine
+  // existe désormais et a ses propres tests ; le vérifier depuis ce parcours
+  // reviendrait à affirmer le contraire de ce qui est livré.
 
   await page.getByRole("link", { name: "Missions disponibles" }).click();
   await expect(page).toHaveURL(/\/worker\/missions$/);
@@ -1125,6 +1173,154 @@ test("a published mission becomes visible to an intérimaire", async ({
   // L'espace entreprise reste fermé à l'intérimaire.
   await page.goto("/company/missions");
   await expect(page).toHaveURL(/\/worker$/);
+
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+  expect(errors).toEqual([]);
+});
+
+// SL3a — le rapprochement de bout en bout : une entreprise publie, un
+// intérimaire compatible la voit avec son score, et l'entreprise le retrouve
+// parmi les profils rapprochés.
+test("matching connects a published mission to a compatible intérimaire", async ({
+  page,
+}, testInfo) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  const suffix = testInfo.project.name;
+  const titre = `Renfort brasserie ${suffix}`;
+
+  // ---- L'entreprise publie une mission exigeante ----
+  await register(page, `match.${suffix}@example.test`);
+  await expect(page).toHaveURL(/\/company$/);
+  await completeTour(page);
+
+  await page.goto("/company/missions/new");
+  await page.getByLabel("Intitulé de la mission").fill(titre);
+  await page.getByLabel("Métier recherché").selectOption("serveur");
+  // Dates fixes : le rapprochement ne doit dépendre d'aucune horloge.
+  await page.getByLabel("Début").fill("2027-10-15T10:00");
+  await page.getByLabel("Fin").fill("2027-10-15T18:00");
+  await page.getByLabel("Ville").fill("Lyon");
+  await page.getByLabel("Code postal").fill("69002");
+  await page
+    .getByRole("radio", { name: "Service en salle : obligatoire" })
+    .check();
+  await page
+    .getByRole("radio", { name: "Relation client : souhaitée" })
+    .check();
+  await page.getByRole("button", { name: "Enregistrer le brouillon" }).click();
+  await page.waitForURL(/\/company\/missions\/[0-9a-f-]{36}$/);
+  const missionUrl = page.url();
+  await page.getByRole("button", { name: "Publier la mission" }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Publier" })
+    .click();
+  await expect(page.locator(".mission-status")).toHaveText("À pourvoir");
+
+  await openAccount(page);
+  await page.getByRole("button", { name: "Se déconnecter" }).click();
+  await expect(page).toHaveURL(/\/login$/);
+
+  // ---- Un intérimaire encore incomplet ne reçoit rien ----
+  const email = `match.worker.${suffix}.${Date.now()}@example.test`;
+  await register(page, email);
+  await expect(page).toHaveURL(/\/worker$/);
+  await completeTour(page);
+  await page.goto("/worker/missions");
+  await expect(page.getByRole("heading", { name: titre })).toHaveCount(0);
+  await expect(
+    page.getByRole("heading", { name: /Aucune mission disponible/ }),
+  ).toBeVisible();
+
+  // ---- Il complète ce que le rapprochement exige ----
+  await page.goto("/worker/profile");
+  const identite = section(page, "Votre identité");
+  await identite.getByLabel("Prénom", { exact: true }).fill("Camille");
+  await identite.getByLabel("Nom", { exact: true }).fill("Nguyen");
+  await save(page, "Votre identité");
+
+  const metier = section(page, "Votre métier");
+  await metier.getByLabel("Métier principal").selectOption("serveur");
+  await save(page, "Votre métier");
+
+  const competences = section(page, "Vos compétences");
+  await competences.getByRole("checkbox", { name: "Service en salle" }).check();
+  await competences.getByRole("checkbox", { name: "Relation client" }).check();
+  await save(page, "Vos compétences");
+
+  const mobilite = section(page, "Votre mobilité");
+  await mobilite.getByLabel("Ville").fill("Lyon");
+  await mobilite.getByLabel("Code postal").fill("69002");
+  await mobilite.getByLabel(/Rayon de mobilité/).fill("30");
+  await save(page, "Votre mobilité");
+
+  const dispos = section(page, "Vos disponibilités");
+  await dispos.getByLabel("Début").fill("2027-10-15T08:00");
+  await dispos.getByLabel("Fin").fill("2027-10-15T20:00");
+  await dispos.getByRole("button", { name: /Ajouter ce créneau/ }).click();
+  await dispos.getByText("Créneau ajouté.").waitFor();
+
+  // ---- La mission lui est désormais proposée, avec son score ----
+  await page.goto("/worker/missions");
+  await expect(page.getByRole("heading", { name: titre })).toBeVisible();
+  // Métier principal, compétences souhaitées acquises, même ville : tout est
+  // rempli, donc le rapprochement est total.
+  await expect(page.locator(".match-badge").first()).toHaveText(
+    "Compatible à 100 %",
+  );
+
+  // ---- Le détail explique le rapprochement, sans jargon ----
+  await page.getByRole("heading", { name: titre }).click();
+  await expect(page).toHaveURL(/\/worker\/missions\/[0-9a-f-]{36}$/);
+  await expect(
+    page.getByRole("heading", { name: "Pourquoi cette mission" }),
+  ).toBeVisible();
+  const explication = page.locator(".match-card");
+  await expect(explication).toContainText("C’est votre métier principal.");
+  await expect(explication).toContainText(
+    "Vous avez toutes les compétences appréciées",
+  );
+  await expect(explication).toContainText("kilomètre");
+  // Aucun code technique ne doit remonter à l'écran.
+  await expect(explication).not.toContainText("desired_skills");
+  await expect(explication).not.toContainText("ratio");
+
+  await page.screenshot({
+    path: testInfo.outputPath("worker-match.png"),
+    fullPage: true,
+  });
+
+  await openAccount(page);
+  await page.getByRole("button", { name: "Se déconnecter" }).click();
+
+  // ---- L'entreprise retrouve ce profil parmi les candidats rapprochés ----
+  await signIn(page, `match.${suffix}@example.test`);
+  // Attendre l'arrivée : naviguer avant que la session soit posée renverrait
+  // vers la page de connexion.
+  await expect(page).toHaveURL(/\/company$/);
+  await page.goto(missionUrl);
+  await expect(
+    page.getByRole("heading", { name: "Profils compatibles" }),
+  ).toBeVisible();
+  const candidats = page.locator(".candidate-list");
+  await expect(candidats).toContainText("Camille N.");
+  // Nom complet et adresse électronique n'ont pas à figurer avant candidature.
+  await expect(candidats).not.toContainText("Nguyen");
+  await expect(candidats).not.toContainText("@example.test");
+  await expect(candidats.locator(".match-badge").first()).toHaveText(
+    "Compatible à 100 %",
+  );
+  await expect(candidats).toContainText("Service en salle");
+
+  await page.screenshot({
+    path: testInfo.outputPath("company-candidates.png"),
+    fullPage: true,
+  });
 
   expect(
     await page.evaluate(

@@ -51,8 +51,8 @@ export function Missions() {
       <span className="eyeline">Espace intérimaire</span>
       <h1>Missions disponibles</h1>
       <p className="quiet page-lead">
-        Les missions publiées par les établissements, de la plus proche à la
-        plus lointaine. Le classement selon votre profil arrivera prochainement.
+        Les missions qui correspondent à votre profil, à votre zone et à vos
+        disponibilités — de la plus compatible à la moins compatible.
       </p>
 
       {error && (
@@ -68,7 +68,8 @@ export function Missions() {
       ) : missions.length > 0 ? (
         <>
           <p className="quiet" role="status">
-            {missions.length} mission{missions.length > 1 ? "s" : ""} à pourvoir
+            {missions.length} mission{missions.length > 1 ? "s" : ""} compatible
+            {missions.length > 1 ? "s" : ""} avec votre profil
           </p>
           <div className="mission-grid is-wide">
             {missions.map((mission) => (
@@ -76,6 +77,7 @@ export function Missions() {
                 key={mission.id}
                 mission={mission}
                 basePath="/worker/missions"
+                score={mission.match.score}
               />
             ))}
           </div>
@@ -86,9 +88,10 @@ export function Missions() {
             <BriefcaseBusiness aria-hidden="true" />
             <h2>Aucune mission disponible pour le moment</h2>
             <p>
-              Aucun établissement n’a de mission ouverte actuellement. Un profil
-              complet est ce qui déterminera les propositions que vous recevrez
-              lorsque le rapprochement sera disponible.
+              Aucune mission publiée ne correspond pour l’instant à votre
+              métier, à vos compétences, à vos disponibilités et à votre zone de
+              déplacement. Compléter votre profil élargit ce qui peut vous être
+              proposé.
             </p>
             {!user.onboarding_completed && (
               <Link className="button" to="/worker/profile">
