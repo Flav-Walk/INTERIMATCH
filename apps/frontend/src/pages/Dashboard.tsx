@@ -8,22 +8,36 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
+import {
+  formatSlot,
+  requirementLabels,
+  upcomingAvailabilities,
+} from "../services/profile";
 
 function ProfileStatus({
   complete,
   to,
   done,
   todo,
+  missing = [],
 }: {
   complete: boolean;
   to: string;
   done: string;
   todo: string;
+  missing?: (keyof typeof requirementLabels)[];
 }) {
   return (
     <section className="section side-panel" data-tour="profile-status">
       <h2>{complete ? "Votre profil" : "Complétez votre profil"}</h2>
       <p>{complete ? done : todo}</p>
+      {!complete && missing.length > 0 && (
+        <ul className="steps-list">
+          {missing.map((rule) => (
+            <li key={rule}>{requirementLabels[rule]}</li>
+          ))}
+        </ul>
+      )}
       <Link className={complete ? "secondary-button inline" : "button"} to={to}>
         {complete ? "Voir mon profil" : "Compléter mon profil"}
         <ArrowRight size={16} aria-hidden="true" />
@@ -43,7 +57,8 @@ export function Dashboard() {
   if (!user || user.role === "admin") return null;
   const worker = user.role === "worker",
     p = user.profile,
-    complete = user.onboarding_completed;
+    complete = user.onboarding_completed,
+    upcoming = upcomingAvailabilities(p.availabilities);
   const name = user.first_name || (worker ? "à vous" : "à votre équipe");
 
   return (
@@ -55,13 +70,9 @@ export function Dashboard() {
         <section className="primary">
           <div className="welcome">
             <span className="eyeline">
-              {complete
-                ? worker
-                  ? p.main_job
-                  : p.establishment_name
-                : worker
-                  ? "Espace intérimaire"
-                  : "Espace entreprise"}
+              {worker
+                ? "Espace intérimaire"
+                : (p.establishment_name ?? "Espace entreprise")}
             </span>
             <h1>
               {user.first_name ? `Bonjour ${user.first_name},` : "Bienvenue,"}
@@ -79,6 +90,7 @@ export function Dashboard() {
 
           <ProfileStatus
             complete={complete}
+            missing={user.missing_requirements}
             to={"/" + user.role + "/profile"}
             done={
               worker
@@ -121,24 +133,23 @@ export function Dashboard() {
               <section className="side-panel" data-tour="availability">
                 <CalendarDays aria-hidden="true" />
                 <h2>Vos disponibilités</h2>
-                {p.availabilities?.length ? (
-                  p.availabilities.map((a) => (
-                    <p key={a.id}>
-                      <strong>
-                        {new Date(a.starts_at).toLocaleDateString("fr-FR")}
-                      </strong>
-                      <br />
-                      {new Date(a.starts_at).toLocaleTimeString("fr-FR", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                      {" – "}
-                      {new Date(a.ends_at).toLocaleTimeString("fr-FR", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
+                {upcoming.length ? (
+                  <>
+                    <p className="lead-figure">
+                      {upcoming.length} créneau{upcoming.length > 1 ? "x" : ""}{" "}
+                      à venir
                     </p>
-                  ))
+                    <ul className="slot-list plain">
+                      {upcoming.slice(0, 3).map((slot) => (
+                        <li key={slot.id}>{formatSlot(slot)}</li>
+                      ))}
+                    </ul>
+                    {upcoming.length > 3 && (
+                      <Link className="quiet" to="/worker/profile">
+                        Voir les {upcoming.length} créneaux
+                      </Link>
+                    )}
+                  </>
                 ) : (
                   <p>
                     Aucun créneau enregistré. Vos disponibilités se renseignent
@@ -149,11 +160,26 @@ export function Dashboard() {
               <section className="side-panel pale">
                 <MapPin aria-hidden="true" />
                 <h2>{p.city ?? "Votre mobilité"}</h2>
-                <p>
-                  {p.mobility_radius_km != null
-                    ? `Rayon de mobilité : ${p.mobility_radius_km} km`
-                    : "Votre ville et votre rayon de mobilité restent à renseigner."}
-                </p>
+                {p.city && p.mobility_radius_km != null ? (
+                  <>
+                    <p>
+                      {p.postal_code} · jusqu’à {p.mobility_radius_km} km autour
+                      de chez vous
+                    </p>
+                    <p className="quiet">
+                      {p.has_vehicle
+                        ? "Permis et véhicule"
+                        : p.has_driving_licence
+                          ? "Permis, sans véhicule"
+                          : "Sans permis"}
+                      {p.open_to_missions === false && " · recherche en pause"}
+                    </p>
+                  </>
+                ) : (
+                  <p>
+                    Votre ville et votre rayon de mobilité restent à renseigner.
+                  </p>
+                )}
               </section>
             </>
           ) : (

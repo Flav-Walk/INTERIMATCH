@@ -38,6 +38,16 @@ async function completeTour(page: Page) {
   await expect(tour(page)).toBeHidden();
 }
 
+/** Un fieldset est exposé comme un groupe nommé par sa légende. */
+const section = (page: Page, name: string) => page.getByRole("group", { name });
+
+async function save(page: Page, name: string) {
+  await section(page, name)
+    .getByRole("button", { name: "Enregistrer" })
+    .click();
+  await expect(section(page, name).getByText("Enregistré.")).toBeVisible();
+}
+
 // CAS 1 — accès anonyme à une route protégée.
 test("anonymous access to a protected route redirects to sign-in", async ({
   page,
@@ -114,22 +124,73 @@ test("a new account becomes an intérimaire, is toured once, and cannot reach th
   // Le profil se complète depuis l'espace, il n'en bloque jamais l'accès.
   await page.getByRole("link", { name: "Mon profil", exact: true }).click();
   await expect(page).toHaveURL(/\/worker\/profile$/);
-  await page.getByLabel("Prénom", { exact: true }).fill("Jimmy");
-  await page.getByLabel("Nom", { exact: true }).fill("Démonstration");
-  await page.getByLabel("Métier principal").fill("Serveur");
-  await page.getByLabel("Service en salle", { exact: true }).check();
-  await page.getByLabel("Rayon de mobilité").fill("15");
-  await page.getByLabel("Début de disponibilité").fill("2027-01-02T12:00");
-  await page.getByLabel("Fin de disponibilité").fill("2027-01-02T20:00");
-  await page.getByLabel("Ville", { exact: true }).fill("Lyon");
-  await page.getByLabel("Code postal").fill("69002");
-  await page.getByLabel("Latitude", { exact: true }).fill("45.75");
-  await page.getByLabel("Longitude", { exact: true }).fill("4.85");
-  await page.getByRole("button", { name: "Enregistrer" }).click();
+
+  // L'utilisateur ne saisit jamais de coordonnées : elles sont dérivées côté serveur.
+  await expect(page.getByLabel("Latitude", { exact: true })).toHaveCount(0);
+  await expect(page.getByLabel("Longitude", { exact: true })).toHaveCount(0);
+
+  // Section par section : chaque bloc s'enregistre seul.
+  await section(page, "Votre identité")
+    .getByLabel("Prénom", { exact: true })
+    .fill("Jimmy");
+  await section(page, "Votre identité")
+    .getByLabel("Nom", { exact: true })
+    .fill("Démonstration");
+  await save(page, "Votre identité");
+
+  // Sauvegarde partielle : on quitte, on revient, la donnée est toujours là.
+  await page.reload();
+  await expect(
+    section(page, "Votre identité").getByLabel("Prénom", { exact: true }),
+  ).toHaveValue("Jimmy");
+  await expect(page.getByText("Votre métier principal")).toBeVisible();
+
+  await section(page, "Votre métier")
+    .getByLabel("Métier principal")
+    .selectOption("serveur");
+  await save(page, "Votre métier");
+
+  await section(page, "Vos compétences")
+    .getByLabel("Service en salle", { exact: true })
+    .check();
+  await save(page, "Vos compétences");
+
+  await section(page, "Votre mobilité")
+    .getByLabel("Ville", { exact: true })
+    .fill("Lyon");
+  await section(page, "Votre mobilité").getByLabel("Code postal").fill("69002");
+  await section(page, "Votre mobilité")
+    .getByLabel("Rayon de mobilité (km)")
+    .fill("15");
+  await save(page, "Votre mobilité");
+
+  const slots = section(page, "Vos disponibilités");
+  await slots.getByLabel("Début").fill("2027-01-02T12:00");
+  await slots.getByLabel("Fin").fill("2027-01-02T20:00");
+  await slots.getByRole("button", { name: "Ajouter ce créneau" }).click();
+  await expect(slots.getByRole("listitem")).toHaveCount(1);
+
+  // Le serveur a constaté que tout le nécessaire est présent.
+  await expect(page.getByText("Votre profil est complet.")).toBeVisible();
+
+  // Le tableau de bord reflète les vraies données.
+  await page.getByRole("link", { name: "Tableau de bord" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Bonjour Jimmy," }),
+  ).toBeVisible();
+  await expect(page.getByText("Profil complété")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Lyon" })).toBeVisible();
+  await expect(page.getByText(/jusqu’à 15 km/)).toBeVisible();
+  await expect(page.getByText(/1 créneau à venir/)).toBeVisible();
+
+  // Déconnexion puis reconnexion : les données sont toujours là.
+  await page.getByRole("button", { name: "Se déconnecter" }).click();
+  await signIn(page, email);
   await expect(page).toHaveURL(/\/worker$/);
   await expect(
     page.getByRole("heading", { name: "Bonjour Jimmy," }),
   ).toBeVisible();
+  await expect(page.getByText(/jusqu’à 15 km/)).toBeVisible();
 
   expect(
     await page.evaluate(
