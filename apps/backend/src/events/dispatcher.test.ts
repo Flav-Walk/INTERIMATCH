@@ -8,10 +8,11 @@ import {
 } from "./dispatcher.js";
 
 const secret = "test-secret-never-used-outside-tests";
+const workerId = "20000000-0000-4000-8000-000000000002";
 const event = () =>
   createBusinessEvent(
     "worker.profile.updated",
-    { worker_id: "worker-1" },
+    { worker_id: workerId },
     {
       eventId: "3f2504e0-4f89-41d3-9a0c-0305e82c3301",
       now: new Date("2026-09-18T07:30:00.000Z"),

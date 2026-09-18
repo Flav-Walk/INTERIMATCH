@@ -1,6 +1,7 @@
 import type { Db } from "../db.js";
 import { HttpError } from "../errors.js";
 import type { BusinessEventPublisher } from "../events/dispatcher.js";
+import { loadMissionEventData } from "../events/payloads.js";
 import type { Geocoder } from "../worker/geocode.js";
 import {
   brokenRule,
@@ -490,7 +491,7 @@ export class MissionService {
    * client ne peut ni le fournir ni changer `status` par une modification.
    */
   async publish(companyId: string, missionId: string) {
-    await this.db.transaction(async (db) => {
+    const eventData = await this.db.transaction(async (db) => {
       const current = await this.lock(db, companyId, missionId);
       this.assertTransition(current.status, "open");
       if (new Date(current.starts_at).getTime() <= Date.now())
@@ -503,11 +504,12 @@ export class MissionService {
         "UPDATE missions SET status = 'open', published_at = now() WHERE id = $1 AND company_id = $2",
         [missionId, companyId],
       );
+      return loadMissionEventData(db, missionId);
     });
     const mission = await this.get(companyId, missionId);
     // Publication après COMMIT et relecture finale : une transition refusée,
     // rollbackée ou une réponse métier incomplète ne produit aucune notification.
-    this.events?.publish("mission.published", { mission_id: missionId });
+    this.events?.publish("mission.published", eventData);
     return mission;
   }
 

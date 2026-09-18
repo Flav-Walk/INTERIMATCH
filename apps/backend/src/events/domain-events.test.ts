@@ -40,7 +40,9 @@ const missions = new MissionService(db, undefined, publisher);
 const applications = new ApplicationService(db, publisher);
 
 let companyId = "";
+let otherCompanyId = "";
 let workerSequence = 0;
+let skillId = "";
 
 const futureSlot = (days = 5) => {
   const starts = new Date(Date.now() + days * 86_400_000);
@@ -53,21 +55,37 @@ const futureSlot = (days = 5) => {
 const draft = (title: string, over: Record<string, unknown> = {}) =>
   missionCreateSchema.parse({
     title,
+    description: "Renfort pour le service en salle.",
     job: "serveur",
+    address: "10 rue de la République",
     city: "Lyon",
     postal_code: "69002",
+    pay_amount: 15.5,
+    pay_unit: "hour",
+    required_skill_ids: skillId ? [skillId] : [],
     ...futureSlot(),
     ...over,
   });
 
 async function newWorker() {
   workerSequence += 1;
-  return (
+  const id = (
     await db.query<{ id: string }>(
-      "INSERT INTO profiles(email,role) VALUES($1,'worker') RETURNING id",
-      [`domain-event-worker-${workerSequence}@example.test`],
+      `INSERT INTO profiles(email,role,first_name,last_name)
+       VALUES($1,'worker',$2,$3) RETURNING id`,
+      [
+        `domain-event-worker-${workerSequence}@example.test`,
+        `Camille${workerSequence}`,
+        `Martin${workerSequence}`,
+      ],
     )
   ).rows[0].id;
+  await db.query(
+    `INSERT INTO worker_profiles(profile_id,city,postal_code,main_job)
+     VALUES($1,'Lyon','69002','serveur')`,
+    [id],
+  );
+  return id;
 }
 
 async function publishedMission(title: string, over = {}) {
@@ -86,6 +104,23 @@ beforeAll(async () => {
       "INSERT INTO profiles(email,role) VALUES('domain-event-company@example.test','company') RETURNING id",
     )
   ).rows[0].id;
+  otherCompanyId = (
+    await db.query<{ id: string }>(
+      "INSERT INTO profiles(email,role) VALUES('other-domain-event-company@example.test','company') RETURNING id",
+    )
+  ).rows[0].id;
+  await db.query(
+    `INSERT INTO company_profiles(profile_id,legal_name,establishment_name,
+       sector,address,city,postal_code,phone,description)
+     VALUES($1,'Bistrot Exemple SAS','Bistrot Exemple','restaurant',
+       '20 quai Exemple','Lyon','69002','+33400000000','Restaurant de test')`,
+    [companyId],
+  );
+  skillId = (
+    await db.query<{ id: string }>(
+      "SELECT id FROM skills ORDER BY name LIMIT 1",
+    )
+  ).rows[0].id;
 }, 30_000);
 
 beforeEach(() => {
@@ -96,10 +131,8 @@ afterAll(() => pg.close());
 
 describe("événements métier missions et candidatures", () => {
   it("publie mission.published une fois seulement après draft → open", async () => {
-    const missionId = await missions.create(
-      companyId,
-      draft("Publication événementielle"),
-    );
+    const input = draft("Publication événementielle");
+    const missionId = await missions.create(companyId, input);
     expect(emitted).toEqual([]);
 
     await missions.publish(companyId, missionId);
@@ -107,12 +140,38 @@ describe("événements métier missions et candidatures", () => {
     expect(emitted[0]).toMatchObject({
       event_type: "mission.published",
       schema_version: "1.0",
-      data: { mission_id: missionId },
+      data: {
+        mission_id: missionId,
+        mission: {
+          id: missionId,
+          title: "Publication événementielle",
+          description: "Renfort pour le service en salle.",
+          status: "open",
+          starts_at: input.starts_at,
+          ends_at: input.ends_at,
+          address: "10 rue de la République",
+          city: "Lyon",
+          postal_code: "69002",
+          job: "serveur",
+          headcount: 1,
+          pay_amount: "15.50",
+          pay_unit: "hour",
+          skills: [{ id: skillId, required: true }],
+        },
+        company: {
+          id: companyId,
+          email: "domain-event-company@example.test",
+          legal_name: "Bistrot Exemple SAS",
+          establishment_name: "Bistrot Exemple",
+          sector: "restaurant",
+          phone: "+33400000000",
+        },
+      },
     });
     expect(emitted[0].event_id).toMatch(
       /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
     );
-    expect(Object.keys(emitted[0].data)).toEqual(["mission_id"]);
+    expect(emitted[0].data).not.toHaveProperty("password");
 
     await missions.update(companyId, missionId, { title: "Titre modifié" });
     await expect(missions.publish(companyId, missionId)).rejects.toMatchObject({
@@ -143,9 +202,32 @@ describe("événements métier missions et candidatures", () => {
     expect(emitted[0]).toMatchObject({
       event_type: "application.created",
       schema_version: "1.0",
-      data: { application_id: application.id },
+      data: {
+        application_id: application.id,
+        application: {
+          id: application.id,
+          status: "pending",
+          created_at: new Date(application.created_at).toISOString(),
+          updated_at: new Date(application.updated_at).toISOString(),
+        },
+        worker: {
+          id: workerId,
+          email: `domain-event-worker-${workerSequence}@example.test`,
+          main_job: "serveur",
+          city: "Lyon",
+        },
+        mission: {
+          id: missionId,
+          title: "Nouvelle candidature",
+          status: "open",
+        },
+        company: {
+          id: companyId,
+          email: "domain-event-company@example.test",
+          establishment_name: "Bistrot Exemple",
+        },
+      },
     });
-    expect(Object.keys(emitted[0].data)).toEqual(["application_id"]);
 
     await expect(
       applications.create(workerId, missionId),
@@ -211,14 +293,27 @@ describe("événements métier missions et candidatures", () => {
     const application = await applications.create(await newWorker(), missionId);
     emitted.length = 0;
 
-    await applications.decide(companyId, missionId, application.id, "accepted");
+    const decided = await applications.decide(
+      companyId,
+      missionId,
+      application.id,
+      "accepted",
+    );
     expect(emitted).toHaveLength(1);
     expect(emitted[0]).toMatchObject({
       event_type: "application.accepted",
       schema_version: "1.0",
-      data: { application_id: application.id },
+      data: {
+        application_id: application.id,
+        application: {
+          id: application.id,
+          status: "accepted",
+          updated_at: new Date(decided.updated_at).toISOString(),
+        },
+        mission: { id: missionId, title: "Candidature acceptée" },
+        company: { id: companyId, establishment_name: "Bistrot Exemple" },
+      },
     });
-    expect(Object.keys(emitted[0].data)).toEqual(["application_id"]);
 
     await expect(
       applications.decide(companyId, missionId, application.id, "accepted"),
@@ -238,14 +333,27 @@ describe("événements métier missions et candidatures", () => {
     const application = await applications.create(await newWorker(), missionId);
     emitted.length = 0;
 
-    await applications.decide(companyId, missionId, application.id, "rejected");
+    const decided = await applications.decide(
+      companyId,
+      missionId,
+      application.id,
+      "rejected",
+    );
     expect(emitted).toHaveLength(1);
     expect(emitted[0]).toMatchObject({
       event_type: "application.rejected",
       schema_version: "1.0",
-      data: { application_id: application.id },
+      data: {
+        application_id: application.id,
+        application: {
+          id: application.id,
+          status: "rejected",
+          updated_at: new Date(decided.updated_at).toISOString(),
+        },
+        mission: { id: missionId, title: "Candidature refusée" },
+        company: { id: companyId, establishment_name: "Bistrot Exemple" },
+      },
     });
-    expect(Object.keys(emitted[0].data)).toEqual(["application_id"]);
 
     await expect(
       applications.decide(companyId, missionId, application.id, "rejected"),
@@ -258,6 +366,54 @@ describe("événements métier missions et candidatures", () => {
       code: "APPLICATION_ALREADY_DECIDED",
     } satisfies Partial<HttpError>);
     expect(emitted).toHaveLength(1);
+  });
+
+  it("ne mélange ni worker ni entreprise et accepte les profils optionnels absents", async () => {
+    const missionId = await missions.create(
+      otherCompanyId,
+      draft("Mission entreprise sans établissement"),
+    );
+    await missions.publish(otherCompanyId, missionId);
+    const bareWorker = (
+      await db.query<{ id: string }>(
+        `INSERT INTO profiles(email,role,first_name,last_name)
+         VALUES('bare-event-worker@example.test','worker','Alex','Durand')
+         RETURNING id`,
+      )
+    ).rows[0].id;
+    emitted.length = 0;
+
+    const application = await applications.create(bareWorker, missionId);
+    expect(emitted).toHaveLength(1);
+    expect(emitted[0]).toMatchObject({
+      event_type: "application.created",
+      data: {
+        application_id: application.id,
+        worker: {
+          id: bareWorker,
+          first_name: "Alex",
+          last_name: "Durand",
+          email: "bare-event-worker@example.test",
+          main_job: null,
+          city: null,
+        },
+        mission: {
+          id: missionId,
+          title: "Mission entreprise sans établissement",
+        },
+        company: {
+          id: otherCompanyId,
+          email: "other-domain-event-company@example.test",
+          legal_name: null,
+          establishment_name: null,
+          sector: null,
+          phone: null,
+        },
+      },
+    });
+    expect(emitted[0].data).not.toMatchObject({
+      company: { id: companyId },
+    });
   });
 
   it("n'émet rien si la transaction ne peut pas être validée", async () => {
@@ -286,26 +442,14 @@ describe("événements métier missions et candidatures", () => {
     expect((await missions.get(companyId, missionId)).status).toBe("draft");
   });
 
-  it("limite le contrat aux six types officiels et refuse mission.created", () => {
-    for (const event_type of [
-      "worker.profile.updated",
-      "worker.onboarding.completed",
-      "mission.published",
-      "application.created",
-      "application.accepted",
-      "application.rejected",
-    ])
-      expect(
-        businessEventSchema.safeParse({
-          event_id: crypto.randomUUID(),
-          event_type,
-          occurred_at: new Date().toISOString(),
-          schema_version: "1.0",
-          idempotency_key: `${event_type}:test`,
-          data: {},
-        }).success,
-      ).toBe(true);
-
+  it("limite le contrat aux six types officiels et refuse mission.created", async () => {
+    const missionId = await publishedMission("Contrat strict");
+    const valid = emitted.find(
+      (event) =>
+        event.event_type === "mission.published" &&
+        event.data.mission_id === missionId,
+    );
+    expect(businessEventSchema.safeParse(valid).success).toBe(true);
     for (const event_type of [
       "mission.created",
       "candidate.created",
@@ -315,12 +459,8 @@ describe("événements métier missions et candidatures", () => {
     ])
       expect(
         businessEventSchema.safeParse({
-          event_id: crypto.randomUUID(),
+          ...valid,
           event_type,
-          occurred_at: new Date().toISOString(),
-          schema_version: "1.0",
-          idempotency_key: `${event_type}:test`,
-          data: {},
         }).success,
       ).toBe(false);
   });

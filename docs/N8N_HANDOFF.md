@@ -1,31 +1,16 @@
 # Passation n8n — événements métier InteriMatch
 
-## État opérationnel
+## Transport commun
 
-Le backend envoie les événements métier vers l’unique webhook configuré par
-`N8N_WEBHOOK_URL`, signé avec `N8N_WEBHOOK_SECRET`. Ces deux variables restent
-optionnelles mais doivent être définies ensemble. Aucune valeur de production
-n’est documentée ni versionnée ici.
-
-La recette réelle T1 à T8 des événements worker, de la signature, de la
-déduplication et des refus de contrat a été validée le 17/09/2026. Les quatre
-événements missions/candidatures ci-dessous utilisent exactement le même
-dispatcher et le même contrat ; ils doivent faire l’objet de leur propre recette
-sur l’environnement déployé après déploiement du backend.
-
-## Architecture réellement utilisée
-
-Une action HTTP appelle le service métier, qui valide les règles puis termine sa
-transaction PostgreSQL. Après le commit, le service remet l’événement au
-`AsyncBusinessEventPublisher`. Celui-ci construit une seule enveloppe logique et
-la livre au webhook n8n hors du chemin HTTP.
-
-Chaque enveloppe contient exactement :
+Les six événements utilisent le même `AsyncBusinessEventPublisher`. Ils sont
+construits après réussite de la transaction métier, puis livrés au webhook
+configuré par `N8N_WEBHOOK_URL`. Aucune valeur de configuration ou de production
+n’est versionnée ici.
 
 ```json
 {
   "event_id": "<uuid-v4>",
-  "event_type": "<type autorisé>",
+  "event_type": "<type officiel>",
   "occurred_at": "<date ISO-8601 UTC>",
   "schema_version": "1.0",
   "idempotency_key": "<clé non vide>",
@@ -33,29 +18,15 @@ Chaque enveloppe contient exactement :
 }
 ```
 
-Le corps JSON exact est signé en HMAC-SHA256 avec le timestamp :
-`HMAC(secret, timestamp + "." + raw_body)`. Les headers envoyés sont :
+Le corps JSON exact est signé en HMAC-SHA256 avec
+`HMAC(secret, timestamp + "." + raw_body)`. Les headers sont
+`content-type`, `x-interimatch-timestamp`, `x-interimatch-signature` et
+`x-correlation-id`. Le timeout est de 10 secondes. Les erreurs réseau et 5xx
+sont réessayées après 1 puis 5 secondes avec le même corps, le même `event_id`
+et la même `idempotency_key`. `200 accepted` et `200 duplicate` sont des succès ;
+400 et 401 sont permanents.
 
-- `content-type: application/json` ;
-- `x-interimatch-timestamp` ;
-- `x-interimatch-signature: sha256=<signature>` ;
-- `x-correlation-id: <event_id>`.
-
-Un timeout de 10 secondes s’applique à chaque tentative. Les erreurs réseau et
-les réponses 5xx sont réessayées après 1 puis 5 secondes. Toutes les tentatives
-réutilisent strictement le même corps, le même `event_id` et la même
-`idempotency_key` ; seul le timestamp et donc la signature de transport sont
-recalculés. Les réponses `200 accepted` et `200 duplicate` sont des succès. Les
-réponses 400 (`invalid_payload`) et 401 (`invalid_signature`) sont permanentes et
-ne sont pas réessayées.
-
-Les logs de livraison ne contiennent que `event_id`, `event_type`, `attempt`,
-`http_status`, `result` ou une catégorie/code d’erreur technique sûr. Le secret,
-la signature, les headers et le corps métier ne sont jamais journalisés.
-
-## Types officiellement acceptés
-
-Le contrat `schema_version = "1.0"` accepte uniquement :
+Le contrat accepte uniquement :
 
 - `worker.profile.updated` ;
 - `worker.onboarding.completed` ;
@@ -64,85 +35,282 @@ Le contrat `schema_version = "1.0"` accepte uniquement :
 - `application.accepted` ;
 - `application.rejected`.
 
-Les anciens noms prospectifs ne font pas partie du contrat. Notamment,
-`mission.created`, `candidate.created`, `candidate.accepted`,
-`candidate.refused` et `candidate.rejected` doivent recevoir
-`400 invalid_payload` côté webhook.
+`mission.created` et tous les noms `candidate.*` restent invalides. Les schémas
+de `data` sont stricts : un champ d’authentification ou un champ inconnu rend
+l’événement invalide avant livraison.
 
-## Événements et conditions d’émission
+## Contrats détaillés
 
 ### `worker.profile.updated`
 
-- Moment : après le commit d’une modification effective du profil worker.
-- `data` : `{ "worker_id": "<uuid>" }`.
-- Ne part pas : écriture sans changement, validation refusée ou rollback.
+Déclencheur : après le commit d’une modification effective du profil. Une
+écriture identique, un refus métier ou un rollback n’émet rien. Cet événement
+reste volontairement léger et ne doit pas déclencher un email à chaque sauvegarde.
+
+Payload exact :
+
+```json
+{
+  "worker_id": "20000000-0000-4000-8000-000000000002"
+}
+```
+
+`worker_id` est obligatoire et non nullable. Automatisations possibles :
+invalidation d’un cache, synchronisation ou audit technique du profil.
 
 ### `worker.onboarding.completed`
 
-- Moment : après le commit de la transition réelle de l’onboarding de `false` à
-  `true`.
-- `data` : `{ "worker_id": "<uuid>" }`.
-- Ne part pas : profil encore incomplet, profil déjà complet, modification
-  ultérieure ou rollback.
+Déclencheur : après le commit de l’unique transition réelle de l’onboarding de
+`false` vers `true`. Une modification ultérieure ne le réémet pas.
+
+Payload exact :
+
+```json
+{
+  "worker_id": "20000000-0000-4000-8000-000000000002",
+  "worker": {
+    "id": "20000000-0000-4000-8000-000000000002",
+    "first_name": "Camille",
+    "last_name": "Martin",
+    "email": "camille.martin@example.test",
+    "main_job": "serveur",
+    "city": "Lyon"
+  }
+}
+```
+
+Obligatoires et non nullables : `worker_id`, `worker.id`, `first_name`,
+`last_name`, `email`. `worker.main_job` et `worker.city` sont présents mais
+peuvent valoir `null`. Automatisations : email de bienvenue, confirmation que le
+profil est complet, segmentation par métier ou ville.
 
 ### `mission.published`
 
-- Moment : après le commit de la transition réelle `draft → open`, effectuée
-  par `MissionService.publish` via `POST /api/v1/missions/:id/publish`.
-- `data` : `{ "mission_id": "<uuid>" }`.
-- Ne part pas : création du brouillon, modification d’une mission ouverte,
-  seconde publication, mission déjà commencée, mission absente/non détenue,
-  validation refusée ou rollback.
-- La création directe en statut publié n’existe pas : le statut est décidé par
-  le serveur et toute mission est créée en brouillon.
+Déclencheur : après le commit et la relecture transactionnelle de `draft → open`
+dans `MissionService.publish`. La création d’un brouillon, une modification
+d’une mission ouverte, une seconde publication ou une publication refusée
+n’émettent rien.
 
-### `application.created`
+Payload exact :
 
-- Moment : après le commit de l’INSERT d’une nouvelle candidature validée par
-  `ApplicationService.create`, via `POST /api/v1/workers/me/applications`.
-- `data` : `{ "application_id": "<uuid>" }`.
-- Ne part pas : doublon, mission inexistante, brouillon, mission expirée,
-  mission pleine, séparation réel/démo, validation refusée ou rollback.
+```json
+{
+  "mission_id": "30000000-0000-4000-8000-000000000003",
+  "mission": {
+    "id": "30000000-0000-4000-8000-000000000003",
+    "title": "Service du soir",
+    "description": "Renfort pour le service en salle.",
+    "status": "open",
+    "starts_at": "2027-01-02T17:00:00.000Z",
+    "ends_at": "2027-01-02T23:00:00.000Z",
+    "address": "10 rue de la République",
+    "city": "Lyon",
+    "postal_code": "69002",
+    "job": "serveur",
+    "headcount": 2,
+    "pay_amount": "15.50",
+    "pay_unit": "hour",
+    "published_at": "2026-09-18T07:30:00.000Z",
+    "skills": [
+      {
+        "id": "50000000-0000-4000-8000-000000000005",
+        "name": "Service en salle",
+        "required": true
+      }
+    ]
+  },
+  "company": {
+    "id": "40000000-0000-4000-8000-000000000004",
+    "email": "contact@example.test",
+    "legal_name": "Bistrot Exemple SAS",
+    "establishment_name": "Bistrot Exemple",
+    "sector": "restaurant",
+    "phone": "+33400000000"
+  }
+}
+```
 
-### `application.accepted`
+Tous les champs de `mission` sont présents. `pay_amount` et `pay_unit` peuvent
+être `null` ensemble. `published_at` est nullable dans le contrat commun des
+missions, mais est renseigné pour cet événement. `skills` peut être vide. Dans
+`company`, `id` et `email` sont obligatoires ; `legal_name`,
+`establishment_name`, `sector` et `phone` peuvent être `null` si l’établissement
+n’a pas encore été renseigné. Automatisations : notification des travailleurs
+compatibles et email complet présentant la mission.
 
-- Moment : après le commit de la transition réelle `pending → accepted`,
-  effectuée par `ApplicationService.decide`.
-- `data` : `{ "application_id": "<uuid>" }`.
-- Ne part pas : candidature déjà décidée, mission pleine, intérimaire déjà
-  engagé sur un créneau chevauchant, candidature/mission absente ou non détenue,
-  transition invalide ou rollback.
+### Structure commune des événements candidature
 
-### `application.rejected`
+Les trois événements candidature utilisent exactement cette structure. Seul le
+statut varie : `pending`, `accepted` ou `rejected`.
 
-- Moment : après le commit de la transition réelle `pending → rejected`,
-  effectuée par `ApplicationService.decide`.
-- `data` : `{ "application_id": "<uuid>" }`.
-- Ne part pas : candidature déjà décidée, candidature/mission absente ou non
-  détenue, transition invalide ou rollback.
+```json
+{
+  "application_id": "10000000-0000-4000-8000-000000000001",
+  "application": {
+    "id": "10000000-0000-4000-8000-000000000001",
+    "status": "pending",
+    "created_at": "2026-09-18T07:30:00.000Z",
+    "updated_at": "2026-09-18T07:30:00.000Z"
+  },
+  "worker": {
+    "id": "20000000-0000-4000-8000-000000000002",
+    "first_name": "Camille",
+    "last_name": "Martin",
+    "email": "camille.martin@example.test",
+    "main_job": "serveur",
+    "city": "Lyon"
+  },
+  "mission": {
+    "id": "30000000-0000-4000-8000-000000000003",
+    "title": "Service du soir",
+    "description": "Renfort pour le service en salle.",
+    "status": "open",
+    "starts_at": "2027-01-02T17:00:00.000Z",
+    "ends_at": "2027-01-02T23:00:00.000Z",
+    "address": "10 rue de la République",
+    "city": "Lyon",
+    "postal_code": "69002",
+    "job": "serveur",
+    "headcount": 2,
+    "pay_amount": "15.50",
+    "pay_unit": "hour",
+    "published_at": "2026-09-18T07:00:00.000Z",
+    "skills": []
+  },
+  "company": {
+    "id": "40000000-0000-4000-8000-000000000004",
+    "email": "contact@example.test",
+    "legal_name": "Bistrot Exemple SAS",
+    "establishment_name": "Bistrot Exemple",
+    "sector": "restaurant",
+    "phone": "+33400000000"
+  }
+}
+```
 
-Les payloads application n’embarquent pas `mission_id` : `application_id`
-identifie sans ambiguïté la ressource persistée et évite de dupliquer une donnée
-déjà disponible en base. Aucun email, téléphone, nom, adresse, token, profil ou
-détail de matching n’est envoyé.
+Tous les champs `application` sont obligatoires et non nullables. Les règles de
+nullabilité de `worker`, `mission` et `company` sont identiques à celles décrites
+plus haut. `worker.main_job` et `worker.city` peuvent être `null`.
 
-## AUTOMATISATIONS MAINTENANT DISPONIBLES
+#### `application.created`
 
-- `mission.published` → préparer la notification des intérimaires compatibles ;
-- `application.created` → prévenir l’entreprise d’une nouvelle candidature ;
-- `application.accepted` → informer l’intérimaire qu’il est retenu ;
-- `application.rejected` → informer l’intérimaire qu’il n’est pas retenu.
+Déclencheur : après commit de la création effective d’une candidature validée.
+`application.status` vaut exactement `pending`. Un doublon, une mission absente,
+expirée, pleine, non publiée ou située dans l’autre univers démo/réel n’émet rien.
 
-Jimmy peut déclencher ces événements depuis les vraies actions de l’application.
-Le workflow n8n doit dédupliquer durablement sur `event_id` (ou
-`idempotency_key`) avant tout effet externe.
+Exemple : le JSON commun ci-dessus. Automatisation : envoyer immédiatement à
+`company.email` une nouvelle candidature avec l’identité du worker et le résumé
+complet de la mission.
 
-## Limite de fiabilité à connaître
+#### `application.accepted`
 
-Il n’existe pas encore d’outbox transactionnelle. L’ordre actuel exclut le cas
-« n8n reçoit un événement alors que la transaction métier rollbacke », car la
-publication commence après le commit. En revanche, un arrêt du processus entre
-le commit et l’appel webhook, ou l’épuisement des retries, peut laisser une
-opération métier validée sans événement livré. Les échecs sont journalisés mais
-ne sont pas rejoués après redémarrage. Une outbox persistante est la dette à
-traiter avant d’exiger une garantie de livraison forte en production.
+Déclencheur : après commit de `pending → accepted`.
+`application.status` vaut exactement `accepted` et `application.updated_at` est
+l’horodatage réel de la décision. Une candidature déjà décidée, une capacité
+atteinte, un conflit de créneau ou un rollback n’émet rien.
+
+Exemple : même JSON que ci-dessus avec :
+
+```json
+{
+  "application": {
+    "id": "10000000-0000-4000-8000-000000000001",
+    "status": "accepted",
+    "created_at": "2026-09-18T07:30:00.000Z",
+    "updated_at": "2026-09-18T08:15:00.000Z"
+  }
+}
+```
+
+Cette section remplace uniquement l’objet `application`; les objets `worker`,
+`mission` et `company` sont tous présents comme dans l’exemple commun.
+Automatisation : envoyer à `worker.email` un email d’acceptation comprenant le
+nom de l’établissement, les dates, l’adresse et la rémunération.
+
+#### `application.rejected`
+
+Déclencheur : après commit de `pending → rejected`.
+`application.status` vaut exactement `rejected`. Une candidature déjà décidée,
+une transition invalide ou un rollback n’émet rien.
+
+Exemple : même JSON commun avec :
+
+```json
+{
+  "application": {
+    "id": "10000000-0000-4000-8000-000000000001",
+    "status": "rejected",
+    "created_at": "2026-09-18T07:30:00.000Z",
+    "updated_at": "2026-09-18T08:20:00.000Z"
+  }
+}
+```
+
+Automatisation : envoyer à `worker.email` un email de refus utilisant le titre
+de mission et le nom d’établissement. Aucune raison de refus n’est disponible.
+
+## Variables disponibles pour Jimmy
+
+| Variable n8n                            | Type            | Nullable                        | Usage                                   |
+| --------------------------------------- | --------------- | ------------------------------- | --------------------------------------- |
+| `$json.event_id`                        | UUID            | non                             | Déduplication et corrélation            |
+| `$json.event_type`                      | chaîne          | non                             | Routage du workflow                     |
+| `$json.occurred_at`                     | date ISO        | non                             | Date de création de l’événement         |
+| `$json.schema_version`                  | `"1.0"`         | non                             | Version du contrat                      |
+| `$json.idempotency_key`                 | chaîne          | non                             | Déduplication métier                    |
+| `$json.data.worker_id`                  | UUID            | non pour événements worker      | Compatibilité et identification directe |
+| `$json.data.application_id`             | UUID            | non pour événements application | Identification directe                  |
+| `$json.data.worker.id`                  | UUID            | non                             | Identité worker                         |
+| `$json.data.worker.first_name`          | chaîne          | non                             | Personnalisation Brevo                  |
+| `$json.data.worker.last_name`           | chaîne          | non                             | Personnalisation Brevo                  |
+| `$json.data.worker.email`               | email           | non                             | Destinataire worker                     |
+| `$json.data.worker.main_job`            | chaîne          | oui                             | Métier principal                        |
+| `$json.data.worker.city`                | chaîne          | oui                             | Ville worker                            |
+| `$json.data.application.id`             | UUID            | non                             | Candidature                             |
+| `$json.data.application.status`         | statut          | non                             | `pending`, `accepted` ou `rejected`     |
+| `$json.data.application.created_at`     | date ISO        | non                             | Date de candidature                     |
+| `$json.data.application.updated_at`     | date ISO        | non                             | Dernière mise à jour/décision           |
+| `$json.data.mission_id`                 | UUID            | non pour `mission.published`    | Compatibilité et identification directe |
+| `$json.data.mission.id`                 | UUID            | non                             | Mission                                 |
+| `$json.data.mission.title`              | chaîne          | non                             | Objet et contenu email                  |
+| `$json.data.mission.description`        | chaîne          | non                             | Description, éventuellement vide        |
+| `$json.data.mission.status`             | statut          | non                             | État réel de la mission                 |
+| `$json.data.mission.starts_at`          | date ISO        | non                             | Date et heure de début                  |
+| `$json.data.mission.ends_at`            | date ISO        | non                             | Date et heure de fin                    |
+| `$json.data.mission.address`            | chaîne          | non                             | Lieu, éventuellement vide               |
+| `$json.data.mission.city`               | chaîne          | non                             | Ville de mission                        |
+| `$json.data.mission.postal_code`        | chaîne          | non                             | Code postal de mission                  |
+| `$json.data.mission.job`                | chaîne          | non                             | Métier/poste                            |
+| `$json.data.mission.headcount`          | entier          | non                             | Nombre de postes                        |
+| `$json.data.mission.pay_amount`         | chaîne décimale | oui                             | Montant de rémunération                 |
+| `$json.data.mission.pay_unit`           | chaîne          | oui                             | `hour`, `day` ou `mission`              |
+| `$json.data.mission.published_at`       | date ISO        | oui                             | Date de publication                     |
+| `$json.data.mission.skills`             | tableau         | non                             | Compétences, tableau possiblement vide  |
+| `$json.data.mission.skills[].id`        | UUID            | non                             | Compétence                              |
+| `$json.data.mission.skills[].name`      | chaîne          | non                             | Libellé Brevo                           |
+| `$json.data.mission.skills[].required`  | booléen         | non                             | Obligatoire ou souhaitée                |
+| `$json.data.company.id`                 | UUID            | non                             | Entreprise propriétaire                 |
+| `$json.data.company.email`              | email           | non                             | Contact/destinataire entreprise         |
+| `$json.data.company.legal_name`         | chaîne          | oui                             | Raison sociale                          |
+| `$json.data.company.establishment_name` | chaîne          | oui                             | Nom affichable                          |
+| `$json.data.company.sector`             | chaîne          | oui                             | Secteur                                 |
+| `$json.data.company.phone`              | chaîne          | oui                             | Contact entreprise                      |
+
+Les heures ne disposent pas d’un champ séparé : elles sont incluses dans
+`starts_at` et `ends_at`. n8n doit formater ces dates dans le fuseau voulu avant
+insertion dans Brevo.
+
+## Données volontairement absentes
+
+Les payloads ne contiennent jamais mot de passe/hash, access token, refresh
+token, session, JWT, cookie, secret n8n, clé API/Brevo, signature HMAC ni donnée
+interne d’authentification. Il n’existe pas non plus de raison de refus,
+`decision_at` distinct, horaires textuels séparés ou nom de contact entreprise
+distinct du profil/établissement.
+
+## Limite de fiabilité
+
+Il n’existe pas encore d’outbox transactionnelle. L’émission post-commit empêche
+qu’un rollback soit notifié, mais un arrêt du processus entre commit et livraison
+peut perdre un événement. Les retries ne survivent pas au redémarrage. Une
+outbox persistante reste nécessaire pour une garantie de livraison forte.

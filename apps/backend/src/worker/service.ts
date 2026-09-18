@@ -3,6 +3,7 @@ import { HttpError } from "../errors.js";
 import type { Geocoder } from "./geocode.js";
 import { isProfileComplete } from "./completion.js";
 import type { BusinessEventPublisher } from "../events/dispatcher.js";
+import { loadWorkerEventData } from "../events/payloads.js";
 import type {
   AvailabilityInput,
   AvailabilityPatch,
@@ -100,17 +101,25 @@ export class WorkerService {
         throw new HttpError(404, "PROFILE_NOT_FOUND", "Profil absent.");
       const { changed, value } = await write(db);
       const completed = await this.recompute(db, id);
+      const completedNow = !profile.rows[0].onboarding_completed && completed;
       return {
         changed,
-        completedNow: !profile.rows[0].onboarding_completed && completed,
+        completedNow,
+        eventWorker:
+          completedNow && this.events
+            ? await loadWorkerEventData(db, id)
+            : undefined,
         value,
       };
     });
     // Publication après COMMIT. Le publisher asynchrone absorbe les pannes n8n.
     if (outcome.changed)
       this.events?.publish("worker.profile.updated", { worker_id: id });
-    if (outcome.completedNow)
-      this.events?.publish("worker.onboarding.completed", { worker_id: id });
+    if (outcome.completedNow && outcome.eventWorker)
+      this.events?.publish("worker.onboarding.completed", {
+        worker_id: id,
+        worker: outcome.eventWorker,
+      });
     return outcome.value;
   }
 
