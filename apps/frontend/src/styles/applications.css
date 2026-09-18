@@ -44,6 +44,16 @@
   display: grid;
   gap: 18px;
 }
+.mission-capacity {
+  width: fit-content;
+  margin: 0;
+  padding: 5px 10px;
+  border-radius: 99px;
+  background: var(--tint);
+  color: var(--forest);
+  font-size: 0.82rem;
+  font-weight: 650;
+}
 .application-candidate-list,
 .worker-application-list {
   display: grid;
@@ -113,6 +123,13 @@
 .application-empty p + p {
   margin-top: 6px;
 }
+.application-capacity-note {
+  max-width: 42ch;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+  text-align: right;
+}
 
 .applications-page .section-head {
   margin-bottom: 24px;
@@ -149,6 +166,9 @@
   .application-candidate-decision,
   .worker-application-side {
     justify-items: start;
+  }
+  .application-capacity-note {
+    text-align: left;
   }
   .application-candidate-actions {
     width: 100%;

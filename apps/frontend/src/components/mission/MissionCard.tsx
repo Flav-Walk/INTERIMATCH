@@ -90,12 +90,18 @@ export function MissionCard({
   pendingApplications?: number;
 }) {
   const seats = Array.from({ length: Math.min(mission.headcount, 3) });
+  const full = score === undefined && mission.capacity?.full === true;
   return (
     <Link className="mission-card" to={`${basePath}/${mission.id}`}>
       <div className="mission-media">
         <JobGlyph job={mission.job} />
-        <span className={"mission-status " + statusClass[mission.status]}>
-          {statusLabels[mission.status]}
+        <span
+          className={
+            "mission-status " +
+            (full ? "is-running" : statusClass[mission.status])
+          }
+        >
+          {full ? "Pourvue" : statusLabels[mission.status]}
         </span>
         {pendingApplications > 0 && (
           <span className="mission-pending">
@@ -125,7 +131,13 @@ export function MissionCard({
           ))}
         </span>
         {score === undefined ? (
-          mission.headcount > 1 ? (
+          mission.capacity ? (
+            mission.capacity.full ? (
+              "Tous les postes sont pourvus"
+            ) : (
+              `${mission.capacity.filled}/${mission.capacity.headcount} poste${mission.capacity.headcount > 1 ? "s" : ""} pourvu${mission.capacity.filled > 1 ? "s" : ""}`
+            )
+          ) : mission.headcount > 1 ? (
             `${mission.headcount} postes`
           ) : (
             "1 poste"

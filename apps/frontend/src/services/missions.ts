@@ -9,6 +9,13 @@ export interface MissionSkill {
   required: boolean;
 }
 
+export interface MissionCapacity {
+  headcount: number;
+  filled: number;
+  remaining: number;
+  full: boolean;
+}
+
 export interface Mission {
   id: string;
   title: string;
@@ -24,6 +31,7 @@ export interface Mission {
   pay_amount: string | null;
   pay_unit: string | null;
   headcount: number;
+  capacity?: MissionCapacity;
   min_years_experience: string | null;
   status: MissionStatus;
   published_at: string | null;
@@ -100,7 +108,7 @@ export interface MissionCandidate {
   match: MatchResult;
 }
 
-export type CandidateSelectionInactive = "draft" | "ended" | "closed";
+export type CandidateSelectionInactive = "draft" | "ended" | "closed" | "full";
 
 /**
  * Résultat déjà filtré, classé et regroupé par palier par le backend.

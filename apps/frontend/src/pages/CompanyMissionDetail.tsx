@@ -18,13 +18,17 @@ import {
   getMission,
   publishMission,
   type Mission,
+  type MissionCapacity,
 } from "../services/missions";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import {
   statusLabels,
   missionSchedule,
 } from "../components/mission/MissionCard";
-import { MissionApplications } from "../components/applications/MissionApplications";
+import {
+  MissionApplications,
+  missionCapacityLabel,
+} from "../components/applications/MissionApplications";
 import { MatchedProfiles } from "../components/mission/MatchedProfiles";
 
 const payLabels: Record<string, string> = {
@@ -62,12 +66,17 @@ export function CompanyMissionDetail() {
   const [confirming, setConfirming] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [actionError, setActionError] = useState("");
+  const [capacity, setCapacity] = useState<MissionCapacity | null>(null);
 
   useEffect(() => {
     let live = true;
     setLoading(true);
     void getMission(id)
-      .then((m) => live && setMission(m))
+      .then((m) => {
+        if (!live) return;
+        setMission(m);
+        setCapacity(m.capacity ?? null);
+      })
       .catch((e) => live && setError(errorMessage(e)))
       .finally(() => live && setLoading(false));
     return () => {
@@ -117,6 +126,7 @@ export function CompanyMissionDetail() {
 
   const required = mission.skills.filter((s) => s.required);
   const desired = mission.skills.filter((s) => !s.required);
+  const missionFull = capacity?.full === true;
 
   return (
     <section className="page-wide">
@@ -128,9 +138,12 @@ export function CompanyMissionDetail() {
       <div className="section-head">
         <h1>{mission.title}</h1>
         <span
-          className={"mission-status is-inline " + statusClass[mission.status]}
+          className={
+            "mission-status is-inline " +
+            (missionFull ? "is-running" : statusClass[mission.status])
+          }
         >
-          {statusLabels[mission.status]}
+          {missionFull ? "Pourvue" : statusLabels[mission.status]}
         </span>
         <div className="head-actions">
           {canEdit(mission) && (
@@ -197,9 +210,11 @@ export function CompanyMissionDetail() {
               </p>
               <p className="mission-meta">
                 <Users size={15} aria-hidden="true" />
-                {mission.headcount > 1
-                  ? `${mission.headcount} postes à pourvoir`
-                  : "1 poste à pourvoir"}
+                {capacity === null
+                  ? mission.headcount > 1
+                    ? `${mission.headcount} postes à pourvoir`
+                    : "1 poste à pourvoir"
+                  : missionCapacityLabel(capacity.filled, capacity.headcount)}
               </p>
               {mission.pay_amount && mission.pay_unit && (
                 <p className="mission-meta">
@@ -260,7 +275,12 @@ export function CompanyMissionDetail() {
 
           <MatchedProfiles missionId={mission.id} revision={revision} />
 
-          <MissionApplications missionId={mission.id} />
+          <MissionApplications
+            missionId={mission.id}
+            missionTitle={mission.title}
+            headcount={mission.headcount}
+            onCapacityChange={setCapacity}
+          />
         </div>
       </div>
     </section>

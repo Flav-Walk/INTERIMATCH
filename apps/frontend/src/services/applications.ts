@@ -1,4 +1,5 @@
 import { api } from "./session";
+import type { MissionCapacity } from "./missions";
 
 export type ApplicationStatus = "pending" | "accepted" | "rejected";
 export type ApplicationDecision = Exclude<ApplicationStatus, "pending">;
@@ -113,9 +114,10 @@ export function pendingByMission(applications: CompanyApplication[]) {
 }
 
 export const listMissionApplications = (missionId: string) =>
-  api<{ applications: MissionApplication[] }>(
-    `/missions/${encodeURIComponent(missionId)}/applications`,
-  );
+  api<{
+    applications: MissionApplication[];
+    capacity: MissionCapacity | null;
+  }>(`/missions/${encodeURIComponent(missionId)}/applications`);
 
 export const decideApplication = (
   missionId: string,

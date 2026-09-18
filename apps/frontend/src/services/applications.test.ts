@@ -19,7 +19,13 @@ import {
   type WorkerApplication,
 } from "./applications";
 import { ApplicationAction } from "../components/applications/ApplyToMission";
-import { MissionApplicationList } from "../components/applications/MissionApplications";
+import {
+  DecisionConfirmation,
+  MissionApplicationList,
+  decisionConflictMessage,
+  missionCapacityLabel,
+  replaceApplication,
+} from "../components/applications/MissionApplications";
 import { WorkerApplicationList } from "../pages/WorkerApplications";
 
 const missionId = "00000000-0000-4000-8000-000000000001";
@@ -59,6 +65,7 @@ const workerApplication: WorkerApplication = {
   },
   company: { establishment_name: "Le Central" },
 };
+const capacity = { headcount: 5, filled: 2, remaining: 3, full: false };
 
 const response = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
@@ -95,7 +102,7 @@ describe("service candidatures", () => {
       .fn()
       .mockResolvedValueOnce(response({ application }))
       .mockResolvedValueOnce(response({ applications: [workerApplication] }))
-      .mockResolvedValueOnce(response({ applications: [candidate] }));
+      .mockResolvedValueOnce(response({ applications: [candidate], capacity }));
     vi.stubGlobal("fetch", fetchMock);
     expect((await getMyApplication(missionId)).application?.status).toBe(
       "pending",
@@ -103,9 +110,11 @@ describe("service candidatures", () => {
     expect((await listMyApplications()).applications[0].status).toBe(
       "accepted",
     );
-    expect(
-      (await listMissionApplications(missionId)).applications[0].worker.id,
-    ).toBe(candidate.worker.id);
+    const missionApplications = await listMissionApplications(missionId);
+    expect(missionApplications.applications[0].worker.id).toBe(
+      candidate.worker.id,
+    );
+    expect(missionApplications.capacity).toEqual(capacity);
   });
 
   it("n’envoie que la décision de l’entreprise", async () => {
@@ -120,6 +129,19 @@ describe("service candidatures", () => {
     ];
     expect(options.method).toBe("PATCH");
     expect(JSON.parse(options.body as string)).toEqual({ status: "accepted" });
+  });
+
+  it("envoie le refus avec le même contrat explicite", async () => {
+    const fetchMock = vi.fn(async () =>
+      response({ ...candidate, status: "rejected" }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    await decideApplication(missionId, application.id, "rejected");
+    const [, options] = fetchMock.mock.calls[0] as unknown as [
+      string,
+      RequestInit,
+    ];
+    expect(JSON.parse(options.body as string)).toEqual({ status: "rejected" });
   });
 
   it("propage une erreur lisible", async () => {
@@ -186,6 +208,7 @@ describe("interface candidatures", () => {
       createElement(MissionApplicationList, {
         applications: [candidate],
         busyId: null,
+        missionFull: false,
         onDecision: vi.fn(),
       }),
     );
@@ -193,6 +216,105 @@ describe("interface candidatures", () => {
     expect(company).toContain("Accepter");
     expect(company).toContain("Refuser");
     expect(applicationCandidateName(candidate)).toBe("Camille Martin");
+  });
+
+  it("confirme acceptation et refus avec le candidat et la mission", () => {
+    const accept = render(
+      createElement(DecisionConfirmation, {
+        decision: { application: candidate, status: "accepted" },
+        missionTitle: "Service du soir",
+        busy: false,
+        error: "",
+        onConfirm: vi.fn(),
+        onCancel: vi.fn(),
+      }),
+    );
+    expect(accept).toContain("Accepter cette candidature ?");
+    expect(accept).toContain("Camille Martin");
+    expect(accept).toContain("Service du soir");
+    expect(accept).toContain("Accepter la candidature");
+
+    const reject = render(
+      createElement(DecisionConfirmation, {
+        decision: { application: candidate, status: "rejected" },
+        missionTitle: "Service du soir",
+        busy: false,
+        error: "",
+        onConfirm: vi.fn(),
+        onCancel: vi.fn(),
+      }),
+    );
+    expect(reject).toContain("Refuser cette candidature ?");
+    expect(reject).toContain("Refuser la candidature");
+    expect(reject).toContain("is-danger");
+  });
+
+  it("verrouille les décisions pendant une mutation et montre son erreur", () => {
+    const list = render(
+      createElement(MissionApplicationList, {
+        applications: [candidate],
+        busyId: candidate.id,
+        missionFull: false,
+        onDecision: vi.fn(),
+      }),
+    );
+    expect(list.match(/disabled=""/g) ?? []).toHaveLength(2);
+
+    const dialog = render(
+      createElement(DecisionConfirmation, {
+        decision: { application: candidate, status: "accepted" },
+        missionTitle: "Service du soir",
+        busy: true,
+        error: "Connexion au service impossible.",
+        onConfirm: vi.fn(),
+        onCancel: vi.fn(),
+      }),
+    );
+    expect(dialog).toContain('aria-busy="true"');
+    expect(dialog).toContain("Acceptation en cours…");
+    expect(dialog).toContain('role="alert"');
+  });
+
+  it("représente la capacité et retire l’acceptation quand la mission est pleine", () => {
+    expect(missionCapacityLabel(0, 5)).toBe("0 poste pourvu sur 5.");
+    expect(missionCapacityLabel(1, 5)).toBe("1 poste pourvu sur 5.");
+    expect(missionCapacityLabel(5, 5)).toBe(
+      "Tous les postes sont pourvus (5 sur 5).",
+    );
+
+    const full = render(
+      createElement(MissionApplicationList, {
+        applications: [candidate],
+        busyId: null,
+        missionFull: true,
+        onDecision: vi.fn(),
+      }),
+    );
+    expect(full).toContain("Tous les postes sont pourvus");
+    expect(full).toContain(">Refuser<");
+    expect(full).not.toContain(">Accepter<");
+  });
+
+  it("applique seulement la réponse serveur et explique les conflits", () => {
+    const accepted = { ...candidate, status: "accepted" as const };
+    const rejected = { ...candidate, status: "rejected" as const };
+    expect(replaceApplication([candidate], accepted)[0].status).toBe(
+      "accepted",
+    );
+    expect(replaceApplication([candidate], rejected)[0].status).toBe(
+      "rejected",
+    );
+    expect(
+      decisionConflictMessage(
+        new ApiError("Brut", 409, "APPLICATION_ALREADY_DECIDED"),
+      ),
+    ).toContain("déjà été traitée");
+    expect(
+      decisionConflictMessage(new ApiError("Brut", 409, "MISSION_FULL")),
+    ).toContain("Tous les postes");
+    expect(
+      decisionConflictMessage(new ApiError("Brut", 403, "FORBIDDEN")),
+    ).toContain("plus accessible");
   });
 
   it("affiche les statuts worker et l’état vide", () => {
@@ -212,6 +334,32 @@ describe("interface candidatures", () => {
       createElement(WorkerApplicationList, { applications: [] }),
     );
     expect(empty).toContain("Vous n’avez pas encore postulé");
+  });
+
+  it("explique immédiatement la décision sur la fiche worker", () => {
+    const accepted = render(
+      createElement(ApplicationAction, {
+        application: { ...application, status: "accepted" },
+        loading: false,
+        applying: false,
+        error: "",
+        onApply: vi.fn(),
+      }),
+    );
+    expect(accepted).toContain("Votre candidature a été acceptée");
+    expect(accepted).not.toContain(">Postuler<");
+
+    const rejected = render(
+      createElement(ApplicationAction, {
+        application: { ...application, status: "rejected" },
+        loading: false,
+        applying: false,
+        error: "",
+        onApply: vi.fn(),
+      }),
+    );
+    expect(rejected).toContain("n’a pas retenu cette candidature");
+    expect(rejected).not.toContain(">Postuler<");
   });
 });
 

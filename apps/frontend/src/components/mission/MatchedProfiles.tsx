@@ -23,6 +23,7 @@ const inactiveCopy: Record<CandidateSelectionInactive, string> = {
     "Cette mission est terminée : le rapprochement de profils n’est plus actif.",
   closed:
     "Tous les postes sont pourvus : le rapprochement de profils est maintenant fermé.",
+  full: "Tous les postes sont pourvus : le rapprochement de nouveaux profils est suspendu.",
 };
 
 const readableJob = (job: string) =>

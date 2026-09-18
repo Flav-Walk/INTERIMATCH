@@ -156,6 +156,17 @@ main {
   color: var(--muted);
   cursor: not-allowed;
 }
+.button.is-danger {
+  background: var(--danger);
+  color: var(--surface);
+}
+.button.is-danger:hover {
+  background: var(--danger);
+}
+.button.is-danger:disabled {
+  background: var(--border);
+  color: var(--muted);
+}
 .welcome-note {
   display: flex;
   align-items: center;
@@ -1142,6 +1153,10 @@ small {
   margin: 0;
   color: var(--muted);
   font-size: 0.92rem;
+}
+.confirm .form-error {
+  margin-top: 14px;
+  color: oklch(0.38 0.12 25);
 }
 .confirm-actions {
   display: flex;
