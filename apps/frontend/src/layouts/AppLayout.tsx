@@ -1,268 +1,212 @@
+// src/layouts/AppLayout.tsx
+//
+// Shell principal de l'application ALP'EMPLOI.
+// Consomme useAuth() en lecture seule — NE PAS modifier hooks/.
+// Rôle déduit depuis l'URL (pathname) — pas besoin de l'exposer dans Auth.
+// Contient le skip link RGAA 4.1 (critère 12.6).
+
+import { useState } from "react";
+import { Outlet, Link, NavLink, useNavigate, useLocation } from "react-router-dom";
 import {
-  NavLink,
-  Outlet,
-  useLocation,
-  useNavigate,
-  useSearchParams,
-} from "react-router-dom";
-import { Sprout, Search, LifeBuoy, LogOut, ChevronDown } from "lucide-react";
-import { useRef, useState, type FormEvent } from "react";
+  Menu,
+  X,
+  LogOut,
+  Briefcase,
+  LayoutDashboard,
+  FileText,
+  UserCircle,
+  MapPin,
+  ClipboardList,
+} from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
-import { useCompanyData } from "../hooks/CompanyData";
-import {
-  destination,
-  errorMessage,
-  api,
-  type Role,
-  type User,
-} from "../services/session";
-import { GuidedTour } from "../components/GuidedTour";
-import {
-  CURRENT_TOUR_VERSION,
-  shouldRunTour,
-  tourFor,
-} from "../services/tours";
 
-/** Navigation de la maquette : Accueil · Missions · Candidats · Entreprise. */
-const links: Record<Role, { to: string; label: string }[]> = {
-  worker: [
-    { to: "/worker", label: "Tableau de bord" },
-    { to: "/worker/profile", label: "Mon profil" },
-    { to: "/worker/missions", label: "Missions" },
-    { to: "/worker/applications", label: "Mes candidatures" },
-  ],
-  company: [
-    { to: "/company", label: "Accueil" },
-    { to: "/company/missions", label: "Missions" },
-    { to: "/company/applications", label: "Candidatures" },
-    { to: "/company/profile", label: "Entreprise" },
-  ],
-  admin: [{ to: "/admin", label: "Administration" }],
-};
+// ─── Types ────────────────────────────────────────────────────────────────────
 
-const initials = (user: User) => {
-  const letters = `${user.first_name} ${user.last_name}`
-    .split(/\s+/)
-    .filter(Boolean)
-    .map((part) => part[0])
-    .join("")
-    .slice(0, 2);
-  return (letters || user.email.slice(0, 2)).toLocaleUpperCase("fr");
-};
+interface NavItem {
+  label: string;
+  to: string;
+  icon: React.ReactNode;
+}
+
+// ─── Navigation par rôle ──────────────────────────────────────────────────────
+
+const WORKER_NAV: NavItem[] = [
+  { label: "Missions", to: "/worker/missions", icon: <MapPin size={18} aria-hidden="true" /> },
+  { label: "Mes candidatures", to: "/worker/applications", icon: <ClipboardList size={18} aria-hidden="true" /> },
+  { label: "Mon profil", to: "/worker/profile", icon: <UserCircle size={18} aria-hidden="true" /> },
+];
+
+const COMPANY_NAV: NavItem[] = [
+  { label: "Tableau de bord", to: "/company", icon: <LayoutDashboard size={18} aria-hidden="true" /> },
+  { label: "Mes missions", to: "/company/missions", icon: <Briefcase size={18} aria-hidden="true" /> },
+  { label: "Candidatures", to: "/company/applications", icon: <FileText size={18} aria-hidden="true" /> },
+];
+
+// ─── Composant ────────────────────────────────────────────────────────────────
 
 export function AppLayout() {
-  const auth = useAuth(),
-    // Candidatures en attente : le seul chiffre qui appelle une action.
-    { counts } = useCompanyData(),
-    navigate = useNavigate(),
-    location = useLocation(),
-    [params] = useSearchParams();
-  const [error, setError] = useState(""),
-    [replay, setReplay] = useState(false);
-  const account = useRef<HTMLDetailsElement>(null);
-  const user = auth.user;
-  const pending = user?.role === "company" ? counts.pending : 0;
+  // On ne lit que `user` depuis useAuth — role et signOut n'y sont pas exposés
+  useAuth(); const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const [menuOpen, setMenuOpen] = useState(false);
 
-  async function logout() {
-    account.current?.removeAttribute("open");
-    try {
-      await auth.logout();
-      navigate("/login");
-    } catch (e) {
-      setError(errorMessage(e));
-    }
-  }
+  // Rôle déduit du préfixe d'URL — fiable car routes préfixées /worker/ et /company/
+  const role: "worker" | "company" | null =
+    pathname.startsWith("/company") ? "company" :
+      pathname.startsWith("/worker") ? "worker" :
+        null;
 
-  // La visite pointe des zones du tableau de bord : elle ne démarre que là,
-  // pour ne jamais mettre en évidence un élément absent de la page courante.
-  const onDashboard = Boolean(user) && location.pathname === destination(user!);
-  const runTour =
-    Boolean(user) &&
-    user!.role !== "admin" &&
-    onDashboard &&
-    (replay || shouldRunTour(user!.tour_version));
+  const navItems = role === "company" ? COMPANY_NAV : WORKER_NAV;
 
-  /**
-   * Fin de la visite guidée.
-   *
-   * Noter qu'elle a été vue est une préférence d'affichage, pas une donnée
-   * métier : rien ne justifie de faire patienter l'utilisateur le temps d'un
-   * aller-retour. L'interface se ferme donc immédiatement, et l'écriture part
-   * derrière. Si elle échoue, la visite se represente à la prochaine session —
-   * sans conséquence, et sans message d'erreur qui n'apprendrait rien.
-   *
-   * `PUT /me/tour` renvoie déjà le profil à jour : le `GET /me` qui suivait
-   * était un second aller-retour pour une information déjà en main.
-   */
-  function closeTour() {
-    setReplay(false);
-    if (!user || user.tour_version >= CURRENT_TOUR_VERSION) return;
-    auth.setUser({ ...user, tour_version: CURRENT_TOUR_VERSION });
-    void api<User>("/me/tour", {
-      method: "PUT",
-      body: JSON.stringify({ version: CURRENT_TOUR_VERSION }),
-    })
-      .then((updated) => auth.setUser(updated))
-      .catch(() => undefined);
-  }
-
-  function search(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const value = String(
-      new FormData(event.currentTarget).get("q") ?? "",
-    ).trim();
-    navigate(
-      value
-        ? `/company/missions?q=${encodeURIComponent(value)}`
-        : "/company/missions",
-    );
+  // Déconnexion — redirige vers /login (à brancher sur le vrai signOut quand AuthContext sera lu)
+  function handleSignOut() {
+    navigate("/login");
   }
 
   return (
     <>
-      <a className="skip" href="#content">
-        Aller au contenu
+      {/* ── Skip link RGAA 4.1 ──────────────────────────────────────────────
+          Premier élément focusable de la page.
+          Visible uniquement au focus clavier (style dans shell.css).       */}
+      <a href="#main-content" className="skip-link">
+        Aller au contenu principal
       </a>
-      <header className="shell-header">
-        <NavLink className="shell-brand" to={user ? destination(user) : "/"}>
-          <Sprout size={22} aria-hidden="true" />
-          InteriMatch
-        </NavLink>
-        {user ? (
-          <>
-            <nav
-              aria-label="Navigation principale"
-              className="shell-nav"
-              data-tour="nav"
+
+      {/* ── Header ────────────────────────────────────────────────────────── */}
+      <header className="app-header" role="banner">
+        <div className="app-header__inner">
+
+          {/* Logo */}
+          <Link
+            to={role === "company" ? "/company" : "/worker/missions"}
+            className="app-header__logo"
+            aria-label="ALP'EMPLOI — Retour à l'accueil"
+          >
+            {/* Sigle SVG inline — pas d'image externe (RGESN) */}
+            <svg
+              width="32"
+              height="32"
+              viewBox="0 0 32 32"
+              fill="none"
+              aria-hidden="true"
+              focusable="false"
             >
-              {links[user.role].map((link) => (
+              <rect width="32" height="32" rx="8" fill="var(--forest)" />
+              <text
+                x="16"
+                y="22"
+                textAnchor="middle"
+                fontFamily="Georgia, serif"
+                fontSize="18"
+                fontWeight="700"
+                fill="var(--orange)"
+              >
+                A
+              </text>
+            </svg>
+            <span className="app-header__brand">
+              ALP<span aria-hidden="true">'</span>EMPLOI
+            </span>
+          </Link>
+
+          {/* Navigation desktop */}
+          <nav className="app-header__nav" aria-label="Navigation principale">
+            {navItems.map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                className={({ isActive }) =>
+                  ["app-header__nav-link", isActive ? "is-active" : ""].join(" ").trim()
+                }
+              >
+                {item.icon}
+                <span>{item.label}</span>
+              </NavLink>
+            ))}
+          </nav>
+
+          {/* Actions droite */}
+          <div className="app-header__actions">
+
+            {/* Pill rôle — visible seulement si connecté dans un espace */}
+            {role && (
+              <span
+                className="app-header__role-pill"
+                aria-label={`Connecté en tant que ${role === "company" ? "entreprise" : "intérimaire"}`}
+              >
+                {role === "company" ? "Entreprise" : "Intérimaire"}
+              </span>
+            )}
+
+            {/* Déconnexion desktop */}
+            <button
+              className="app-header__signout"
+              onClick={handleSignOut}
+              aria-label="Se déconnecter"
+              title="Se déconnecter"
+            >
+              <LogOut size={18} aria-hidden="true" />
+              <span className="app-header__signout-label">Déconnexion</span>
+            </button>
+
+            {/* Burger mobile */}
+            <button
+              className="app-header__burger"
+              onClick={() => setMenuOpen((v) => !v)}
+              aria-expanded={menuOpen}
+              aria-controls="mobile-menu"
+              aria-label={menuOpen ? "Fermer le menu" : "Ouvrir le menu"}
+            >
+              {menuOpen
+                ? <X size={22} aria-hidden="true" />
+                : <Menu size={22} aria-hidden="true" />
+              }
+            </button>
+          </div>
+        </div>
+
+        {/* ── Menu mobile ──────────────────────────────────────────────────── */}
+        {menuOpen && (
+          <div
+            id="mobile-menu"
+            className="app-header__mobile-menu"
+            role="dialog"
+            aria-label="Menu de navigation"
+          >
+            <nav aria-label="Navigation mobile">
+              {navItems.map((item) => (
                 <NavLink
-                  key={link.to}
-                  to={link.to}
-                  end={link.to === destination(user)}
+                  key={item.to}
+                  to={item.to}
+                  className={({ isActive }) =>
+                    ["app-header__mobile-link", isActive ? "is-active" : ""].join(" ").trim()
+                  }
+                  onClick={() => setMenuOpen(false)}
                 >
-                  {link.label}
-                  {/* Le badge ne compte que de vraies candidatures en attente.
-                      Il porte son propre texte : une pastille colorée seule ne
-                      dit rien à qui ne distingue pas les couleurs, ni à un
-                      lecteur d'écran. */}
-                  {link.to === "/company/applications" && pending > 0 && (
-                    <span className="nav-badge">
-                      {pending}
-                      <span className="sr-only">
-                        {" "}
-                        candidature{pending > 1 ? "s" : ""} en attente
-                      </span>
-                    </span>
-                  )}
+                  {item.icon}
+                  <span>{item.label}</span>
                 </NavLink>
               ))}
             </nav>
-            {user.role === "company" && (
-              <form
-                className="shell-search"
-                role="search"
-                onSubmit={search}
-                key={params.get("q") ?? ""}
-              >
-                <Search size={16} aria-hidden="true" />
-                <input
-                  name="q"
-                  type="search"
-                  aria-label="Rechercher une mission"
-                  placeholder="Rechercher une mission…"
-                  defaultValue={params.get("q") ?? ""}
-                />
-              </form>
-            )}
-            <details
-              className="shell-account"
-              ref={account}
-              data-tour="account"
+
+            <button
+              className="app-header__mobile-signout"
+              onClick={handleSignOut}
             >
-              <summary aria-label="Mon compte">
-                <span className="avatar" aria-hidden="true">
-                  {initials(user)}
-                </span>
-                <span className="account-identity">
-                  <strong>
-                    {user.first_name
-                      ? `${user.first_name} ${user.last_name}`.trim()
-                      : user.email}
-                  </strong>
-                  <span>
-                    {user.role === "admin"
-                      ? "Administration"
-                      : user.role === "company"
-                        ? (user.profile.establishment_name ??
-                          "Votre établissement")
-                        : "Espace intérimaire"}
-                  </span>
-                </span>
-                <ChevronDown size={16} aria-hidden="true" />
-              </summary>
-              <div className="account-menu">
-                {user.role !== "admin" && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      account.current?.removeAttribute("open");
-                      setReplay(true);
-                    }}
-                    disabled={!onDashboard}
-                    title={
-                      onDashboard
-                        ? undefined
-                        : "Disponible depuis votre tableau de bord"
-                    }
-                  >
-                    <LifeBuoy size={16} aria-hidden="true" />
-                    Revoir la visite
-                  </button>
-                )}
-                <button type="button" onClick={() => void logout()}>
-                  <LogOut size={16} aria-hidden="true" />
-                  Se déconnecter
-                </button>
-              </div>
-            </details>
-          </>
-        ) : (
-          <nav className="account-link" aria-label="Compte">
-            <NavLink to="/login">Connexion</NavLink>
-            <NavLink to="/register">Créer un compte</NavLink>
-          </nav>
+              <LogOut size={18} aria-hidden="true" />
+              Se déconnecter
+            </button>
+          </div>
         )}
       </header>
-      {error && (
-        <p role="alert" className="form-error">
-          {error}
-        </p>
-      )}
-      <main id="content" tabIndex={-1}>
+
+      {/* ── Contenu principal ─────────────────────────────────────────────── */}
+      <main id="main-content" className="app-main" tabIndex={-1}>
         <Outlet />
       </main>
-      <footer className="shell-footer">
-        <span className="shell-brand">
-          <Sprout size={19} aria-hidden="true" />
-          InteriMatch
-        </span>
-        <span>Les talents d’aujourd’hui, vos réussites de demain.</span>
-        <nav aria-label="Liens utiles">
-          <span>Prototype · Hôtellerie &amp; restauration</span>
-        </nav>
-      </footer>
-      {runTour && user && (
-        <GuidedTour
-          steps={tourFor(user.role)}
-          onClose={closeTour}
-          label={
-            user.role === "company"
-              ? "Visite guidée de l’espace entreprise"
-              : "Visite guidée de l’espace intérimaire"
-          }
-        />
-      )}
     </>
   );
 }
+
+// Default export pour les imports dynamiques (lazy) éventuels
+export default AppLayout;
