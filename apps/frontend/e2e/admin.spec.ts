@@ -19,7 +19,37 @@ const worker = {
   last_name: "Martin",
 };
 
-async function mockSession(page: Page, role: "admin" | "worker") {
+/**
+ * Session simulée de l'espace administration.
+ *
+ * `hold` retient la réponse de `GET /admin/users` et rend la main sur une
+ * fonction qui la libère.
+ *
+ * POURQUOI. Le test du chargement affirme qu'un indicateur transitoire est
+ * visible. Cet indicateur n'existe qu'entre le montage de la page et l'arrivée
+ * de la réponse : l'affirmer, c'est courir après une fenêtre. La fenêtre était
+ * ouverte par un `setTimeout` de 150 ms dans la doublure — une marge, pas une
+ * garantie. Sous la charge des deux navigateurs concurrents, ces 150 ms
+ * pouvaient s'écouler avant la première interrogation de Playwright : la
+ * réponse était déjà là, l'indicateur déjà remplacé, et le test échouait sans
+ * qu'aucun défaut applicatif ne soit en cause.
+ *
+ * Le test décide désormais lui-même du moment où la réponse arrive. La fenêtre
+ * ne peut plus se refermer trop tôt, puisque rien ne la referme avant lui.
+ * L'assertion est conservée entière — elle est simplement devenue vérifiable :
+ * elle passait auparavant par chance, elle passe maintenant par construction.
+ */
+async function mockSession(
+  page: Page,
+  role: "admin" | "worker",
+  options: { hold?: boolean } = {},
+) {
+  let release = () => {};
+  const held = options.hold
+    ? new Promise<void>((resolve) => {
+        release = resolve;
+      })
+    : Promise.resolve();
   await page.route("**/api/v1/**", async (route) => {
     const request = route.request();
     const path = new URL(request.url()).pathname.replace("/api/v1", "");
@@ -39,7 +69,7 @@ async function mockSession(page: Page, role: "admin" | "worker") {
               },
       });
     if (path === "/admin/users" && request.method() === "GET") {
-      await new Promise((resolve) => setTimeout(resolve, 150));
+      await held;
       return route.fulfill({ json: [admin, worker] });
     }
     if (path.endsWith(`/admin/users/${worker.id}/role`))
@@ -48,16 +78,21 @@ async function mockSession(page: Page, role: "admin" | "worker") {
       return route.fulfill({ json: { missions: [] } });
     return route.fulfill({ json: [] });
   });
+  return release;
 }
 
 test("un admin consulte les utilisateurs et modifie un rôle", async ({
   page,
 }) => {
-  await mockSession(page, "admin");
+  const servirLesUtilisateurs = await mockSession(page, "admin", {
+    hold: true,
+  });
   await page.goto("/admin");
+  // La liste n'est pas encore servie : l'indicateur est donc nécessairement là.
   await expect(
     page.getByRole("status", { name: "Chargement des utilisateurs" }),
   ).toBeVisible();
+  servirLesUtilisateurs();
   await expect(
     page.getByRole("heading", { name: "Administration" }),
   ).toBeVisible();
