@@ -1,76 +1,75 @@
 import { Link } from "react-router-dom";
 import {
   ArrowRight,
-  CalendarDays,
+  Check,
   ChefHat,
   ConciergeBell,
   GlassWater,
-  MapPin,
   Users,
   Utensils,
+  UtensilsCrossed,
 } from "lucide-react";
 import type { Mission, MissionStatus } from "../../services/missions";
 import { MatchBadge } from "./MatchBadge";
 
-/**
- * Carte mission de la maquette : bloc média, badge de statut en surimpression,
- * titre, lieu, créneau, puis pied avec l'effectif et la flèche circulaire.
- */
+type StatusEntry = { label: string; cls: string; closed: boolean };
 
-const statusLabels: Record<MissionStatus, string> = {
-  draft: "Brouillon",
-  open: "À pourvoir",
-  filled: "En cours",
-  completed: "Terminée",
-  cancelled: "Annulée",
+const STATUS_CONFIG: Record<MissionStatus, StatusEntry> = {
+  draft:     { label: "Brouillon", cls: "is-draft",  closed: false },
+  open:      { label: "OPEN",      cls: "is-open",   closed: false },
+  filled:    { label: "FILLED",    cls: "is-filled", closed: true  },
+  completed: { label: "Terminée",  cls: "is-done",   closed: true  },
+  cancelled: { label: "Annulée",   cls: "is-done",   closed: true  },
 };
 
-const statusClass: Record<MissionStatus, string> = {
-  draft: "is-draft",
-  open: "is-open",
-  filled: "is-running",
-  completed: "is-done",
-  cancelled: "is-done",
-};
+// Alias rétrocompatible — utilisé par CompanyMissionDetail
+export const statusLabels: Record<MissionStatus, string> = Object.fromEntries(
+  Object.entries(STATUS_CONFIG).map(([k, v]) => [k, v.label])
+) as Record<MissionStatus, string>;
 
-/**
- * Glyphe du métier. Il occupe la place d'une photographie : la maquette prévoit
- * une image, que nous n'avons pas encore. Le cadrage et les proportions sont
- * conservés pour qu'un média réel puisse s'y substituer sans toucher au layout.
- */
+// --- Glyphe métier ---
 function JobGlyph({ job }: { job: string }) {
-  if (job.includes("cuisin") || job.includes("chef_de_partie"))
+  const j = job.toLowerCase();
+  if (j.includes("chef") || j.includes("cuisin") || j.includes("partie"))
     return <ChefHat aria-hidden="true" />;
-  if (job === "barman") return <GlassWater aria-hidden="true" />;
-  if (job === "receptionniste" || job === "hote_accueil")
+  if (j.includes("bar"))
+    return <GlassWater aria-hidden="true" />;
+  if (j.includes("accueil") || j === "receptionniste")
     return <ConciergeBell aria-hidden="true" />;
-  if (job === "employe_etage") return <Users aria-hidden="true" />;
+  if (j.includes("etage"))
+    return <Users aria-hidden="true" />;
+  if (j.includes("plongeur"))
+    return <UtensilsCrossed aria-hidden="true" />;
   return <Utensils aria-hidden="true" />;
 }
 
-const dayMonth = new Intl.DateTimeFormat("fr-FR", {
-  day: "numeric",
-  month: "short",
-  year: "numeric",
-});
-/** Notation de la maquette : « 18h » à l'heure pile, « 18h30 » sinon. */
-const frenchHour = (date: Date) => {
-  const minutes = date.getMinutes();
-  const hours = String(date.getHours()).padStart(2, "0");
-  return minutes ? `${hours}h${String(minutes).padStart(2, "0")}` : `${hours}h`;
-};
-
-/** « 12 oct. 2026 · 18h – 02h » */
-export function missionSchedule(mission: Mission) {
-  const start = new Date(mission.starts_at);
-  return `${dayMonth.format(start)} · ${frenchHour(start)} – ${frenchHour(new Date(mission.ends_at))}`;
+// --- Formatage rémunération ---
+function formatPay(amount: string | null, unit: string | null): string | null {
+  if (!amount || !unit) return null;
+  const n = parseFloat(amount);
+  if (isNaN(n)) return null;
+  const suffix = unit === "hour" ? "€/h" : unit === "day" ? "€/j" : "€";
+  return `${n.toFixed(2).replace(".", ",")} ${suffix}`;
 }
 
-/**
- * `basePath` : la même carte sert les deux espaces, qui n'ouvrent simplement
- * pas le même détail. Dupliquer le composant pour cette seule différence
- * ferait diverger deux fois la maquette.
- */
+// --- Formatage planning ---
+const dateFmt = new Intl.DateTimeFormat("fr-FR", {
+  day: "numeric",
+  month: "short",
+});
+
+function toHHMM(d: Date): string {
+  const m = d.getMinutes();
+  const h = String(d.getHours()).padStart(2, "0");
+  return m ? `${h}h${String(m).padStart(2, "0")}` : `${h}h`;
+}
+
+export function missionSchedule(mission: Mission): string {
+  const start = new Date(mission.starts_at);
+  return `${dateFmt.format(start)} · ${toHHMM(start)} – ${toHHMM(new Date(mission.ends_at))}`;
+}
+
+// --- Composant ---
 export function MissionCard({
   mission,
   basePath = "/company/missions",
@@ -79,66 +78,63 @@ export function MissionCard({
 }: {
   mission: Mission;
   basePath?: string;
-  /** Compatibilité, côté intérimaire uniquement : une entreprise voit ses
-   *  propres missions, pour lesquelles un score n'aurait pas de sens. */
   score?: number;
-  /**
-   * Candidatures en attente, côté entreprise. Uniquement de vraies
-   * candidatures : un profil suggéré par le rapprochement n'a rien demandé et
-   * n'a donc rien à compter ici.
-   */
   pendingApplications?: number;
 }) {
+  const { label, cls, closed } = STATUS_CONFIG[mission.status];
+  const pay = formatPay(mission.pay_amount, mission.pay_unit);
   const seats = Array.from({ length: Math.min(mission.headcount, 3) });
+
   return (
-    <Link className="mission-card" to={`${basePath}/${mission.id}`}>
+    <Link
+      className={`mission-card${closed ? " is-closed" : ""}`}
+      to={`${basePath}/${mission.id}`}
+    >
       <div className="mission-media">
         <JobGlyph job={mission.job} />
-        <span className={"mission-status " + statusClass[mission.status]}>
-          {statusLabels[mission.status]}
-        </span>
+        <span className={`mission-status ${cls}`}>{label}</span>
         {pendingApplications > 0 && (
           <span className="mission-pending">
             {pendingApplications}
             <span className="sr-only">
-              {" "}
-              candidature{pendingApplications > 1 ? "s" : ""} en attente
+              {" "}candidature{pendingApplications > 1 ? "s" : ""} en attente
             </span>
           </span>
         )}
       </div>
+
       <div className="mission-body">
         <h3 className="mission-title">{mission.title}</h3>
-        <p className="mission-meta">
-          <MapPin size={14} aria-hidden="true" />
-          {mission.city}
-        </p>
-        <p className="mission-meta">
-          <CalendarDays size={14} aria-hidden="true" />
-          {missionSchedule(mission)}
-        </p>
+        <p className="mission-meta">{mission.city}</p>
+        <p className="mission-meta">{missionSchedule(mission)}</p>
       </div>
+
       <div className="mission-foot">
         <span className="avatar-stack" aria-hidden="true">
-          {seats.map((_, index) => (
-            <span key={index} />
+          {seats.map((_, i) => (
+            <span key={i} />
           ))}
         </span>
-        {score === undefined ? (
-          mission.headcount > 1 ? (
+        <span className="mission-pay">
+          {score !== undefined ? (
+            <MatchBadge score={score} />
+          ) : pay !== null ? (
+            pay
+          ) : mission.headcount > 1 ? (
             `${mission.headcount} postes`
           ) : (
             "1 poste"
-          )
-        ) : (
-          <MatchBadge score={score} />
-        )}
+          )}
+        </span>
         <span className="circle-button" aria-hidden="true">
-          <ArrowRight size={15} />
+          {closed
+            ? <Check size={14} strokeWidth={2.5} />
+            : <ArrowRight size={15} />
+          }
         </span>
       </div>
     </Link>
   );
 }
 
-export { statusLabels };
+export { STATUS_CONFIG };

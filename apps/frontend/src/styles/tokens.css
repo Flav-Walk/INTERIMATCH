@@ -11,6 +11,10 @@
   --border: oklch(0.88 0.008 160);
   --tint: oklch(0.94 0.025 160);
   --radius: 12px;
+  --forest-mid: oklch(0.42 0.085 165);
+  /* alp-medium ≈ #2C7052 */
+  --radius-card: 18px;
+  /* bords ronds des cartes v2 */
   /* Gabarit de page partagé par l'en-tête, le contenu et le pied, pour qu'ils
      s'alignent sur la même gouttière quelle que soit la largeur d'écran. */
   --page-max: 1440px;
