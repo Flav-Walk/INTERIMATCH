@@ -538,7 +538,10 @@ test("the company workspace lists real missions with the maquette layout", async
   ).toBeVisible();
 
   // Les missions publiées par la fixture sont réellement affichées.
-  const openTab = page.getByRole("button", { name: /^À pourvoir/ });
+  // L'onglet groupe par statut serveur et s'appelle « Publiées » ; le badge
+  // d'une mission, lui, dit toujours « À pourvoir ». Deux vocabulaires
+  // volontairement distincts : l'un classe, l'autre décrit.
+  const openTab = page.getByRole("button", { name: /^Publiées/ });
   await expect(openTab).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator(".mission-card")).toHaveCount(2);
   await expect(
@@ -868,7 +871,7 @@ test("a company drafts, edits and publishes a mission", async ({
   await expect(page.getByRole("button", { name: /^Brouillons/ })).toContainText(
     "0",
   );
-  await expect(page.getByRole("button", { name: /^À pourvoir/ })).toContainText(
+  await expect(page.getByRole("button", { name: /^Publiées/ })).toContainText(
     "1",
   );
 
@@ -1014,7 +1017,7 @@ test("the company dashboard reflects mission changes without reloading", async (
   await completeTour(page);
 
   const draftsTab = page.getByRole("button", { name: /^Brouillons/ });
-  const openTab = page.getByRole("button", { name: /^À pourvoir/ });
+  const openTab = page.getByRole("button", { name: /^Publiées/ });
   await expect(draftsTab).toContainText("0");
 
   // Le CTA du tableau de bord mène directement au formulaire : passer par
@@ -1040,8 +1043,16 @@ test("the company dashboard reflects mission changes without reloading", async (
   await expect(
     page.getByRole("heading", { name: "Service du réveillon" }),
   ).toBeVisible();
-  // Le planning suit aussi.
-  await expect(page.locator(".agenda-item")).toHaveCount(1);
+  // Le planning, lui, ne bouge pas encore — et c'est la règle.
+  //
+  // « Vos prochaines missions » ne liste que les missions publiées. Un
+  // brouillon n'a été promis à personne : l'y faire figurer annoncerait une
+  // mission planifiée qui n'existe pas. Le planning suivra à la publication,
+  // quelques lignes plus bas — c'est là que ce test le vérifie désormais.
+  await expect(page.locator(".agenda-item")).toHaveCount(0);
+  await expect(page.locator(".agenda")).toContainText(
+    "Aucune mission planifiée",
+  );
 
   // Modification, puis navigation ailleurs et retour.
   await page.goto(missionUrl);
@@ -1075,6 +1086,12 @@ test("the company dashboard reflects mission changes without reloading", async (
   await expect(
     page.getByRole("heading", { name: "Service du réveillon — 20 h" }),
   ).toBeVisible();
+  // Le planning suit enfin : publiée, la mission entre dans l'agenda, sans
+  // rechargement — ce que ce test existe pour prouver.
+  await expect(page.locator(".agenda-item")).toHaveCount(1);
+  await expect(page.locator(".agenda-item")).toContainText(
+    "Service du réveillon — 20 h",
+  );
 
   // Rien de tout cela ne doit dépendre d'un rechargement : l'état affiché est
   // déjà celui qu'un F5 montrerait.
@@ -1506,7 +1523,16 @@ test("matching connects a published mission to a compatible intérimaire", async
     name: "Vos prochaines missions",
   });
   await expect(confirmedMissions).toContainText(titre);
-  await expect(confirmedMissions).toContainText("Acceptée");
+  // L'état est lu sur la classe de statut, pas sur son libellé.
+  //
+  // Cet écran ne dit plus « Acceptée » mais « Mission confirmée » : il parle
+  // de la mission à venir, pas de la décision passée. La classe porte la même
+  // information sous une forme qui ne dépend pas de la formulation retenue —
+  // c'est elle qui fait foi ici. Le libellé lui-même reste couvert plus bas,
+  // sur l'écran Candidatures, où il est réellement le sujet de l'assertion.
+  await expect(
+    confirmedMissions.locator(".mission-context-status.is-confirmed"),
+  ).toHaveCount(1);
   await expect(confirmedMissions).toContainText("15 oct. 2027");
   await expect(confirmedMissions).toContainText("69002 Lyon");
   await expect(page.getByRole("heading", { name: titre })).toHaveCount(1);
@@ -1519,7 +1545,12 @@ test("matching connects a published mission to a compatible intérimaire", async
   const acceptedApplication = page
     .getByRole("listitem")
     .filter({ hasText: titre });
-  await expect(acceptedApplication).toContainText("Acceptée");
+  // Le statut brut « Acceptée » a disparu de l'espace intérimaire : une seule
+  // mention subsiste, le contexte temporel de la mission. La classe le dit
+  // sans dépendre du mot choisi ; le mot est vérifié juste après, une fois.
+  await expect(
+    acceptedApplication.locator(".application-context.is-confirmed"),
+  ).toHaveCount(1);
   await expect(acceptedApplication).toContainText("Mission confirmée");
   await page.goto(workerMissionUrl);
   await expect(
