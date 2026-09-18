@@ -662,3 +662,148 @@ describe("liste entreprise - regroupement par onglet", () => {
     }
   });
 });
+
+/**
+ * Ce qu'une modification de mission ne doit pas pouvoir défaire.
+ *
+ * Le trou venait du fait que les deux invariants de l'attribution — la capacité
+ * (migration 007) et l'engagement unique (migration 008) — sont tenus par des
+ * déclencheurs posés sur `applications`. Ils se déclenchent quand une
+ * candidature change, et à ce moment-là seulement. Une modification de la
+ * mission, elle, n'y touche pas : elle déplace les bornes du problème sans que
+ * rien ne revérifie que les décisions déjà prises tiennent encore.
+ *
+ * Les deux cas ci-dessous partent donc d'un état parfaitement valide et le
+ * rendent impossible par une simple requête `PATCH /missions/:id`.
+ */
+describe("modification — ce que l'attribution a déjà décidé", () => {
+  const patchMission = (missionId: string, body: Record<string, unknown>) =>
+    auth(request(app).patch(`/api/v1/missions/${missionId}`), ownerToken).send(
+      body,
+    );
+
+  /** Une mission publiée, ses candidatures acceptées. */
+  async function pourvue(
+    titre: string,
+    places: number,
+    creneau = slotAt(40, 9, 6),
+  ) {
+    const id = await published(titre, { headcount: places, ...creneau });
+    const retenus: string[] = [];
+    for (let rang = 0; rang < places; rang++) {
+      const personne = await newWorker(
+        `${titre.replace(/[^a-z]/gi, "").toLowerCase()}.${rang}@example.test`,
+      );
+      const candidature = await applyTo(id, personne.token);
+      expect((await decide(id, candidature.body.id, "accepted")).status).toBe(
+        200,
+      );
+      retenus.push(personne.id);
+    }
+    return { id, retenus };
+  }
+
+  it("refuse de ramener l'effectif sous le nombre de personnes retenues", async () => {
+    const { id } = await pourvue("Effectif reduit", 2);
+
+    const r = await patchMission(id, { headcount: 1 });
+    expect(r.status).toBe(409);
+    expect(r.body.error.code).toBe("HEADCOUNT_BELOW_FILLED");
+
+    // L'invariant 0 <= filled <= headcount tient toujours. Sans ce refus, la
+    // fiche annonçait « Tous les postes sont pourvus (2 sur 1) », et deux
+    // personnes restaient engagées sur un poste unique.
+    const apres = (await readMission(id)).body;
+    expect(apres.headcount).toBe(2);
+    expect(apres.capacity.filled).toBe(2);
+    expect(apres.capacity.filled).toBeLessThanOrEqual(apres.headcount);
+  });
+
+  it("accepte de ramener l'effectif exactement au nombre de personnes retenues", async () => {
+    // La borne est bien `<`, pas `<=` : descendre à ce qui est déjà pourvu est
+    // légitime — c'est ainsi qu'une entreprise clôt son recrutement.
+    const { id } = await pourvue("Effectif ajuste", 1, slotAt(41, 9, 6));
+    const r = await patchMission(id, { headcount: 1 });
+    expect(r.status).toBe(200);
+    expect(r.body.capacity).toMatchObject({
+      headcount: 1,
+      filled: 1,
+      full: true,
+    });
+  });
+
+  it("laisse l'effectif libre tant que personne n'est retenu", async () => {
+    const id = await published("Effectif libre", {
+      headcount: 3,
+      ...slotAt(42, 9, 6),
+    });
+    expect((await patchMission(id, { headcount: 1 })).status).toBe(200);
+  });
+
+  it("refuse un créneau qui engagerait deux fois la même personne", async () => {
+    // Deux missions qui ne se chevauchent pas, la même personne retenue sur les
+    // deux : un état que le produit autorise et qui est exactement ce qu'il
+    // doit protéger.
+    const matin = await published("Service du matin", slotAt(50, 8, 4));
+    const soir = await published("Service du soir", slotAt(50, 18, 4));
+    const personne = await newWorker("double.engagement@example.test");
+    for (const mission of [matin, soir]) {
+      const candidature = await applyTo(mission, personne.token);
+      expect(
+        (await decide(mission, candidature.body.id, "accepted")).status,
+      ).toBe(200);
+    }
+
+    // Le service du soir est ramené sur le créneau du matin.
+    const r = await patchMission(soir, slotAt(50, 9, 4));
+    expect(r.status).toBe(409);
+    expect(r.body.error.code).toBe("WORKER_ENGAGED");
+
+    // Aucune borne n'a bougé, donc aucun double engagement en base.
+    const { rows } = await db.query<{ n: string }>(
+      `SELECT count(*)::text AS n
+         FROM applications a
+         JOIN missions x ON x.id = a.mission_id
+         JOIN applications b ON b.worker_id = a.worker_id AND b.id <> a.id
+         JOIN missions y ON y.id = b.mission_id
+        WHERE a.status = 'accepted' AND b.status = 'accepted'
+          AND x.status <> 'cancelled' AND y.status <> 'cancelled'
+          AND x.starts_at < y.ends_at AND y.starts_at < x.ends_at`,
+    );
+    expect(rows[0].n).toBe("0");
+  });
+
+  it("laisse déplacer un créneau qui ne chevauche rien", async () => {
+    const seule = await published("Deplacable", slotAt(60, 8, 4));
+    const personne = await newWorker("deplacable.retenu@example.test");
+    const candidature = await applyTo(seule, personne.token);
+    expect((await decide(seule, candidature.body.id, "accepted")).status).toBe(
+      200,
+    );
+
+    const ailleurs = slotAt(61, 14, 4);
+    const r = await patchMission(seule, ailleurs);
+    expect(r.status).toBe(200);
+    expect(new Date(String(r.body.starts_at)).toISOString()).toBe(
+      ailleurs.starts_at,
+    );
+  });
+
+  it("ignore une mission annulée dans la recherche de chevauchement", async () => {
+    // Une mission annulée ne réserve plus rien : le créneau est rendu. La
+    // modification ne doit donc pas s'en prévaloir pour refuser.
+    const annulee = await published("Annulee liberatrice", slotAt(65, 8, 4));
+    const autre = await published("Autre service", slotAt(65, 18, 4));
+    const personne = await newWorker("annulee.retenu@example.test");
+    for (const mission of [annulee, autre]) {
+      const candidature = await applyTo(mission, personne.token);
+      expect(
+        (await decide(mission, candidature.body.id, "accepted")).status,
+      ).toBe(200);
+    }
+    await cancel(annulee);
+
+    const r = await patchMission(autre, slotAt(65, 9, 4));
+    expect(r.status).toBe(200);
+  });
+});
