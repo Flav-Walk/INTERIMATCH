@@ -1349,6 +1349,165 @@ small {
   background: var(--border);
 }
 
+/* ---- Rapprochement entreprise : une liste, pas une galerie de cartes ---- */
+.matched-profiles-intro {
+  margin-bottom: 18px;
+}
+.matched-profiles-state {
+  padding: 18px;
+  border: 1px dashed var(--border);
+  border-radius: calc(var(--radius) - 3px);
+  background: var(--background);
+}
+.matched-profiles-state p:last-child {
+  margin-bottom: 0;
+}
+.matched-profiles-state .secondary-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.matched-profiles-loading {
+  display: grid;
+  gap: 12px;
+  padding: 18px 0 4px;
+}
+.matched-profiles-loading > span:not(.sr-only) {
+  display: block;
+  width: min(100%, 620px);
+  height: 12px;
+  border-radius: 99px;
+  background: var(--border);
+  opacity: 0.65;
+}
+.matched-profiles-loading > span:nth-child(3) {
+  width: min(72%, 460px);
+}
+.matched-profiles-loading > span:nth-child(4) {
+  width: min(46%, 300px);
+}
+.matched-profiles-summary {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 4px;
+  color: var(--forest);
+  font-size: 0.9rem;
+  font-weight: 650;
+}
+.matched-profiles-summary svg {
+  flex: none;
+  margin-top: 3px;
+}
+.matched-profile-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.matched-profile {
+  padding: 22px 0;
+  border-top: 1px solid var(--border);
+}
+.matched-profile:first-child {
+  margin-top: 16px;
+}
+.matched-profile:last-child {
+  padding-bottom: 0;
+}
+.matched-profile-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+.matched-profile h3 {
+  margin: 0 0 7px;
+}
+.matched-profile-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px 16px;
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+.matched-profile-meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.matched-profile-skills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 15px;
+}
+.match-breakdown {
+  margin-top: 16px;
+}
+.match-breakdown summary {
+  width: fit-content;
+  color: var(--forest);
+  font-size: 0.86rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+.match-breakdown summary:focus-visible {
+  outline: 3px solid var(--forest);
+  outline-offset: 5px;
+}
+.match-breakdown[open] summary {
+  margin-bottom: 10px;
+}
+.match-breakdown p {
+  margin-bottom: 10px;
+}
+.match-breakdown ul {
+  display: grid;
+  gap: 7px;
+  max-width: 520px;
+  margin: 0 0 10px;
+  padding: 0;
+  list-style: none;
+}
+.match-breakdown li {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  font-size: 0.86rem;
+}
+.match-breakdown li strong {
+  color: var(--forest);
+  white-space: nowrap;
+}
+.outside-zone-profiles {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+.outside-zone-profiles > .secondary-button {
+  display: inline-flex;
+  margin-bottom: 18px;
+}
+.outside-zone-profiles h3 {
+  margin-bottom: 4px;
+}
+.outside-zone-profiles .matched-profile:first-child {
+  margin-top: 12px;
+}
+
+@media (max-width: 620px) {
+  .matched-profile-head {
+    display: grid;
+    gap: 12px;
+  }
+  .matched-profile-head .match-badge {
+    justify-self: start;
+  }
+  .match-breakdown li {
+    gap: 10px;
+  }
+}
+
 /*
  * Texte réservé aux technologies d'assistance. Il double chaque pastille
  * numérique : « 3 » seul ne dit pas de quoi il s'agit, et une couleur seule ne

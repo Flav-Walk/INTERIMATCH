@@ -73,13 +73,49 @@ export interface MatchDimension {
   points: number;
 }
 
+export interface SkillTally {
+  held: number;
+  total: number;
+}
+
 export interface MatchResult {
   compatible: boolean;
   score: number;
   blockers: BlockerCode[];
   dimensions: MatchDimension[];
   distance_km: number | null;
+  outside_zone?: boolean | null;
+  skills?: { required: SkillTally; desired: SkillTally };
 }
+
+/** Profil volontairement limité avant candidature : aucune coordonnée privée. */
+export interface MissionCandidate {
+  id: string;
+  first_name: string;
+  last_initial: string;
+  main_job: string | null;
+  city: string | null;
+  years_experience: number | null;
+  matched_skills: MissionSkill[];
+  match: MatchResult;
+}
+
+export type CandidateSelectionInactive = "draft" | "ended" | "closed";
+
+/**
+ * Résultat déjà filtré, classé et regroupé par palier par le backend.
+ * Le frontend l'explique ; il ne recalcule ni le score ni l'éligibilité.
+ */
+export interface CandidateSelection {
+  band: number | null;
+  band_label: string | null;
+  candidates: MissionCandidate[];
+  outside_zone: MissionCandidate[];
+  inactive: CandidateSelectionInactive | null;
+}
+
+export const listMissionCandidates = (missionId: string) =>
+  api<CandidateSelection>(`/missions/${missionId}/candidates`);
 
 /**
  * Missions offertes, toutes entreprises confondues, de la plus proche à la plus
@@ -209,9 +245,7 @@ export function explainEmpty(
 
   const code = at("paused")
     ? "paused"
-    : blockerOrder
-        .filter((c) => at(c) > 0)
-        .sort((a, b) => at(b) - at(a))[0];
+    : blockerOrder.filter((c) => at(c) > 0).sort((a, b) => at(b) - at(a))[0];
   if (!code) return null;
 
   const count = at(code);

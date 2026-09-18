@@ -25,6 +25,7 @@ import {
   missionSchedule,
 } from "../components/mission/MissionCard";
 import { MissionApplications } from "../components/applications/MissionApplications";
+import { MatchedProfiles } from "../components/mission/MatchedProfiles";
 
 const payLabels: Record<string, string> = {
   hour: "de l’heure",
@@ -256,6 +257,8 @@ export function CompanyMissionDetail() {
               </p>
             )}
           </section>
+
+          <MatchedProfiles missionId={mission.id} revision={revision} />
 
           <MissionApplications missionId={mission.id} />
         </div>
