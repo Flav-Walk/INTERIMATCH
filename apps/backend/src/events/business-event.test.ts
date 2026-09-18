@@ -56,6 +56,13 @@ const dataByType: Record<BusinessEventType, Record<string, unknown>> = {
   "worker.profile.updated": { worker_id: ids.worker },
   "worker.onboarding.completed": { worker_id: ids.worker, worker },
   "mission.published": { mission_id: ids.mission, mission, company },
+  "mission.cancelled": {
+    mission_id: ids.mission,
+    // La mission telle qu'elle est APRES la decision : le payload porte l'etat
+    // final, jamais celui d'avant.
+    mission: { ...mission, status: "cancelled" },
+    company,
+  },
   "application.created": {
     application_id: ids.application,
     application: application("pending"),

@@ -5,6 +5,7 @@ export const businessEventTypes = [
   "worker.profile.updated",
   "worker.onboarding.completed",
   "mission.published",
+  "mission.cancelled",
   "application.created",
   "application.accepted",
   "application.rejected",
@@ -104,6 +105,32 @@ export const businessEventSchema = z.discriminatedUnion("event_type", [
     .object({
       ...envelope,
       event_type: z.literal("mission.published"),
+      data: z
+        .object({
+          mission_id: z.uuid(),
+          mission: missionSchema,
+          company: companySchema,
+        })
+        .strict(),
+    })
+    .strict(),
+  /**
+   * Annulation d'une mission publiée.
+   *
+   * Même forme que `mission.published`, volontairement : c'est la même mission,
+   * au même format, et n8n peut réutiliser tel quel ce qu'il sait déjà en lire.
+   * Le payload porte donc `status: "cancelled"` — la mission telle qu'elle est
+   * APRÈS la décision, relue dans la transaction qui l'a écrite.
+   *
+   * Ce que le backend ne fait pas : décider qui prévenir. Les candidatures ne
+   * sont pas jointes à l'événement — les lister ici figerait dans un payload une
+   * question qui appartient à l'automatisation, et n8n dispose de
+   * `mission_id` pour interroger ce dont il a besoin.
+   */
+  z
+    .object({
+      ...envelope,
+      event_type: z.literal("mission.cancelled"),
       data: z
         .object({
           mission_id: z.uuid(),
