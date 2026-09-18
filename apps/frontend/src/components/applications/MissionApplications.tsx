@@ -1,6 +1,8 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { CalendarX2, MapPin, UserRoundCheck, Utensils } from "lucide-react";
+import { ApiError } from "../../services/api";
 import { errorMessage } from "../../services/session";
+import type { MissionCapacity } from "../../services/missions";
 import { useAuth } from "../../hooks/useAuth";
 import { useCompanyData } from "../../hooks/CompanyData";
 import {
@@ -10,6 +12,7 @@ import {
   type ApplicationDecision,
   type MissionApplication,
 } from "../../services/applications";
+import { ConfirmDialog } from "../ConfirmDialog";
 import { ApplicationStatus } from "./ApplicationStatus";
 
 const date = new Intl.DateTimeFormat("fr-FR", {
@@ -17,13 +20,95 @@ const date = new Intl.DateTimeFormat("fr-FR", {
   timeStyle: "short",
 });
 
+export interface PendingDecision {
+  application: MissionApplication;
+  status: ApplicationDecision;
+}
+
+export function missionCapacityLabel(accepted: number, headcount: number) {
+  if (accepted >= headcount)
+    return `Tous les postes sont pourvus (${headcount} sur ${headcount}).`;
+  return `${accepted} poste${accepted > 1 ? "s" : ""} pourvu${accepted > 1 ? "s" : ""} sur ${headcount}.`;
+}
+
+export function replaceApplication(
+  applications: MissionApplication[],
+  updated: MissionApplication,
+) {
+  return applications.map((item) => (item.id === updated.id ? updated : item));
+}
+
+export function decisionConflictMessage(error: ApiError) {
+  if (error.code === "APPLICATION_ALREADY_DECIDED")
+    return "Cette candidature a déjà été traitée. La liste a été actualisée.";
+  if (error.code === "MISSION_FULL")
+    return "Tous les postes sont désormais pourvus. Les candidatures ont été actualisées.";
+  if (error.code === "WORKER_ENGAGED")
+    return "Cette personne a accepté une autre mission sur ce créneau. La liste a été actualisée.";
+  if (error.code === "APPLICATION_NOT_FOUND" || error.status === 403)
+    return "Cette candidature n’est plus accessible. La liste a été actualisée.";
+  return error.message;
+}
+
+export function DecisionConfirmation({
+  decision,
+  missionTitle,
+  busy,
+  error,
+  onConfirm,
+  onCancel,
+}: {
+  decision: PendingDecision | null;
+  missionTitle: string;
+  busy: boolean;
+  error: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  if (!decision) return null;
+  const accepting = decision.status === "accepted";
+  const name = applicationCandidateName(decision.application);
+
+  return (
+    <ConfirmDialog
+      open
+      title={
+        accepting
+          ? "Accepter cette candidature ?"
+          : "Refuser cette candidature ?"
+      }
+      confirmLabel={
+        accepting ? "Accepter la candidature" : "Refuser la candidature"
+      }
+      busyLabel={accepting ? "Acceptation en cours…" : "Refus en cours…"}
+      busy={busy}
+      tone={accepting ? "default" : "danger"}
+      onConfirm={onConfirm}
+      onCancel={onCancel}
+    >
+      <p>
+        {accepting
+          ? `Vous allez retenir ${name} pour « ${missionTitle} ». Cette décision ne pourra plus être modifiée.`
+          : `Vous allez indiquer à ${name} que sa candidature pour « ${missionTitle} » n’est pas retenue. Cette décision ne pourra plus être modifiée.`}
+      </p>
+      {error && (
+        <p className="form-error" role="alert">
+          {error}
+        </p>
+      )}
+    </ConfirmDialog>
+  );
+}
+
 export function MissionApplicationList({
   applications,
   busyId,
+  missionFull,
   onDecision,
 }: {
   applications: MissionApplication[];
   busyId: string | null;
+  missionFull: boolean;
   onDecision: (
     application: MissionApplication,
     status: ApplicationDecision,
@@ -68,9 +153,6 @@ export function MissionApplicationList({
             <ApplicationStatus status={application.status} />
             {application.status === "pending" && (
               <>
-                {/* Le conflit n'efface pas la candidature et ne la refuse pas à
-                    la place de l'entreprise : il retire la seule action
-                    devenue impossible, et dit pourquoi. */}
                 {application.conflict && (
                   <p className="application-conflict">
                     <CalendarX2 size={14} aria-hidden="true" />
@@ -78,23 +160,29 @@ export function MissionApplicationList({
                     Elle ne peut plus être retenue pour celle-ci.
                   </p>
                 )}
+                {missionFull && !application.conflict && (
+                  <p className="application-capacity-note">
+                    Tous les postes sont pourvus. Cette candidature ne peut plus
+                    être acceptée.
+                  </p>
+                )}
                 <div className="application-candidate-actions">
                   <button
                     type="button"
                     className="secondary-button"
-                    disabled={busyId === application.id}
+                    disabled={busyId !== null}
                     onClick={() => onDecision(application, "rejected")}
                   >
                     Refuser
                   </button>
-                  {!application.conflict && (
+                  {!application.conflict && !missionFull && (
                     <button
                       type="button"
                       className="button"
-                      disabled={busyId === application.id}
+                      disabled={busyId !== null}
                       onClick={() => onDecision(application, "accepted")}
                     >
-                      {busyId === application.id ? "Décision…" : "Accepter"}
+                      Accepter
                     </button>
                   )}
                 </div>
@@ -107,56 +195,97 @@ export function MissionApplicationList({
   );
 }
 
-export function MissionApplications({ missionId }: { missionId: string }) {
+const stateChangedOnServer = (cause: unknown) =>
+  cause instanceof ApiError &&
+  (cause.status === 403 || cause.status === 404 || cause.status === 409);
+
+export function MissionApplications({
+  missionId,
+  missionTitle,
+  headcount,
+  onCapacityChange,
+}: {
+  missionId: string;
+  missionTitle: string;
+  headcount: number;
+  onCapacityChange: (capacity: MissionCapacity | null) => void;
+}) {
   const { revision, invalidate } = useAuth();
   const { refresh } = useCompanyData();
   const [applications, setApplications] = useState<MissionApplication[]>([]);
+  const [capacity, setCapacity] = useState<MissionCapacity | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [dialogError, setDialogError] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [decision, setDecision] = useState<PendingDecision | null>(null);
+
+  const readApplications = useCallback(
+    async (silent = false) => {
+      if (!silent) setLoading(true);
+      try {
+        const result = await listMissionApplications(missionId);
+        setApplications(result.applications);
+        setCapacity(result.capacity);
+        if (!silent) setError("");
+      } catch (cause) {
+        if (!silent) setError(errorMessage(cause));
+      } finally {
+        if (!silent) setLoading(false);
+      }
+    },
+    [missionId],
+  );
 
   useEffect(() => {
-    let live = true;
-    setLoading(true);
-    void listMissionApplications(missionId)
-      .then((result) => {
-        if (live) setApplications(result.applications);
-      })
-      .catch((cause) => {
-        if (live) setError(errorMessage(cause));
-      })
-      .finally(() => {
-        if (live) setLoading(false);
-      });
-    return () => {
-      live = false;
-    };
-    // `revision` suit les écritures et le retour sur l'onglet : une candidature
-    // déposée pendant qu'on lisait cette page apparaît sans rechargement.
-  }, [missionId, revision]);
+    void readApplications();
+  }, [readApplications, revision]);
 
-  async function decide(
+  const missionFull = capacity?.full === true;
+
+  useEffect(() => {
+    if (!loading) onCapacityChange(capacity);
+  }, [capacity, loading, onCapacityChange]);
+
+  function requestDecision(
     application: MissionApplication,
     status: ApplicationDecision,
   ) {
-    setBusyId(application.id);
+    if (busyId || application.status !== "pending") return;
+    setDialogError("");
+    setDecision({ application, status });
+  }
+
+  async function confirmDecision() {
+    if (!decision || busyId) return;
+    setBusyId(decision.application.id);
+    setDialogError("");
     setError("");
     try {
       const updated = await decideApplication(
         missionId,
-        application.id,
-        status,
+        decision.application.id,
+        decision.status,
       );
-      setApplications((current) =>
-        current.map((item) => (item.id === updated.id ? updated : item)),
-      );
-      // Une décision change trois choses ailleurs : le compteur du badge, la
-      // liste du tableau de bord, et le conflit des autres candidatures de
-      // cette personne. Les deux relectures couvrent l'ensemble.
+      setApplications((current) => replaceApplication(current, updated));
+      await readApplications(true);
+      setDecision(null);
       await refresh();
       invalidate();
     } catch (cause) {
-      setError(errorMessage(cause));
+      if (stateChangedOnServer(cause)) {
+        await readApplications(true);
+        setDecision(null);
+        setError(
+          cause instanceof ApiError
+            ? decisionConflictMessage(cause)
+            : errorMessage(cause),
+        );
+        await refresh();
+        invalidate();
+      } else {
+        setDialogError(errorMessage(cause));
+      }
     } finally {
       setBusyId(null);
     }
@@ -171,6 +300,11 @@ export function MissionApplications({ missionId }: { missionId: string }) {
         <UserRoundCheck size={18} aria-hidden="true" />
         <h2 id="applications-title">Candidatures reçues</h2>
       </div>
+      <p className="mission-capacity" role="status">
+        {capacity
+          ? missionCapacityLabel(capacity.filled, capacity.headcount)
+          : `${headcount} poste${headcount > 1 ? "s" : ""} au total.`}
+      </p>
       {error && (
         <p className="form-error" role="alert">
           {error}
@@ -184,9 +318,20 @@ export function MissionApplications({ missionId }: { missionId: string }) {
         <MissionApplicationList
           applications={applications}
           busyId={busyId}
-          onDecision={(application, status) => void decide(application, status)}
+          missionFull={missionFull}
+          onDecision={requestDecision}
         />
       )}
+      <DecisionConfirmation
+        decision={decision}
+        missionTitle={missionTitle}
+        busy={busyId !== null}
+        error={dialogError}
+        onConfirm={() => void confirmDecision()}
+        onCancel={() => {
+          if (!busyId) setDecision(null);
+        }}
+      />
     </section>
   );
 }

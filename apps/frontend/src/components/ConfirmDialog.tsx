@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useId, useRef, type ReactNode } from "react";
 
 /**
  * Confirmation d'une action qu'on ne peut pas défaire.
@@ -13,6 +13,7 @@ export function ConfirmDialog({
   confirmLabel,
   busyLabel,
   busy = false,
+  tone = "default",
   children,
   onConfirm,
   onCancel,
@@ -22,11 +23,13 @@ export function ConfirmDialog({
   confirmLabel: string;
   busyLabel: string;
   busy?: boolean;
+  tone?: "default" | "danger";
   children: ReactNode;
   onConfirm: () => void;
   onCancel: () => void;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
+  const titleId = useId();
 
   useEffect(() => {
     const dialog = ref.current;
@@ -36,8 +39,19 @@ export function ConfirmDialog({
   }, [open]);
 
   return (
-    <dialog className="confirm" ref={ref} onClose={onCancel}>
-      <h2>{title}</h2>
+    <dialog
+      className="confirm"
+      ref={ref}
+      aria-labelledby={titleId}
+      aria-busy={busy}
+      onCancel={(event) => {
+        if (busy) event.preventDefault();
+      }}
+      onClose={() => {
+        if (!busy) onCancel();
+      }}
+    >
+      <h2 id={titleId}>{title}</h2>
       {children}
       <div className="confirm-actions">
         <button
@@ -50,7 +64,7 @@ export function ConfirmDialog({
         </button>
         <button
           type="button"
-          className="button"
+          className={`button${tone === "danger" ? " is-danger" : ""}`}
           onClick={onConfirm}
           disabled={busy}
         >

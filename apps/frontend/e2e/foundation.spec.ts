@@ -1216,6 +1216,7 @@ test("a published mission becomes visible to an intérimaire", async ({
 test("matching connects a published mission to a compatible intérimaire", async ({
   page,
 }, testInfo) => {
+  test.slow();
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
   const suffix = testInfo.project.name;
@@ -1346,6 +1347,7 @@ test("matching connects a published mission to a compatible intérimaire", async
   // ---- Le détail explique le rapprochement, sans jargon ----
   await page.getByRole("heading", { name: titre }).click();
   await expect(page).toHaveURL(/\/worker\/missions\/[0-9a-f-]{36}$/);
+  const workerMissionUrl = page.url();
   await expect(
     page.getByRole("heading", { name: "Pourquoi cette mission" }),
   ).toBeVisible();
@@ -1359,6 +1361,14 @@ test("matching connects a published mission to a compatible intérimaire", async
   await expect(explication).not.toContainText("desired_skills");
   await expect(explication).not.toContainText("ratio");
 
+  // Une candidature réelle quitte les suggestions et rejoint la file à traiter.
+  const workerApplication = page.getByRole("region", {
+    name: "Votre candidature",
+  });
+  await workerApplication.getByRole("button", { name: "Postuler" }).click();
+  await expect(workerApplication).toContainText("En attente");
+  await expect(workerApplication).toContainText("Candidature envoyée");
+
   await page.screenshot({
     path: testInfo.outputPath("worker-match.png"),
     fullPage: true,
@@ -1367,7 +1377,36 @@ test("matching connects a published mission to a compatible intérimaire", async
   await openAccount(page);
   await page.getByRole("button", { name: "Se déconnecter" }).click();
 
-  // ---- L'entreprise retrouve le profil rapproché, séparé des candidatures ----
+  // Une seconde candidature permettra de vérifier le refus une fois la mission
+  // complète : refuser reste possible, accepter disparaît.
+  const rejectedEmail = `match.rejected.${suffix}.${Date.now()}@example.test`;
+  await register(page, rejectedEmail);
+  await expect(page).toHaveURL(/\/worker$/);
+  await completeTour(page);
+  await page.goto("/worker/profile");
+  const secondIdentity = section(page, "Votre identité");
+  await secondIdentity.getByLabel("Prénom", { exact: true }).fill("Noémie");
+  await secondIdentity.getByLabel("Nom", { exact: true }).fill("Petit");
+  await save(page, "Votre identité");
+  await makeEmployable(page, {
+    job: "serveur",
+    from: "2027-10-15T08:00",
+    to: "2027-10-15T20:00",
+    skills: ["Service en salle", "Relation client"],
+  });
+  await page.goto("/worker/missions");
+  await page.getByRole("heading", { name: titre }).click();
+  await page
+    .getByRole("region", { name: "Votre candidature" })
+    .getByRole("button", { name: "Postuler" })
+    .click();
+  await expect(
+    page.getByRole("region", { name: "Votre candidature" }),
+  ).toContainText("En attente");
+  await openAccount(page);
+  await page.getByRole("button", { name: "Se déconnecter" }).click();
+
+  // ---- L'entreprise décide, avec confirmation et capacité actualisée ----
   await signIn(page, `match.${suffix}@example.test`);
   // Attendre l'arrivée : naviguer avant que la session soit posée renverrait
   // vers la page de connexion.
@@ -1376,22 +1415,66 @@ test("matching connects a published mission to a compatible intérimaire", async
   const matches = page.getByRole("region", {
     name: "Profils correspondants",
   });
-  await expect(matches).toContainText("Camille N.");
-  await expect(matches.locator(".match-badge")).toHaveText(
-    "Compatible à 100 %",
-  );
-  await matches.getByText("Comprendre ce score").click();
-  await expect(matches).toContainText("Métier");
-  await expect(matches).toContainText("Compétences souhaitées");
-  await expect(matches).not.toContainText("Nguyen");
+  await expect(matches).not.toContainText("Camille");
+  await expect(matches).not.toContainText("Noémie");
   const applications = page.getByRole("region", {
     name: "Candidatures reçues",
   });
-  await expect(applications).toContainText(
-    "Aucune candidature reçue pour cette mission.",
-  );
-  await expect(applications).not.toContainText("Camille");
+  const camille = applications.getByRole("listitem").filter({
+    hasText: "Camille Nguyen",
+  });
+  const noemie = applications.getByRole("listitem").filter({
+    hasText: "Noémie Petit",
+  });
+  await expect(camille).toContainText("En attente");
+  await expect(noemie).toContainText("En attente");
+  await expect(applications).toContainText("0 poste pourvu sur 1");
 
+  await camille.getByRole("button", { name: "Accepter" }).click();
+  let decisionDialog = page.getByRole("dialog", {
+    name: "Accepter cette candidature ?",
+  });
+  await expect(decisionDialog).toContainText("Camille Nguyen");
+  await expect(decisionDialog).toContainText(titre);
+  await decisionDialog.getByRole("button", { name: "Annuler" }).click();
+  await expect(decisionDialog).toBeHidden();
+  await expect(camille).toContainText("En attente");
+
+  await camille.getByRole("button", { name: "Accepter" }).click();
+  decisionDialog = page.getByRole("dialog", {
+    name: "Accepter cette candidature ?",
+  });
+  const accept = decisionDialog.getByRole("button", {
+    name: "Accepter la candidature",
+  });
+  await accept.click();
+  await expect(decisionDialog).toBeHidden();
+  await expect(camille).toContainText("Acceptée");
+  await expect(camille.getByRole("button", { name: "Accepter" })).toHaveCount(
+    0,
+  );
+  await expect(applications).toContainText("Tous les postes sont pourvus");
+  await expect(page.locator(".mission-status")).toHaveText("Pourvue");
+  await expect(noemie.getByRole("button", { name: "Accepter" })).toHaveCount(0);
+  await expect(noemie).toContainText("ne peut plus être acceptée");
+
+  await noemie.getByRole("button", { name: "Refuser" }).click();
+  decisionDialog = page.getByRole("dialog", {
+    name: "Refuser cette candidature ?",
+  });
+  await expect(decisionDialog).toContainText("Noémie Petit");
+  await decisionDialog.getByRole("button", { name: "Annuler" }).click();
+  await expect(noemie).toContainText("En attente");
+  await noemie.getByRole("button", { name: "Refuser" }).click();
+  decisionDialog = page.getByRole("dialog", {
+    name: "Refuser cette candidature ?",
+  });
+  await decisionDialog
+    .getByRole("button", { name: "Refuser la candidature" })
+    .click();
+  await expect(decisionDialog).toBeHidden();
+  await expect(noemie).toContainText("Non retenue");
+  await expect(noemie.getByRole("button", { name: "Refuser" })).toHaveCount(0);
   await page.screenshot({
     path: testInfo.outputPath("company-mission-matched-profiles.png"),
     fullPage: true,
@@ -1402,5 +1485,29 @@ test("matching connects a published mission to a compatible intérimaire", async
       () => document.documentElement.scrollWidth <= window.innerWidth,
     ),
   ).toBe(true);
+
+  // Les mêmes décisions sont immédiatement explicites dans les deux espaces
+  // intérimaires et sur la fiche de mission acceptée.
+  await openAccount(page);
+  await page.getByRole("button", { name: "Se déconnecter" }).click();
+  await signIn(page, email);
+  await expect(page).toHaveURL(/\/worker$/);
+  await page.goto("/worker/applications");
+  await expect(
+    page.getByRole("listitem").filter({ hasText: titre }),
+  ).toContainText("Acceptée");
+  await page.goto(workerMissionUrl);
+  await expect(
+    page.getByRole("region", { name: "Votre candidature" }),
+  ).toContainText("Votre candidature a été acceptée");
+
+  await openAccount(page);
+  await page.getByRole("button", { name: "Se déconnecter" }).click();
+  await signIn(page, rejectedEmail);
+  await expect(page).toHaveURL(/\/worker$/);
+  await page.goto("/worker/applications");
+  await expect(
+    page.getByRole("listitem").filter({ hasText: titre }),
+  ).toContainText("Non retenue");
   expect(errors).toEqual([]);
 });
