@@ -150,6 +150,25 @@ for (const project of projects) {
     "UPDATE missions SET status='open', published_at=now() WHERE id=$1",
     [applicationMissionId],
   );
+  const rejectedMissionId = await missions.create(applicationCompany.id, {
+    title: "Serveur candidature non retenue",
+    job: "serveur",
+    city: "Lyon",
+    postal_code: "69002",
+    headcount: 1,
+    description: "Mission de test du refus de candidature.",
+    address: "",
+    pay_amount: null,
+    pay_unit: null,
+    min_years_experience: null,
+    required_skill_ids: [],
+    desired_skill_ids: [],
+    ...slot(9, 16, 8),
+  });
+  await db.query(
+    "UPDATE missions SET status='open', published_at=now() WHERE id=$1",
+    [rejectedMissionId],
+  );
 
   // Intérimaire complet réservé au parcours E2E candidature. Les deux projets
   // ont chacun le leur : aucune session ni candidature n'est partagée.

@@ -312,7 +312,7 @@ export class MatchingService {
    * la raison du refus, elle, est utile.
    */
   async evaluateForWorker(workerId: string, missionId: string, demo: boolean) {
-    const mission = await this.missions.getOpen(missionId, demo);
+    const mission = await this.missions.getForWorker(missionId, demo, workerId);
     const criteria = await this.workerCriteria(workerId);
     return {
       mission,
@@ -348,6 +348,13 @@ export class MatchingService {
     const inactive = notOpenToWorkers(mission);
     if (inactive)
       return { band: null, band_label: null, candidates: [], inactive };
+    if (!(await this.missions.hasCapacity(mission.id)))
+      return {
+        band: null,
+        band_label: null,
+        candidates: [],
+        inactive: "closed",
+      };
 
     const criteria = criteriaOf(mission);
 

@@ -358,6 +358,68 @@ describe("candidatures — consultation et décision entreprise", () => {
     expect(secondDecision.body.error.code).toBe("APPLICATION_ALREADY_DECIDED");
   });
 
+  it("conserve un refus dans l historique sans restaurer la mission ni toucher aux disponibilites", async () => {
+    const missionId = await publishedMission("Candidature non retenue", {
+      ...slotAt(35, 8, 4),
+    });
+    const worker = await newWorker("history.rejected@example.test");
+    await db.query(
+      `INSERT INTO availabilities(profile_id,starts_at,ends_at,status)
+       VALUES($1,now(),now()+interval '120 days','available')`,
+      [worker.id],
+    );
+    const applicationId = await applyTo(missionId, worker.token);
+
+    expect((await decideAs(missionId, applicationId, "rejected")).status).toBe(
+      200,
+    );
+    const history = await authenticated(
+      request(app).get("/api/v1/workers/me/applications"),
+      worker.token,
+    );
+    expect(history.body.applications).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ mission_id: missionId, status: "rejected" }),
+      ]),
+    );
+    const proposals = await authenticated(
+      request(app).get("/api/v1/workers/me/missions"),
+      worker.token,
+    );
+    expect(
+      proposals.body.missions.map((mission: { id: string }) => mission.id),
+    ).not.toContain(missionId);
+    const duplicate = await authenticated(
+      request(app)
+        .post("/api/v1/workers/me/applications")
+        .send({ mission_id: missionId }),
+      worker.token,
+    );
+    expect(duplicate.status).toBe(409);
+    expect(duplicate.body.error.code).toBe("APPLICATION_ALREADY_EXISTS");
+    const slots = await db.query<{ n: string }>(
+      "SELECT count(*)::text AS n FROM availabilities WHERE profile_id=$1",
+      [worker.id],
+    );
+    expect(Number(slots.rows[0].n)).toBe(1);
+
+    // Une mission terminée quitte les offres mais son dossier reste consultable
+    // par la personne qui avait postulé.
+    await db.query(
+      `UPDATE missions SET starts_at=now()-interval '2 days',
+                           ends_at=now()-interval '1 day' WHERE id=$1`,
+      [missionId],
+    );
+    expect(
+      (
+        await authenticated(
+          request(app).get(`/api/v1/workers/me/missions/${missionId}`),
+          worker.token,
+        )
+      ).status,
+    ).toBe(200);
+  });
+
   it("refuse une transition ou une propriété supplémentaire", async () => {
     const missionId = await publishedMission("Mission statut invalide");
     const application = await authenticated(
@@ -415,6 +477,58 @@ const applyTo = async (missionId: string, token: string) =>
  * opposee a personne. Une mission a un poste pouvait recruter dix personnes.
  */
 describe("candidatures - capacite de la mission", () => {
+  it("retire une mission pleine des offres et refuse toute nouvelle candidature", async () => {
+    const mission = await publishedMission("Mission complète", {
+      headcount: 1,
+      ...slotAt(39, 8, 4),
+    });
+    const retained = await newWorker("full.retained@example.test");
+    const late = await newWorker("full.late@example.test");
+    const application = await applyTo(mission, retained.token);
+
+    expect((await decideAs(mission, application, "accepted")).status).toBe(200);
+    expect(
+      (await missions.listOpen(false)).map((item) => item.id),
+    ).not.toContain(mission);
+    await expect(missions.getOpen(mission, false)).rejects.toMatchObject({
+      code: "MISSION_NOT_FOUND",
+    });
+
+    const direct = await authenticated(
+      request(app)
+        .post("/api/v1/workers/me/applications")
+        .send({ mission_id: mission }),
+      late.token,
+    );
+    expect(direct.status).toBe(409);
+    expect(direct.body.error.code).toBe("MISSION_FULL");
+    expect(
+      (
+        await authenticated(
+          request(app).get(`/api/v1/workers/me/missions/${mission}`),
+          retained.token,
+        )
+      ).status,
+    ).toBe(200);
+    expect(
+      (
+        await authenticated(
+          request(app).get(`/api/v1/workers/me/missions/${mission}`),
+          late.token,
+        )
+      ).status,
+    ).toBe(404);
+
+    const candidates = await authenticated(
+      request(app).get(`/api/v1/missions/${mission}/candidates`),
+      ownerToken,
+    );
+    expect(candidates.body).toMatchObject({
+      inactive: "closed",
+      candidates: [],
+    });
+  });
+
   it("refuse une acceptation au-dela du nombre de postes", async () => {
     const mission = await publishedMission("Un seul poste", {
       headcount: 1,
