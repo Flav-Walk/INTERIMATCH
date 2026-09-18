@@ -203,7 +203,17 @@ export function WorkerMissionDetail() {
             )}
           </section>
 
-          <ApplyToMission missionId={mission.id} />
+          <ApplyToMission
+            missionId={mission.id}
+            mission={{
+              title: mission.title,
+              starts_at: mission.starts_at,
+              ends_at: mission.ends_at,
+              city: mission.city,
+              postal_code: mission.postal_code,
+              establishment_name: mission.company.establishment_name,
+            }}
+          />
         </aside>
       </div>
     </section>

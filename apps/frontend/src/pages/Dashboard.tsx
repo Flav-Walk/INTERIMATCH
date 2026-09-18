@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   CalendarDays,
-  CalendarCheck2,
   MapPin,
   Check,
   BriefcaseBusiness,
@@ -29,6 +28,7 @@ import {
   upcomingEngagements,
   type WorkerApplication,
 } from "../services/applications";
+import { ConfirmedMissions } from "../components/applications/ConfirmedMissions";
 
 /**
  * Rappel de complétion. Il n'apparaît que tant qu'il reste quelque chose à
@@ -70,6 +70,9 @@ export function Dashboard() {
   const [excluded, setExcluded] = useState<Exclusions>();
   const [mine, setMine] = useState<WorkerApplication[]>([]);
   const [missionsError, setMissionsError] = useState("");
+  const [applicationsError, setApplicationsError] = useState("");
+  const [missionsLoading, setMissionsLoading] = useState(true);
+  const [applicationsLoading, setApplicationsLoading] = useState(true);
   const isWorker = user?.role === "worker";
 
   // Un aperçu des missions réellement offertes. Le tableau de bord annonçait
@@ -77,16 +80,32 @@ export function Dashboard() {
   useEffect(() => {
     if (!isWorker) return;
     let live = true;
-    // Les deux lectures partent ensemble : elles ne dépendent pas l'une de
-    // l'autre, et les enchaîner doublerait l'attente pour rien.
-    void Promise.all([listOpenMissions(), listMyApplications()])
-      .then(([r, applications]) => {
+    setMissionsLoading(true);
+    setApplicationsLoading(true);
+    setMissionsError("");
+    setApplicationsError("");
+    // Une panne du catalogue ne doit pas masquer une mission déjà acceptée,
+    // et inversement : chaque réponse reste exploitable indépendamment.
+    void Promise.allSettled([listOpenMissions(), listMyApplications()])
+      .then(([missionsResult, applicationsResult]) => {
         if (!live) return;
-        setOpen(r.missions);
-        setExcluded(r.excluded);
-        setMine(applications.applications);
+        if (missionsResult.status === "fulfilled") {
+          setOpen(missionsResult.value.missions);
+          setExcluded(missionsResult.value.excluded);
+        } else {
+          setMissionsError(errorMessage(missionsResult.reason));
+        }
+        if (applicationsResult.status === "fulfilled") {
+          setMine(applicationsResult.value.applications);
+        } else {
+          setApplicationsError(errorMessage(applicationsResult.reason));
+        }
       })
-      .catch((e) => live && setMissionsError(errorMessage(e)));
+      .finally(() => {
+        if (!live) return;
+        setMissionsLoading(false);
+        setApplicationsLoading(false);
+      });
     return () => {
       live = false;
     };
@@ -153,6 +172,45 @@ export function Dashboard() {
             />
           )}
 
+          {worker &&
+            (applicationsLoading ||
+              applicationsError ||
+              engagements.length > 0) && (
+              <section
+                className="section confirmed-missions"
+                aria-labelledby="confirmed-missions-title"
+              >
+                <div className="section-heading">
+                  <div>
+                    <span className="eyeline">Votre planning</span>
+                    <h2 id="confirmed-missions-title">
+                      Vos prochaines missions
+                    </h2>
+                  </div>
+                  <Link className="quiet" to="/worker/applications">
+                    Mes candidatures
+                  </Link>
+                </div>
+                {applicationsLoading ? (
+                  <p className="quiet" role="status">
+                    Chargement de vos missions confirmées…
+                  </p>
+                ) : applicationsError ? (
+                  <p className="form-error" role="alert">
+                    {applicationsError}
+                  </p>
+                ) : (
+                  <ConfirmedMissions applications={engagements} />
+                )}
+                {engagements.length > 0 && (
+                  <p className="confirmed-missions-note">
+                    Les offres sur ces créneaux ne vous sont plus proposées. Vos
+                    disponibilités déclarées restent inchangées.
+                  </p>
+                )}
+              </section>
+            )}
+
           <section className="section" data-tour="missions">
             <div className="section-heading">
               <h2>{worker ? "Missions disponibles" : "Vos missions"}</h2>
@@ -165,80 +223,56 @@ export function Dashboard() {
                 {missionsError}
               </p>
             )}
-            {worker && open.length > 0 ? (
-              <div className="mission-grid">
-                {open.slice(0, 2).map((mission) => (
-                  <MissionCard
-                    key={mission.id}
-                    mission={mission}
-                    basePath="/worker/missions"
-                    score={mission.match.score}
-                  />
-                ))}
-              </div>
-            ) : (
-              <div className="empty">
-                <BriefcaseBusiness aria-hidden="true" />
-                <h3>
-                  {worker
-                    ? (reason?.title ??
-                      "Aucune mission disponible pour le moment")
-                    : "Votre première mission commence ici"}
-                </h3>
-                <p>
-                  {worker
-                    ? (reason?.detail ??
-                      "Dès qu’un établissement publie une mission qui vous correspond, elle apparaît ici.")
-                    : "La création et la gestion des missions seront disponibles au prochain lot."}
+            {!missionsError &&
+              (worker && missionsLoading ? (
+                <p className="quiet" role="status">
+                  Chargement des missions disponibles…
                 </p>
-              </div>
-            )}
+              ) : worker && open.length > 0 ? (
+                <div className="mission-grid">
+                  {open.slice(0, 2).map((mission) => (
+                    <MissionCard
+                      key={mission.id}
+                      mission={mission}
+                      basePath="/worker/missions"
+                      score={mission.match.score}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="empty">
+                  <BriefcaseBusiness aria-hidden="true" />
+                  <h3>
+                    {worker
+                      ? (reason?.title ??
+                        "Aucune mission disponible pour le moment")
+                      : "Votre première mission commence ici"}
+                  </h3>
+                  <p>
+                    {worker
+                      ? (reason?.detail ??
+                        "Dès qu’un établissement publie une mission qui vous correspond, elle apparaît ici.")
+                      : "La création et la gestion des missions seront disponibles au prochain lot."}
+                  </p>
+                </div>
+              ))}
           </section>
         </section>
 
         <aside className="secondary">
           {worker ? (
             <>
-              {(engagements.length > 0 || waiting.length > 0) && (
+              {waiting.length > 0 && (
                 <section className="side-panel">
-                  <CalendarCheck2 aria-hidden="true" />
-                  <h2>Vos missions acceptées</h2>
-                  {engagements.length > 0 ? (
-                    <>
-                      <ul className="slot-list plain">
-                        {engagements.slice(0, 3).map((one) => (
-                          <li key={one.id}>
-                            <strong>{one.mission.title}</strong>
-                            <br />
-                            {formatSlot({
-                              id: one.id,
-                              starts_at: one.mission.starts_at,
-                              ends_at: one.mission.ends_at,
-                              status: "available",
-                            })}
-                          </li>
-                        ))}
-                      </ul>
-                      {/* Le lien entre un engagement et les missions qui
-                          disparaissent doit être dit : sinon leur absence reste
-                          inexplicable. */}
-                      <p className="quiet">
-                        Les missions qui tombent sur ces créneaux ne vous sont
-                        plus proposées. Vos disponibilités, elles, restent
-                        inchangées.
-                      </p>
-                    </>
-                  ) : (
-                    <p className="quiet">
-                      Aucune mission acceptée pour l’instant.
-                    </p>
-                  )}
-                  {waiting.length > 0 && (
-                    <p className="quiet">
-                      {waiting.length} candidature
-                      {waiting.length > 1 ? "s" : ""} en attente de réponse.
-                    </p>
-                  )}
+                  <h2>Candidatures en attente</h2>
+                  <p className="lead-figure">
+                    {waiting.length} candidature{waiting.length > 1 ? "s" : ""}
+                  </p>
+                  <p className="quiet">
+                    {waiting.length > 1
+                      ? "Les entreprises doivent encore vous répondre."
+                      : "L’entreprise doit encore vous répondre."}
+                  </p>
                   <Link className="quiet" to="/worker/applications">
                     Voir mes candidatures
                   </Link>
