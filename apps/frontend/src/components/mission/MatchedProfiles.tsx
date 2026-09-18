@@ -15,6 +15,11 @@ import {
   type MissionCandidate,
 } from "../../services/missions";
 import { MatchBadge } from "./MatchBadge";
+import {
+  ExplanationIcon,
+  matchBlockerLines,
+  matchExplanationLines,
+} from "./MatchExplanation";
 
 const inactiveCopy: Record<CandidateSelectionInactive, string> = {
   draft:
@@ -23,6 +28,9 @@ const inactiveCopy: Record<CandidateSelectionInactive, string> = {
     "Cette mission est terminée : le rapprochement de profils n’est plus actif.",
   closed:
     "Tous les postes sont pourvus : le rapprochement de profils est maintenant fermé.",
+  // Une offre retirée n'a rien pourvu : la ranger sous « complet » serait faux.
+  cancelled:
+    "Cette mission est annulée : le rapprochement de profils est arrêté.",
   full: "Tous les postes sont pourvus : le rapprochement de nouveaux profils est suspendu.",
 };
 
@@ -34,18 +42,140 @@ const readableJob = (job: string) =>
 const candidateName = (candidate: MissionCandidate) =>
   `${candidate.first_name} ${candidate.last_initial}${candidate.last_initial.endsWith(".") ? "" : "."}`;
 
+/**
+ * Ce que le palier retenu veut dire, en une phrase.
+ *
+ * POURQUOI PLUS AUCUN INTERVALLE FERMÉ. La phrase disait « entre 60 % et
+ * 69 % », et la pastille juste à côté pouvait afficher « Compatible à 70 % » :
+ * un profil à 69,6 % s'arrondit à 70 tout en restant au palier 60. Les deux
+ * textes étaient exacts séparément et se contredisaient ensemble.
+ *
+ * Seule la borne HAUTE posait problème. Un arrondi ne peut jamais faire
+ * descendre un score sous le plancher de son palier — si le score réel atteint
+ * 60, l'arrondi vaut 60 ou plus — mais il peut lui faire franchir le plafond.
+ * La borne basse reste donc vraie de tous les profils listés, et c'est elle
+ * qu'on garde ; le plafond disparaît.
+ *
+ * Le nom du palier vient de `band_label`, servi par le serveur. Le frontend ne
+ * redéduit rien : ni le palier, ni son intitulé.
+ */
 export function selectionSummary(selection: CandidateSelection) {
   const count = selection.candidates.length;
   const profiles = count > 1 ? "profils" : "profil";
-  const match = count > 1 ? "correspondent" : "correspond";
 
-  if (selection.band === 70)
-    return `${count} ${profiles} ${match} à au moins 70 % à cette mission.`;
-  if (selection.band === 60)
-    return `Aucun profil n’atteint 70 %. ${count} ${profiles} ${match} entre 60 % et 69 %.`;
-  if (selection.band === 50)
-    return `Aucun profil n’atteint 60 %. ${count} ${profiles} ${match} entre 50 % et 59 %.`;
-  return `${count} ${profiles} ${match} au palier retenu par le moteur.`;
+  if (selection.band === null || selection.band_label === null)
+    return `${count} ${profiles} ${count > 1 ? "retenus" : "retenu"} au palier décidé par le moteur.`;
+
+  // Une seule borne, et c'est la basse. Elle est vraie de tous les profils
+  // listés, y compris de celui dont l'arrondi dépasse le plafond du palier.
+  //
+  // L'espace insécable est nommé plutôt qu'écrit : la typographie française
+  // l'exige avant « % » et à l'intérieur des guillemets, mais un caractère
+  // invisible, indistinguable d'une espace ordinaire, n'a rien à faire en
+  // clair dans du code — ESLint le refuse d'ailleurs, à juste titre.
+  const nb = "\u00a0";
+  const palier = selection.band_label.toLocaleLowerCase("fr");
+  const principal = `${count} ${profiles} au palier «${nb}${palier}${nb}» (au moins ${selection.band}${nb}% de correspondance).`;
+  if (selection.band === 70) return principal;
+
+  // Le repli est dit sans nommer de seuil : « aucun profil n'atteint 70 % »
+  // serait démenti à l'écran par une pastille « Compatible à 70 % », alors que
+  // les deux affirmations portent sur des grandeurs différentes — le score
+  // réel pour l'une, son arrondi pour l'autre.
+  return `Aucun profil n’atteint le palier supérieur. ${principal}`;
+}
+
+/**
+ * Pourquoi ce profil obtient ce score.
+ *
+ * Remplace le relévé de ratios qui tenait lieu d'explication : « Proximité
+ * 40 % » est un chiffre, pas une raison, et il demandait au lecteur de refaire
+ * lui-même le raisonnement du moteur. Les lignes affichées ici viennent toutes
+ * du calcul réel — la qualification en point fort ou point limitant est celle
+ * que le serveur a posée, l'interface ne fait que la formuler.
+ */
+function CandidateExplanation({
+  candidate,
+  outsideZone,
+}: {
+  candidate: MissionCandidate;
+  outsideZone: boolean;
+}) {
+  const lines = matchExplanationLines(candidate.match, "company");
+  const strengths = lines.filter((line) => line.tone === "strength");
+  const limitations = lines.filter((line) => line.tone === "limitation");
+  const others = lines.filter((line) => line.tone === "neutral");
+  const blocked = matchBlockerLines(candidate.match, "company");
+
+  return (
+    <details className="match-breakdown">
+      <summary>Comprendre ce score</summary>
+
+      {/* Hors zone, les critères obligatoires ne sont PAS tous validés : le
+          dire quand même serait une explication mensongère. */}
+      {blocked.length > 0 ? (
+        <ul className="match-list" aria-label="Ce qui ne correspond pas">
+          {blocked.map((line) => (
+            <li className="is-blocked" key={line.code}>
+              {line.text}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="quiet">
+          Tous les critères que vous avez rendus obligatoires sont satisfaits.
+        </p>
+      )}
+
+      {strengths.length > 0 && (
+        <>
+          <h4>Points positifs</h4>
+          <ul className="match-list" aria-label="Points positifs">
+            {strengths.map((line) => (
+              <li className="is-good" key={line.key}>
+                <ExplanationIcon tone={line.tone} />
+                {line.text}
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+
+      {limitations.length > 0 && (
+        <>
+          <h4>
+            {limitations.length > 1 ? "Points limitants" : "Point limitant"}
+          </h4>
+          <ul className="match-list" aria-label="Points limitants">
+            {limitations.map((line) => (
+              <li key={line.key}>
+                <ExplanationIcon tone={line.tone} />
+                {line.text}
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+
+      {others.length > 0 && (
+        <ul className="match-list" aria-label="Autres critères">
+          {others.map((line) => (
+            <li key={line.key}>
+              <ExplanationIcon tone={line.tone} />
+              {line.text}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {candidate.match.distance_km === null && !outsideZone && (
+        <p className="quiet">
+          La distance n’a pas pu être calculée : elle n’entre pas dans ce
+          rapprochement.
+        </p>
+      )}
+    </details>
+  );
 }
 
 function CandidateRow({
@@ -87,7 +217,12 @@ function CandidateRow({
               Score {candidate.match.score}&nbsp;% · hors zone
             </span>
           ) : (
-            <MatchBadge score={candidate.match.score} size="large" />
+            <MatchBadge
+              score={candidate.match.score}
+              band={candidate.match.band}
+              bandLabel={candidate.match.band_label}
+              size="large"
+            />
           )}
         </div>
 
@@ -107,27 +242,7 @@ function CandidateRow({
           </div>
         )}
 
-        <details className="match-breakdown">
-          <summary>Comprendre ce score</summary>
-          <p className="quiet">
-            Le moteur a validé les critères obligatoires. Le score et son détail
-            viennent directement du rapprochement serveur.
-          </p>
-          <ul>
-            {candidate.match.dimensions.map((dimension) => (
-              <li key={dimension.key}>
-                <span>{dimension.label}</span>
-                <strong>{Math.round(dimension.ratio * 100)} %</strong>
-              </li>
-            ))}
-          </ul>
-          {candidate.match.distance_km !== null && (
-            <p className="quiet">
-              Distance estimée :{" "}
-              {candidate.match.distance_km.toLocaleString("fr-FR")} km.
-            </p>
-          )}
-        </details>
+        <CandidateExplanation candidate={candidate} outsideZone={outsideZone} />
       </article>
     </li>
   );

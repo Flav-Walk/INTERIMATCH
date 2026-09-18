@@ -71,6 +71,8 @@ export function MissionCard({
   mission,
   basePath = "/company/missions",
   score,
+  band,
+  bandLabel,
   pendingApplications = 0,
 }: {
   mission: Mission;
@@ -78,6 +80,13 @@ export function MissionCard({
   /** Compatibilité, côté intérimaire uniquement : une entreprise voit ses
    *  propres missions, pour lesquelles un score n'aurait pas de sens. */
   score?: number;
+  /**
+   * Palier métier servi par le backend. Il accompagne toujours le score : la
+   * pastille ne doit pas le redéduire d'un nombre arrondi.
+   */
+  band?: number | null;
+  /** Intitulé du palier, servi par le serveur avec lui. */
+  bandLabel?: string | null;
   /**
    * Candidatures en attente, côté entreprise. Uniquement de vraies
    * candidatures : un profil suggéré par le rapprochement n'a rien demandé et
@@ -143,7 +152,7 @@ export function MissionCard({
             "1 poste"
           )
         ) : (
-          <MatchBadge score={score} />
+          <MatchBadge score={score} band={band} bandLabel={bandLabel} />
         )}
         <span className="circle-button" aria-hidden="true">
           <ArrowRight size={15} />

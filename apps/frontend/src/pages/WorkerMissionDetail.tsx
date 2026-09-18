@@ -107,7 +107,12 @@ export function WorkerMissionDetail() {
           <span className="mission-timing is-inline">À venir</span>
         )}
         {mission.match?.compatible && (
-          <MatchBadge score={mission.match.score} size="large" />
+          <MatchBadge
+            score={mission.match.score}
+            band={mission.match.band}
+            bandLabel={mission.match.band_label}
+            size="large"
+          />
         )}
       </div>
 

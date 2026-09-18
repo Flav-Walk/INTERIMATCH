@@ -90,6 +90,8 @@ export function Missions() {
                   mission={mission}
                   basePath="/worker/missions"
                   score={mission.match.score}
+                  band={mission.match.band}
+                  bandLabel={mission.match.band_label}
                 />
               ))}
             </div>

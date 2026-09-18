@@ -1367,8 +1367,12 @@ test("matching connects a published mission to a compatible intérimaire", async
   await expect(page.getByRole("heading", { name: titre })).toBeVisible();
   // Métier principal, compétences souhaitées acquises, même ville : tout est
   // rempli, donc le rapprochement est total.
+  //
+  // Le palier suit le pourcentage dans le texte accessible de la pastille : il
+  // ne tient plus à la seule couleur, deux profils affichés « 70 % » pouvant
+  // reléver de paliers différents selon leur score réel.
   await expect(page.locator(".match-badge").first()).toHaveText(
-    "Compatible à 100 %",
+    "Compatible à 100 % — Très compatibles",
   );
 
   // ---- Le détail explique le rapprochement, sans jargon ----

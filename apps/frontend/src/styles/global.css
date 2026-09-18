@@ -1476,23 +1476,24 @@ small {
 .match-breakdown p {
   margin-bottom: 10px;
 }
-.match-breakdown ul {
-  display: grid;
-  gap: 7px;
+/* Le détail servait autrefois un relèvement de ratios sur deux colonnes
+   (« Proximité — 40 % »). Il porte désormais des phrases, et réutilise donc
+   `.match-list`, la même liste à puces que l'explication côté intérimaire :
+   une seule mise en forme pour un seul type de contenu. */
+.match-breakdown .match-list {
   max-width: 520px;
-  margin: 0 0 10px;
-  padding: 0;
-  list-style: none;
+  margin-bottom: 12px;
+  gap: 7px;
 }
-.match-breakdown li {
-  display: flex;
-  justify-content: space-between;
-  gap: 18px;
+.match-breakdown .match-list li {
   font-size: 0.86rem;
 }
-.match-breakdown li strong {
-  color: var(--forest);
-  white-space: nowrap;
+.match-breakdown h4 {
+  margin: 0 0 7px;
+  font-size: 0.8rem;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+  color: var(--ink);
 }
 .outside-zone-profiles {
   margin-top: 20px;
