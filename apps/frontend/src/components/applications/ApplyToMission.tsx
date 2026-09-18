@@ -14,6 +14,7 @@ import { errorMessage } from "../../services/session";
 import {
   missionTemporalState,
   type MissionStatus,
+  type NotOpenReason,
 } from "../../services/missions";
 import {
   applyToMission,
@@ -36,6 +37,15 @@ export interface ApplicationMissionContext {
   postal_code: string;
   establishment_name: string | null;
   status: MissionStatus;
+  /**
+   * Pourquoi la mission ne recrute plus, décidé par le serveur.
+   *
+   * Cet écran testait `status === "filled"`. Aucune transition n'écrit ce
+   * statut — une mission complète reste `open`, parce qu'être pourvue décrit
+   * son recrutement et non son cycle de vie. La branche était donc morte, et
+   * un intérimaire dont la mission venait de se remplir ne lisait rien du tout.
+   */
+  recruiting_blocked?: NotOpenReason | null;
 }
 
 const schedule = new Intl.DateTimeFormat("fr-FR", {
@@ -83,8 +93,8 @@ function inactiveMissionMessage(
     return "Cette mission a été annulée. Aucune nouvelle candidature n’est possible.";
   if (temporal === "completed")
     return "Cette mission est terminée. Elle reste consultable dans votre historique.";
-  if (mission.status === "filled")
-    return "Tous les postes de cette mission sont pourvus.";
+  if (mission.recruiting_blocked === "full")
+    return "Tous les postes de cette mission sont pourvus. Votre candidature reste enregistrée, mais l’entreprise ne peut plus la retenir.";
   return null;
 }
 
@@ -106,6 +116,21 @@ export function ApplicationAction({
   const accepted = application?.status === "accepted";
   const heading = applicationMissionHeading(application, mission);
   const inactive = inactiveMissionMessage(mission);
+  /**
+   * En attente, mais la mission n'a plus de place.
+   *
+   * Sans cette ligne, l'écran affichait « l'entreprise doit maintenant
+   * l'examiner » — une phrase devenue fausse, puisqu'elle ne peut plus retenir
+   * personne. Le message d'inactivité n'était rendu que faute de candidature ;
+   * c'est précisément quand on en a une qu'il faut le lire.
+   *
+   * Restreint à la complétude : l'annulation et la fin de mission ont déjà
+   * leurs propres phrases un peu plus haut, et les répéter ferait doublon.
+   * Restreint à « en attente » : pour la personne retenue, la mission est
+   * pleine à cause d'elle.
+   */
+  const pendingButFilled =
+    application?.status === "pending" && mission?.recruiting_blocked === "full";
   const isInactive =
     heading === "Mission annulée" || heading === "Mission terminée";
   const Icon =
@@ -146,6 +171,11 @@ export function ApplicationAction({
                   ? "La mission est actuellement en cours."
                   : stateMessages[application.status]}
           </p>
+          {pendingButFilled && inactive && (
+            <p className="quiet" role="status">
+              {inactive}
+            </p>
+          )}
           {accepted && mission && (
             <div className="confirmed-mission-summary">
               <strong>{mission.title}</strong>

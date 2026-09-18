@@ -48,6 +48,8 @@ export interface Mission {
   headcount: number;
   capacity?: MissionCapacity;
   phase?: MissionPhase;
+  /** Onglet de la liste entreprise, décidé par le serveur. */
+  group?: MissionTab;
   recruiting?: boolean;
   recruiting_blocked?: NotOpenReason | null;
   min_years_experience: string | null;
@@ -59,7 +61,8 @@ export interface Mission {
 
 export interface MissionList {
   missions: Mission[];
-  counts: Partial<Record<MissionStatus, number>>;
+  /** Indexés par onglet, et non par statut écrit : voir `missionTabOf`. */
+  counts: Partial<Record<MissionTab, number>>;
 }
 
 export const listMissions = (status?: MissionStatus) =>
@@ -79,14 +82,31 @@ export function missionTemporalState(
   now = Date.now(),
 ): MissionTemporalState {
   if (mission.status === "cancelled") return "cancelled";
-  if (mission.status === "completed" || Date.parse(mission.ends_at) <= now)
-    return "completed";
+  // Le calendrier seul : `status === "completed"` figurait ici, mais aucune
+  // transition ne l'écrit et la borne de fin répond déjà à la question. Le
+  // garder entretenait la prémisse qui a faussé la pastille et les onglets.
+  if (Date.parse(mission.ends_at) <= now) return "completed";
   if (Date.parse(mission.starts_at) <= now) return "running";
   return "upcoming";
 }
 
+/**
+ * Comment une mission s'annonce, d'un seul endroit.
+ *
+ * ELLE TESTAIT `status === "filled"`, un statut qu'aucune transition n'écrit :
+ * une mission complète reste `open`, parce qu'être pourvue décrit son
+ * recrutement et non son cycle de vie. La branche était donc morte, et une
+ * mission pleine retombait sur « À pourvoir ».
+ *
+ * Deux écrans compensaient déjà en corrigeant le libellé chez eux — la fiche
+ * entreprise et la carte de mission — chacun avec sa propre copie de la règle.
+ * La fiche intérimaire, elle, ne compensait pas : elle annonçait « À pourvoir »
+ * au-dessus d'un encart disant que tous les postes étaient pris.
+ *
+ * La capacité vient du serveur. L'interface la lit, elle ne la recompte pas.
+ */
 export function missionStatePresentation(
-  mission: Pick<Mission, "status" | "starts_at" | "ends_at">,
+  mission: Pick<Mission, "status" | "starts_at" | "ends_at" | "capacity">,
   now = Date.now(),
 ): MissionStatePresentation {
   const temporal = missionTemporalState(mission, now);
@@ -125,7 +145,7 @@ export function missionStatePresentation(
       className: "is-running",
       temporal,
     };
-  if (mission.status === "filled")
+  if (mission.capacity?.full)
     return {
       key: "filled",
       label: "Pourvue",
@@ -455,8 +475,12 @@ export const canEdit = (mission: Mission, now = Date.now()) =>
   Date.parse(mission.ends_at) > now;
 
 /**
- * Onglets de la maquette. « En cours » regroupe les missions pourvues en cours,
- * « À venir » les missions publiées qui n'ont pas commencé.
+ * Onglets de la liste entreprise.
+ *
+ * Leurs clés sont celles de `mission.group`, servi par le serveur. Elles
+ * ressemblent à des statuts et n'en sont pas : filtrer sur `mission.status`
+ * — ce que cet écran faisait — laissait « Pourvues » et « Terminées » vides
+ * par construction, puisque `filled` et `completed` ne sont jamais écrits.
  */
 export const missionTabs = [
   { key: "open", label: "Publiées" },
@@ -467,6 +491,19 @@ export const missionTabs = [
 ] as const;
 
 export type MissionTab = (typeof missionTabs)[number]["key"];
+
+/**
+ * L'onglet d'une mission, tel que le serveur l'a décidé.
+ *
+ * Le repli sur `status` ne sert qu'aux réponses d'une API antérieure au champ
+ * `group` ; il ne recalcule rien, il se contente des deux cas où statut écrit
+ * et groupe coïncident par construction.
+ */
+export const missionTabOf = (mission: Mission): MissionTab =>
+  mission.group ??
+  (mission.status === "draft" || mission.status === "cancelled"
+    ? mission.status
+    : "open");
 
 /** Recherche locale sur les missions déjà chargées : titre, ville, métier. */
 export function searchMissions(missions: Mission[], query: string) {
@@ -483,14 +520,15 @@ export function searchMissions(missions: Mission[], query: string) {
 /** Prochaines missions datées, de la plus proche à la plus lointaine. */
 export function upcomingMissions(missions: Mission[], limit = 3) {
   const now = Date.now();
-  return missions
-    .filter(
-      (m) =>
-        Date.parse(m.ends_at) > now &&
-        (m.status === "open" || m.status === "filled"),
-    )
-    .sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at))
-    .slice(0, limit);
+  return (
+    missions
+      // Une mission pourvue garde le statut `open` : elle reste planifiée, et
+      // c'est bien ce qu'on veut voir ici. Le `|| "filled"` qui l'accompagnait
+      // ne pouvait jamais être vrai.
+      .filter((m) => Date.parse(m.ends_at) > now && m.status === "open")
+      .sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at))
+      .slice(0, limit)
+  );
 }
 
 /** Jours du mois portant au moins une mission, pour le mini-calendrier. */

@@ -2,7 +2,9 @@ import { api } from "./session";
 import {
   missionTemporalState,
   type MissionCapacity,
+  type MissionPhase,
   type MissionStatus,
+  type NotOpenReason,
 } from "./missions";
 
 export type ApplicationStatus = "pending" | "accepted" | "rejected";
@@ -17,15 +19,37 @@ export interface Application {
   updated_at: string;
 }
 
+/**
+ * Ce que le serveur dit de la mission avec chaque candidature.
+ *
+ * Un seul bloc pour les deux côtés : le backend assemble ce contexte par une
+ * fonction unique, et deux déclarations divergentes ici reviendraient à décrire
+ * différemment la même réponse. La vue entreprise s'en était déjà écartée,
+ * ignorant des champs pourtant servis.
+ */
+export interface ApplicationMissionState {
+  /**
+   * Statut **écrit**. Trois valeurs seulement sont atteignables : `draft`,
+   * `open`, `cancelled`. Une mission complète reste `open` — être pourvue
+   * décrit son recrutement, pas son cycle de vie.
+   */
+  status: MissionStatus;
+  /** Position dans le cycle, décidée par le serveur. */
+  phase?: MissionPhase;
+  /** État du recrutement, servi avec la candidature. */
+  capacity?: MissionCapacity;
+  recruiting?: boolean;
+  recruiting_blocked?: NotOpenReason | null;
+}
+
 export interface WorkerApplication extends Omit<Application, "worker_id"> {
-  mission: {
+  mission: ApplicationMissionState & {
     title: string;
     job: string;
     starts_at: string;
     ends_at: string;
     city: string;
     postal_code: string;
-    status: MissionStatus;
   };
   company: { establishment_name: string | null };
 }
@@ -49,7 +73,23 @@ export interface MissionApplication extends Omit<Application, "worker_id"> {
 }
 
 export type WorkerMissionContext =
-  "pending" | "rejected" | "confirmed" | "running" | "completed" | "cancelled";
+  | "pending"
+  /**
+   * En attente, mais tous les postes sont déjà pris.
+   *
+   * La candidature n'a pas changé de statut — l'entreprise n'a rien décidé à
+   * son sujet, et le serveur se garde bien de la refuser d'office. Mais
+   * l'afficher comme n'importe quelle candidature en attente laisserait croire
+   * qu'elle peut encore aboutir, alors que l'entreprise ne peut déjà plus la
+   * retenir. Le statut dit ce qui s'est passé ; ce contexte dit ce qui reste
+   * possible.
+   */
+  | "filled"
+  | "rejected"
+  | "confirmed"
+  | "running"
+  | "completed"
+  | "cancelled";
 
 export function workerMissionContext(
   application: WorkerApplication,
@@ -65,20 +105,23 @@ export function workerMissionContext(
       ? { key: "running", label: "Mission en cours" }
       : { key: "confirmed", label: "Mission confirmée" };
   if (application.status === "pending")
-    return { key: "pending", label: "Candidature en attente" };
+    // `recruiting_blocked` vient du serveur : l'interface ne recompte pas les
+    // places prises, elle lit la conclusion.
+    return application.mission.recruiting_blocked === "full"
+      ? { key: "filled", label: "Tous les postes sont pourvus" }
+      : { key: "pending", label: "Candidature en attente" };
   return { key: "rejected", label: "Candidature non retenue" };
 }
 
 /** Une candidature vue depuis l'entreprise, avec la mission qu'elle vise. */
 export interface CompanyApplication extends MissionApplication {
-  mission: {
+  mission: ApplicationMissionState & {
     id: string;
     title: string;
     job: string;
     starts_at: string;
     ends_at: string;
     city: string;
-    status: MissionStatus;
     headcount: number;
   };
 }
@@ -173,7 +216,8 @@ export function upcomingEngagements(applications: WorkerApplication[]) {
       (one) =>
         one.status === "accepted" &&
         one.mission.status !== "cancelled" &&
-        one.mission.status !== "completed" &&
+        // `!== "completed"` figurait ici : statut jamais écrit, et la borne de
+        // fin ci-dessous tranche déjà la même question.
         Date.parse(one.mission.ends_at) > now,
     )
     .sort(

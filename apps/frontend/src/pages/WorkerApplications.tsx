@@ -54,7 +54,9 @@ export function WorkerApplicationList({
             className={
               ["confirmed", "running"].includes(context.key)
                 ? "is-confirmed"
-                : context.key === "cancelled" || context.key === "completed"
+                : context.key === "cancelled" ||
+                    context.key === "completed" ||
+                    context.key === "filled"
                   ? "is-inactive"
                   : undefined
             }

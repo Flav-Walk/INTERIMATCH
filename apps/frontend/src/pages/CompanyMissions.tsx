@@ -7,6 +7,7 @@ import { MissionCard } from "../components/mission/MissionCard";
 import {
   listMissions,
   missionTabs,
+  missionTabOf,
   searchMissions,
   type Mission,
   type MissionTab,
@@ -44,7 +45,9 @@ export function CompanyMissions() {
   }, [revision]);
 
   const filtered = searchMissions(
-    tab === "all" ? data : data.filter((m) => m.status === tab),
+    // Le groupe vient du serveur : filtrer sur `status` laissait « Pourvues »
+    // et « Terminées » vides, ces statuts n'étant jamais écrits.
+    tab === "all" ? data : data.filter((m) => missionTabOf(m) === tab),
     query,
   );
 

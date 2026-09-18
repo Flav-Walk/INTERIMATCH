@@ -85,6 +85,56 @@ const cancelled = mission(
   "2030-06-16T18:00:00.000Z",
 );
 
+/**
+ * Une mission pleine dont le cycle est clos.
+ *
+ * Le statut ecrit reste celui que le serveur produit reellement — `cancelled`,
+ * ou `open` avec des dates passees — et la capacite est pleine. C est la
+ * combinaison qui faisait afficher « Pourvue » a la fiche entreprise : elle
+ * forcait ce libelle des que la capacite etait atteinte, ecrasant le verdict
+ * « Annulee » ou « Terminee » que la cascade venait de rendre.
+ */
+const pleine = (item: ReturnType<typeof mission>, group: string) => ({
+  ...item,
+  capacity: { headcount: 1, filled: 1, remaining: 0, full: true },
+  group,
+});
+
+const annuleePleine = pleine(
+  mission(
+    "cancelled-full",
+    "Service annule mais pourvu",
+    "cancelled",
+    "2030-06-16T10:00:00.000Z",
+    "2030-06-16T18:00:00.000Z",
+  ),
+  "cancelled",
+);
+
+const passeePleine = pleine(
+  mission(
+    "past-full",
+    "Service termine et pourvu",
+    // Statut ecrit `open` : `completed` n est jamais persiste, une mission
+    // terminee est une mission publiee dont les dates sont derriere nous.
+    "open",
+    "2030-06-10T10:00:00.000Z",
+    "2030-06-10T18:00:00.000Z",
+  ),
+  "completed",
+);
+
+const ouvertePleine = pleine(
+  mission(
+    "open-full",
+    "Service publie et pourvu",
+    "open",
+    "2030-06-18T10:00:00.000Z",
+    "2030-06-18T18:00:00.000Z",
+  ),
+  "filled",
+);
+
 const asApplication = (
   item: ReturnType<typeof mission>,
   status: "pending" | "accepted" | "rejected",
@@ -128,6 +178,9 @@ function initMissions() {
     running: { ...running },
     past: { ...past },
     cancelled: { ...cancelled },
+    "cancelled-full": { ...annuleePleine },
+    "past-full": { ...passeePleine },
+    "open-full": { ...ouvertePleine },
   };
 }
 
@@ -245,7 +298,13 @@ async function mockApi(page: Page, role: "worker" | "company") {
           },
         ],
         counts: { total: 1, pending: 1, accepted: 0, rejected: 0 },
-        capacity: {
+        // La capacite suit la mission interrogee. Elle etait codee en dur a
+        // « une place libre » pour TOUTES les missions : la fiche d une mission
+        // pleine recevait donc une capacite qui la disait ouverte, et aucun
+        // test ne pouvait exercer le cas « pleine » par ce chemin.
+        capacity: missionStore[
+          path.replace("/missions/", "").replace("/applications", "")
+        ]?.capacity ?? {
           headcount: 1,
           filled: 0,
           remaining: 1,
@@ -380,6 +439,56 @@ test("l’entreprise distingue statut de recrutement et temporalité", async ({
   ).toBe(true);
   await page.screenshot({
     path: testInfo.outputPath("company-mission-lifecycle.png"),
+    fullPage: true,
+  });
+});
+
+/**
+ * La capacite pleine ne doit jamais eclipser la fin du cycle.
+ *
+ * La fiche entreprise corrigeait le libelle pour son compte :
+ * `full ? { ...presentation, label: "Pourvue" } : presentation`. Le ternaire
+ * remplacait le libelle INCONDITIONNELLEMENT, y compris quand la cascade
+ * commune venait de repondre « Annulee » ou « Terminee ». Une mission annulee
+ * dont les postes avaient ete pourvus avant l annulation s affichait donc
+ * « Pourvue », comme si elle attendait encore ses interimaires.
+ *
+ * Ce test rend la fiche reelle, sur des payloads que le serveur produit
+ * vraiment — statut ecrit `cancelled`, ou `open` avec des dates passees.
+ */
+test("l’entreprise voit la fin du cycle primer sur la capacite pleine", async ({
+  page,
+}, testInfo) => {
+  await mockApi(page, "company");
+  const badge = () => page.locator(".section-head .mission-status");
+
+  // CAS C : annulee + capacite pleine => « Annulee », jamais « Pourvue ».
+  await page.goto("/company/missions/cancelled-full");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+    "Service annule mais pourvu",
+  );
+  await expect(badge()).toHaveText("Annulée");
+  await expect(badge()).not.toHaveText("Pourvue");
+
+  // CAS B : terminee + capacite pleine => « Terminee », jamais « Pourvue ».
+  await page.goto("/company/missions/past-full");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+    "Service termine et pourvu",
+  );
+  await expect(badge()).toHaveText("Terminée");
+  await expect(badge()).not.toHaveText("Pourvue");
+
+  // CAS A : le cas ou « Pourvue » reste juste — publiee, a venir, pleine. La
+  // correction ne doit pas avoir supprime le libelle, seulement sa priorite.
+  await page.goto("/company/missions/open-full");
+  await expect(badge()).toHaveText("Pourvue");
+
+  // CAS D : publiee, a venir, de la place => presentation normale.
+  await page.goto("/company/missions/future");
+  await expect(badge()).toHaveText("À pourvoir");
+
+  await page.screenshot({
+    path: testInfo.outputPath("company-full-vs-closed.png"),
     fullPage: true,
   });
 });

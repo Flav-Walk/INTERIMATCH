@@ -16,6 +16,7 @@ import {
   missionDiff,
   missionStatePresentation,
   missionTabs,
+  missionTabOf,
   missionTemporalState,
   missionToForm,
   searchMissions,
@@ -120,12 +121,28 @@ describe("prochaines missions", () => {
   });
 
   it("écarte les brouillons et les missions déjà terminées", () => {
+    // Les statuts `completed` et `filled` ne sont jamais écrits : une mission
+    // terminée est une mission `open` dont les dates sont passées, et une
+    // mission pourvue reste `open` avec sa capacité pleine. Le test décrit
+    // désormais ces réponses-là, et non deux statuts que le serveur ne produit
+    // pas.
+    const passe = new Date(Date.now() - 2 * 86_400_000).toISOString();
     expect(
       upcomingMissions([
         mission({ id: "draft", status: "draft" }),
-        mission({ id: "done", status: "completed" }),
+        mission({
+          id: "done",
+          status: "open",
+          starts_at: passe,
+          ends_at: passe,
+        }),
         mission({ id: "open", status: "open" }),
-        mission({ id: "filled", status: "filled" }),
+        // Pourvue, mais bel et bien planifiée : elle doit rester au planning.
+        mission({
+          id: "filled",
+          status: "open",
+          capacity: { headcount: 1, filled: 1, remaining: 0, full: true },
+        }),
       ]).map((item) => item.id),
     ).toEqual(["open", "filled"]);
   });
@@ -136,6 +153,22 @@ describe("cycle de vie affiché", () => {
   const at = (status: MissionStatus, starts_at: string, ends_at: string) =>
     mission({ status, starts_at, ends_at });
 
+  /**
+   * Une mission dont tous les postes sont pris, telle que le serveur la sert.
+   *
+   * Le statut reste `open` : être pourvue décrit le recrutement, pas le cycle
+   * de vie. Les tests construisaient auparavant `status: "filled"` — une
+   * réponse que le backend ne produit jamais — et vérifiaient donc que
+   * l'interface savait lire une fiction.
+   */
+  const pourvue = (starts_at: string, ends_at: string) =>
+    mission({
+      status: "open",
+      starts_at,
+      ends_at,
+      capacity: { headcount: 1, filled: 1, remaining: 0, full: true },
+    });
+
   it("distingue à venir, en cours, terminée et annulée", () => {
     expect(
       missionTemporalState(
@@ -145,7 +178,7 @@ describe("cycle de vie affiché", () => {
     ).toBe("upcoming");
     expect(
       missionTemporalState(
-        at("filled", "2027-06-12T10:00:00Z", "2027-06-12T18:00:00Z"),
+        at("open", "2027-06-12T10:00:00Z", "2027-06-12T18:00:00Z"),
         now,
       ),
     ).toBe("running");
@@ -170,12 +203,19 @@ describe("cycle de vie affiché", () => {
         now,
       ).label,
     ).toBe("À pourvoir");
-    expect(
-      missionStatePresentation(
-        at("filled", "2027-06-13T10:00:00Z", "2027-06-13T18:00:00Z"),
-        now,
-      ).label,
-    ).toBe("Pourvue");
+    // REGRESSION. Statut écrit `open`, capacité pleine : c'est exactement ce que
+    // le serveur renvoie, et l'écran doit dire « Pourvue ». Il disait
+    // « À pourvoir », au-dessus d'un encart annonçant que tout était pris.
+    const complete = missionStatePresentation(
+      pourvue("2027-06-13T10:00:00Z", "2027-06-13T18:00:00Z"),
+      now,
+    );
+    expect(complete.label).toBe("Pourvue");
+    expect(complete.label).not.toBe("À pourvoir");
+    // Le statut écrit n'a pas bougé pour autant.
+    expect(pourvue("2027-06-13T10:00:00Z", "2027-06-13T18:00:00Z").status).toBe(
+      "open",
+    );
     expect(
       missionStatePresentation(
         at("open", "2027-06-12T10:00:00Z", "2027-06-12T18:00:00Z"),
@@ -190,6 +230,71 @@ describe("cycle de vie affiché", () => {
     ).toBe("Brouillon expiré");
   });
 
+  /**
+   * La capacite pleine ne prend jamais le pas sur la fin du cycle.
+   *
+   * La cascade repond, dans l ordre : annulee, brouillon, terminee, en cours,
+   * pourvue, a pourvoir. « Pourvue » arrive donc APRES « annulee » et
+   * « terminee », et ce test existe pour que cet ordre reste un choix plutot
+   * qu un accident — la fiche entreprise l avait contourne en forcant le
+   * libelle chez elle.
+   */
+  it("ne laisse pas la capacite pleine ecraser annulee ni terminee", () => {
+    const full = { headcount: 1, filled: 1, remaining: 0, full: true };
+
+    // CAS A : publiee, a venir, pleine => « Pourvue ».
+    expect(
+      missionStatePresentation(
+        mission({
+          status: "open",
+          starts_at: "2027-06-13T10:00:00Z",
+          ends_at: "2027-06-13T18:00:00Z",
+          capacity: full,
+        }),
+        now,
+      ).label,
+    ).toBe("Pourvue");
+
+    // CAS B : publiee, creneau passe, pleine => « Terminee ».
+    expect(
+      missionStatePresentation(
+        mission({
+          status: "open",
+          starts_at: "2027-06-11T10:00:00Z",
+          ends_at: "2027-06-11T18:00:00Z",
+          capacity: full,
+        }),
+        now,
+      ).label,
+    ).toBe("Terminée");
+
+    // CAS C : annulee, pleine => « Annulee ».
+    expect(
+      missionStatePresentation(
+        mission({
+          status: "cancelled",
+          starts_at: "2027-06-13T10:00:00Z",
+          ends_at: "2027-06-13T18:00:00Z",
+          capacity: full,
+        }),
+        now,
+      ).label,
+    ).toBe("Annulée");
+
+    // CAS D : publiee, a venir, de la place => presentation normale.
+    expect(
+      missionStatePresentation(
+        mission({
+          status: "open",
+          starts_at: "2027-06-13T10:00:00Z",
+          ends_at: "2027-06-13T18:00:00Z",
+          capacity: { headcount: 2, filled: 1, remaining: 1, full: false },
+        }),
+        now,
+      ).label,
+    ).toBe("À pourvoir");
+  });
+
   it("rend les états en toutes lettres sur les cartes", () => {
     const render = (item: Mission) =>
       renderToStaticMarkup(
@@ -200,10 +305,10 @@ describe("cycle de vie affiché", () => {
         ),
       );
     expect(
-      render(at("filled", "2097-06-13T10:00:00Z", "2097-06-13T18:00:00Z")),
+      render(pourvue("2097-06-13T10:00:00Z", "2097-06-13T18:00:00Z")),
     ).toContain("Pourvue");
     expect(
-      render(at("filled", "2097-06-13T10:00:00Z", "2097-06-13T18:00:00Z")),
+      render(pourvue("2097-06-13T10:00:00Z", "2097-06-13T18:00:00Z")),
     ).toContain("À venir");
     expect(
       render(at("cancelled", "2097-06-13T10:00:00Z", "2097-06-13T18:00:00Z")),
@@ -235,10 +340,94 @@ describe("jours marqués du calendrier", () => {
 });
 
 describe("onglets de la maquette", () => {
-  it("couvre les statuts affichables", () => {
-    const keys = missionTabs.map((t) => t.key) as MissionStatus[];
+  it("couvre les groupes affichables", () => {
+    const keys = missionTabs.map((t) => t.key);
     expect(keys).toEqual(["open", "filled", "completed", "draft", "cancelled"]);
     for (const tab of missionTabs) expect(tab.label.length).toBeGreaterThan(0);
+  });
+
+  /**
+   * Les onglets filtraient sur `mission.status`. Comme `filled` et `completed`
+   * ne sont jamais écrits, une mission réellement pourvue restait `open` :
+   * « Pourvues » et « Terminées » étaient vides par construction, alors que la
+   * fiche de la même mission affichait bien « Pourvue ».
+   */
+  it("range une mission pourvue dans « Pourvues », statut écrit inchangé", () => {
+    const pleine = mission({
+      status: "open",
+      group: "filled",
+      capacity: { headcount: 1, filled: 1, remaining: 0, full: true },
+    });
+    expect(pleine.status).toBe("open");
+    expect(missionTabOf(pleine)).toBe("filled");
+  });
+
+  it("range une mission passée dans « Terminées »", () => {
+    const passee = mission({ status: "open", group: "completed" });
+    expect(missionTabOf(passee)).toBe("completed");
+  });
+
+  it("suit le groupe décidé par le serveur, jamais le statut écrit", () => {
+    // Si l'interface recalculait, elle rangerait celle-ci dans « Publiées ».
+    expect(missionTabOf(mission({ status: "open", group: "filled" }))).toBe(
+      "filled",
+    );
+    expect(missionTabOf(mission({ status: "open", group: "open" }))).toBe(
+      "open",
+    );
+  });
+
+  it("garde brouillon et annulation à leur place", () => {
+    expect(missionTabOf(mission({ status: "draft", group: "draft" }))).toBe(
+      "draft",
+    );
+    expect(
+      missionTabOf(mission({ status: "cancelled", group: "cancelled" })),
+    ).toBe("cancelled");
+  });
+
+  it("n'attribue qu'un seul onglet par mission", () => {
+    // L'exclusivité est ce qui permet aux compteurs d'être la taille réelle des
+    // listes : une mission comptée deux fois ferait mentir le total.
+    const cas = [
+      mission({ id: "a", group: "open" }),
+      mission({ id: "b", group: "filled" }),
+      mission({ id: "c", group: "completed" }),
+      mission({ id: "d", group: "draft", status: "draft" }),
+      mission({ id: "e", group: "cancelled", status: "cancelled" }),
+    ];
+    const onglets = cas.map(missionTabOf);
+    expect(new Set(onglets).size).toBe(cas.length);
+    for (const onglet of onglets)
+      expect(missionTabs.map((t) => t.key)).toContain(onglet);
+  });
+
+  it("ne présente jamais une mission pourvue comme encore recrutante", () => {
+    // La contradiction exacte signalée : rangée dans « Pourvues » d'un côté,
+    // annoncée « À pourvoir » de l'autre.
+    const pleine = mission({
+      status: "open",
+      group: "filled",
+      recruiting: false,
+      capacity: { headcount: 2, filled: 2, remaining: 0, full: true },
+    });
+    expect(missionTabOf(pleine)).toBe("filled");
+    expect(missionStatePresentation(pleine).label).toBe("Pourvue");
+    expect(pleine.recruiting).toBe(false);
+  });
+
+  it("se rabat sur le statut écrit si le serveur n'envoie pas de groupe", () => {
+    // Compatibilité ascendante, sans recalcul : seuls les deux cas où statut et
+    // groupe coïncident par construction sont déduits.
+    expect(missionTabOf(mission({ status: "draft", group: undefined }))).toBe(
+      "draft",
+    );
+    expect(
+      missionTabOf(mission({ status: "cancelled", group: undefined })),
+    ).toBe("cancelled");
+    expect(missionTabOf(mission({ status: "open", group: undefined }))).toBe(
+      "open",
+    );
   });
 });
 

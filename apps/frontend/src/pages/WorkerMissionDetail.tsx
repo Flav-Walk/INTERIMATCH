@@ -232,6 +232,7 @@ export function WorkerMissionDetail() {
               postal_code: mission.postal_code,
               establishment_name: mission.company.establishment_name,
               status: mission.status,
+              recruiting_blocked: mission.recruiting_blocked,
             }}
           />
         </aside>
