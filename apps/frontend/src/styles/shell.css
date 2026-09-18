@@ -852,3 +852,432 @@
 }
 
 .mission-grid { gap: 20px; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   APP LAYOUT — Header ALP'EMPLOI + Navigation
+   Toutes les valeurs utilisent les variables oklch de tokens.css.
+   Aucune valeur hex hardcodée.
+═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Skip link RGAA 4.1 ─────────────────────────────────────────────────── */
+.skip-link {
+  position: absolute;
+  top: -100%;
+  left: 1rem;
+  z-index: 9999;
+  padding: 0.5rem 1rem;
+  background: var(--forest);
+  color: var(--surface);
+  border-radius: var(--radius);
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: top 0.15s ease;
+}
+/* Visible uniquement au focus clavier */
+.skip-link:focus {
+  top: 1rem;
+}
+
+/* ── Header wrapper ─────────────────────────────────────────────────────── */
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--forest);
+  box-shadow: 0 2px 12px oklch(0 0 0 / 0.18);
+}
+
+.app-header__inner {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  max-width: 1280px;
+  margin-inline: auto;
+  padding-inline: 1.5rem;
+  height: 64px;
+}
+
+/* ── Logo ───────────────────────────────────────────────────────────────── */
+.app-header__logo {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  text-decoration: none;
+  flex-shrink: 0;
+}
+
+.app-header__brand {
+  font-family: Georgia, serif;
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--surface);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* ── Navigation desktop ─────────────────────────────────────────────────── */
+.app-header__nav {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-left: auto; /* pousse vers la droite */
+}
+
+.app-header__nav-link {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.875rem;
+  border-radius: var(--radius);
+  color: oklch(0.88 0.015 160); /* blanc légèrement teinté */
+  text-decoration: none;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.app-header__nav-link:hover {
+  background: var(--forest-mid);
+  color: var(--surface);
+}
+
+.app-header__nav-link.is-active {
+  background: oklch(1 0 0 / 0.12);
+  color: var(--surface);
+  font-weight: 600;
+}
+
+/* ── Actions droite ─────────────────────────────────────────────────────── */
+.app-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-left: 1.5rem;
+}
+
+/* Pill rôle */
+.app-header__role-pill {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--forest);
+  background: var(--orange);
+  padding: 0.2rem 0.625rem;
+  border-radius: 999px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+/* Bouton déconnexion desktop */
+.app-header__signout {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.4rem 0.875rem;
+  border: 1px solid oklch(1 0 0 / 0.25);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--surface);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.app-header__signout:hover {
+  background: oklch(1 0 0 / 0.1);
+  border-color: oklch(1 0 0 / 0.4);
+}
+
+/* Burger — visible mobile uniquement */
+.app-header__burger {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: var(--radius);
+  background: oklch(1 0 0 / 0.1);
+  color: var(--surface);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.app-header__burger:hover {
+  background: oklch(1 0 0 / 0.2);
+}
+
+/* ── Menu mobile ────────────────────────────────────────────────────────── */
+.app-header__mobile-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.75rem 1rem 1.25rem;
+  border-top: 1px solid oklch(1 0 0 / 0.1);
+  background: var(--forest);
+}
+
+.app-header__mobile-link {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius);
+  color: oklch(0.88 0.015 160);
+  text-decoration: none;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  transition: background 0.15s ease;
+}
+
+.app-header__mobile-link:hover,
+.app-header__mobile-link.is-active {
+  background: var(--forest-mid);
+  color: var(--surface);
+}
+
+.app-header__mobile-signout {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  margin-top: 0.75rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid oklch(1 0 0 / 0.2);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--surface);
+  font-size: 0.9375rem;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.app-header__mobile-signout:hover {
+  background: oklch(1 0 0 / 0.1);
+}
+
+/* ── Main content ───────────────────────────────────────────────────────── */
+.app-main {
+  min-height: calc(100dvh - 64px);
+  background: var(--background);
+  outline: none; /* tabIndex={-1} pour skip link — pas de focus ring visible */
+}
+
+/* ── Responsive — Mobile < 768px ────────────────────────────────────────── */
+@media (width < 768px) {
+  .app-header__nav,
+  .app-header__role-pill,
+  .app-header__signout-label {
+    display: none;
+  }
+
+  .app-header__signout {
+    /* Sur mobile : garde juste l'icône, sans label */
+    padding: 0.4rem;
+  }
+
+  .app-header__burger {
+    display: flex;
+  }
+}
+
+@media (width >= 768px) {
+  .app-header__mobile-menu {
+    display: none !important; /* Jamais visible desktop même si state = open */
+  }
+}
+/* ═══════════════════════════════════════════════════════════════════════════
+   MISSIONS PAGE — Hero, toolbar, skeletons, how-it-works
+═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Wrapper page ───────────────────────────────────────────────────────── */
+.missions-page {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100dvh - 64px);
+}
+
+/* ── Page hero ──────────────────────────────────────────────────────────── */
+.page-hero {
+  background: var(--forest);
+  padding-block: 2.5rem 2rem;
+}
+
+.page-hero__inner {
+  max-width: 1280px;
+  margin-inline: auto;
+  padding-inline: 1.5rem;
+}
+
+.page-hero h1 {
+  color: var(--surface);
+  margin-block: 0.375rem 0.625rem;
+  font-size: clamp(1.5rem, 3vw, 2rem);
+}
+
+.page-hero .eyeline {
+  color: var(--orange);
+  font-weight: 600;
+}
+
+.page-hero__lead {
+  color: oklch(0.88 0.015 160);
+  max-width: 60ch;
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+/* ── Corps de page ──────────────────────────────────────────────────────── */
+.missions-page__body {
+  max-width: 1280px;
+  margin-inline: auto;
+  padding: 2rem 1.5rem 4rem;
+  width: 100%;
+}
+
+/* ── Toolbar ────────────────────────────────────────────────────────────── */
+.missions-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.missions-toolbar__count {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--muted);
+  font-size: 0.875rem;
+  margin: 0;
+}
+
+.missions-toolbar__count svg {
+  color: var(--orange);
+  flex-shrink: 0;
+}
+
+.missions-toolbar__count strong {
+  color: var(--ink);
+  font-size: 1.0625rem;
+  font-weight: 700;
+}
+
+/* Filtre ville */
+.select-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.select-wrapper select {
+  appearance: none;
+  padding: 0.45rem 2.25rem 0.45rem 0.875rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.select-wrapper select:hover {
+  border-color: var(--forest-mid);
+}
+
+.select-wrapper select:focus {
+  outline: 2px solid var(--forest-mid);
+  outline-offset: 2px;
+  border-color: var(--forest-mid);
+}
+
+.select-wrapper svg {
+  position: absolute;
+  right: 0.625rem;
+  pointer-events: none;
+  color: var(--muted);
+}
+
+/* ── Skeleton loading ───────────────────────────────────────────────────── */
+.skeleton-card {
+  height: 220px;
+  border-radius: var(--radius-card);
+  background: linear-gradient(
+    90deg,
+    var(--tint)   25%,
+    var(--border) 50%,
+    var(--tint)   75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.4s ease infinite;
+}
+
+@keyframes skeleton-shimmer {
+  0%   { background-position:  200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ── How it works ───────────────────────────────────────────────────────── */
+.how-it-works {
+  margin-top: 3rem;
+  padding: 2rem;
+  background: var(--surface);
+  border-radius: var(--radius-card);
+  border: 1px solid var(--border);
+}
+
+.how-it-works h2 {
+  margin-top: 0;
+  margin-bottom: 1.25rem;
+  font-size: 1.125rem;
+}
+
+.how-steps {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.how-step {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.875rem 1rem;
+  background: var(--tint);
+  border-radius: var(--radius);
+  font-size: 0.9375rem;
+}
+
+.how-step__num {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--forest);
+  color: var(--surface);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+/* ── Utilitaire RGAA ────────────────────────────────────────────────────── */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0,0,0,0);
+  white-space: nowrap;
+  border: 0;
+}
