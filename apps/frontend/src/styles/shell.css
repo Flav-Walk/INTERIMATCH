@@ -763,3 +763,92 @@
     flex-wrap: wrap;
   }
 }
+/* ================================================================
+ * Mission card v2 — charte visuelle Alp'Emploi (Yrieix)
+ * ================================================================ */
+
+.mission-card {
+  border-radius: var(--radius-card);
+  transition:
+    box-shadow var(--normal) var(--ease-out),
+    border-color var(--normal) var(--ease-out);
+}
+.mission-card:hover {
+  border-color: oklch(0.42 0.085 165 / 0.35);
+  box-shadow: var(--shadow-3);
+}
+
+.mission-card .mission-media {
+  aspect-ratio: 4 / 3;
+  border-radius: var(--radius-card) var(--radius-card) 0 0;
+}
+.mission-card .mission-media svg {
+  width: 40px;
+  height: 40px;
+  opacity: 0.4;
+}
+
+/* Badge statut repositionné top-LEFT (maquette v2) */
+.mission-status {
+  top: 12px;
+  right: auto;
+  left: 12px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.mission-status.is-open {
+  background: oklch(1 0 0 / 0.9);
+  color: var(--forest);
+  backdrop-filter: blur(4px);
+}
+.mission-status.is-filled {
+  background: var(--forest);
+  color: #fff;
+}
+
+/* Carte fermée : demi-teinte */
+.mission-card.is-closed .mission-media {
+  filter: grayscale(1);
+  opacity: 0.75;
+}
+.mission-card.is-closed .mission-title {
+  color: var(--muted);
+}
+
+/* Rémunération mise en valeur */
+.mission-pay {
+  font-size: 0.88rem;
+  font-weight: 650;
+  color: var(--forest-mid, var(--forest));
+}
+.mission-card.is-closed .mission-pay {
+  color: var(--muted);
+}
+
+/* Check vert sur cartes fermées */
+.mission-card.is-closed .circle-button {
+  background: var(--tint);
+  border-color: var(--forest);
+  color: var(--forest);
+}
+
+/* Badge candidatures en attente (côté entreprise) */
+.mission-pending {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 99px;
+  background: var(--orange);
+  color: var(--ink);
+  font-size: 0.72rem;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+}
+
+.mission-grid { gap: 20px; }
