@@ -42,7 +42,11 @@ await pg.exec(
      ('place.desktop@example.test','E2E'),('place.mobile@example.test','E2E'),
      ('fresh.desktop@example.test','E2E'),('fresh.mobile@example.test','E2E'),
      ('open.desktop@example.test','E2E'),('open.mobile@example.test','E2E'),
-     ('match.desktop@example.test','E2E'),('match.mobile@example.test','E2E')
+     ('match.desktop@example.test','E2E'),('match.mobile@example.test','E2E'),
+     -- Recette des conflits d'engagement : deux entreprises distinctes, pour
+     -- que la seconde acceptation vienne réellement d'ailleurs.
+     ('engage.a.desktop@example.test','E2E'),('engage.a.mobile@example.test','E2E'),
+     ('engage.b.desktop@example.test','E2E'),('engage.b.mobile@example.test','E2E')
    ON CONFLICT DO NOTHING`,
 );
 
@@ -200,6 +204,88 @@ for (const project of projects) {
     `INSERT INTO availabilities(profile_id,starts_at,ends_at,status)
      VALUES($1,now(),now()+interval '30 days','available')`,
     [worker.id],
+  );
+}
+
+/**
+ * Recette des conflits d'engagement.
+ *
+ * Deux entreprises **différentes** publient deux missions qui se chevauchent le
+ * même jour — 10 h → 22 h et 18 h → 23 h, la forme exacte du scénario de
+ * recette. Un intérimaire complet peut postuler aux deux ; il ne pourra être
+ * accepté que sur l'une.
+ *
+ * Les deux entreprises sont distinctes à dessein : c'est ce qui rend le conflit
+ * réel. Une même entreprise verrait ses deux missions, alors que le cas à
+ * couvrir est celui de deux recruteurs qui s'ignorent.
+ */
+for (const project of projects) {
+  // Les titres portent le projet : les deux suites Playwright partagent ce
+  // serveur, et un intérimaire verrait sinon deux missions homonymes.
+  const windows = [
+    { title: `Engagement A ${project}`, ...slot(7, 10, 12) },
+    { title: `Engagement B ${project}`, ...slot(7, 18, 5) },
+  ];
+  for (const [index, letter] of ["a", "b"].entries()) {
+    const session = await accounts.register(
+      `engage.${letter}.${project}@example.test`,
+      "Browser-test-password-42!",
+    );
+    const company = await accounts.authenticate(session.access_token);
+    // Visite guidée déjà vue : la recette porte sur les conflits d'engagement,
+    // pas sur l'accueil, et un dialogue de bienvenue n'a rien à y arbitrer.
+    await db.query("UPDATE profiles SET tour_version=1 WHERE id=$1", [
+      company.id,
+    ]);
+    const { title, ...window } = windows[index];
+    const id = await missions.create(company.id, {
+      title,
+      job: "serveur",
+      city: "Lyon",
+      postal_code: "69002",
+      headcount: 1,
+      description: "Mission de recette des conflits d'engagement.",
+      address: "",
+      pay_amount: null,
+      pay_unit: null,
+      min_years_experience: null,
+      required_skill_ids: [],
+      desired_skill_ids: [],
+      ...window,
+    });
+    await db.query(
+      "UPDATE missions SET status='open', published_at=now() WHERE id=$1",
+      [id],
+    );
+  }
+
+  const engageWorker = await accounts.register(
+    `engage.worker.${project}@example.test`,
+    "Browser-test-password-42!",
+  );
+  const engaged = await accounts.authenticate(engageWorker.access_token);
+  await db.query(
+    `UPDATE profiles
+        SET first_name='Nadia',last_name='Berger',
+            onboarding_completed=true,tour_version=1
+      WHERE id=$1`,
+    [engaged.id],
+  );
+  await db.query(
+    `INSERT INTO worker_profiles(
+       profile_id,city,postal_code,latitude,longitude,mobility_radius_km,
+       main_job,open_to_missions)
+     VALUES($1,'Lyon','69002',45.75,4.85,50,'serveur',true)`,
+    [engaged.id],
+  );
+  await db.query(
+    `INSERT INTO worker_skills(profile_id,skill_id) SELECT $1,id FROM skills`,
+    [engaged.id],
+  );
+  await db.query(
+    `INSERT INTO availabilities(profile_id,starts_at,ends_at,status)
+     VALUES($1,now(),now()+interval '30 days','available')`,
+    [engaged.id],
   );
 }
 
