@@ -1244,11 +1244,11 @@ test("matching connects a published mission to a compatible intérimaire", async
   await page.waitForURL(/\/company\/missions\/[0-9a-f-]{36}$/);
   const missionUrl = page.url();
 
-  // Le moteur reste actif côté worker, mais aucun profil non-candidat n'est
-  // exposé à l'entreprise, y compris sur un brouillon.
-  await expect(
-    page.getByRole("heading", { name: "Talents recommandés" }),
-  ).toHaveCount(0);
+  // Un brouillon explique pourquoi le rapprochement n'a pas encore démarré.
+  const draftMatches = page.getByRole("region", {
+    name: "Profils correspondants",
+  });
+  await expect(draftMatches).toContainText("Publiez cette mission");
 
   await page.getByRole("button", { name: "Publier la mission" }).click();
   await page
@@ -1367,15 +1367,23 @@ test("matching connects a published mission to a compatible intérimaire", async
   await openAccount(page);
   await page.getByRole("button", { name: "Se déconnecter" }).click();
 
-  // ---- Le matching reste côté worker, sans exposer des non-candidats à l'entreprise ----
+  // ---- L'entreprise retrouve le profil rapproché, séparé des candidatures ----
   await signIn(page, `match.${suffix}@example.test`);
   // Attendre l'arrivée : naviguer avant que la session soit posée renverrait
   // vers la page de connexion.
   await expect(page).toHaveURL(/\/company$/);
   await page.goto(missionUrl);
-  await expect(
-    page.getByRole("heading", { name: "Talents recommandés" }),
-  ).toHaveCount(0);
+  const matches = page.getByRole("region", {
+    name: "Profils correspondants",
+  });
+  await expect(matches).toContainText("Camille N.");
+  await expect(matches.locator(".match-badge")).toHaveText(
+    "Compatible à 100 %",
+  );
+  await matches.getByText("Comprendre ce score").click();
+  await expect(matches).toContainText("Métier");
+  await expect(matches).toContainText("Compétences souhaitées");
+  await expect(matches).not.toContainText("Nguyen");
   const applications = page.getByRole("region", {
     name: "Candidatures reçues",
   });
@@ -1385,7 +1393,7 @@ test("matching connects a published mission to a compatible intérimaire", async
   await expect(applications).not.toContainText("Camille");
 
   await page.screenshot({
-    path: testInfo.outputPath("company-mission-without-recommendations.png"),
+    path: testInfo.outputPath("company-mission-matched-profiles.png"),
     fullPage: true,
   });
 
