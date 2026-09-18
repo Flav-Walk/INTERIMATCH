@@ -198,11 +198,15 @@ describe("interface candidatures", () => {
   it("affiche les statuts worker et l’état vide", () => {
     const list = render(
       createElement(WorkerApplicationList, {
-        applications: [workerApplication],
+        applications: [
+          workerApplication,
+          { ...workerApplication, id: "rejected", status: "rejected" },
+        ],
       }),
     );
     expect(list).toContain("Service du soir");
     expect(list).toContain("Acceptée");
+    expect(list).toContain("Non retenue");
 
     const empty = render(
       createElement(WorkerApplicationList, { applications: [] }),

@@ -76,7 +76,7 @@ export const noApplications: CompanyApplications = {
 export const applicationLabels: Record<ApplicationStatus, string> = {
   pending: "En attente",
   accepted: "Acceptée",
-  rejected: "Refusée",
+  rejected: "Non retenue",
 };
 
 export const applyToMission = (missionId: string) =>

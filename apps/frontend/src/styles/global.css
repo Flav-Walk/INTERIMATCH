@@ -1349,35 +1349,6 @@ small {
   background: var(--border);
 }
 
-.candidate-list {
-  display: grid;
-  gap: 16px;
-  margin: 14px 0;
-  padding: 0;
-  list-style: none;
-}
-.candidate-list li {
-  display: grid;
-  gap: 6px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid var(--border);
-}
-.candidate-list li:last-child {
-  padding-bottom: 0;
-  border-bottom: 0;
-}
-.candidate-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-.candidate-list .skill-options {
-  margin: 2px 0 0;
-  gap: 6px;
-}
-
 /*
  * Texte réservé aux technologies d'assistance. Il double chaque pastille
  * numérique : « 3 » seul ne dit pas de quoi il s'agit, et une couleur seule ne

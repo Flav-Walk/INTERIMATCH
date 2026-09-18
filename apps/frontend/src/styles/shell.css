@@ -199,6 +199,9 @@
   gap: 20px;
   align-items: start;
 }
+.layout.layout-single {
+  grid-template-columns: minmax(0, 1fr);
+}
 .layout-main {
   display: grid;
   gap: 26px;

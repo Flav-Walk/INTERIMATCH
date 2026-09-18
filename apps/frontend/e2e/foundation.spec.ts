@@ -1244,11 +1244,11 @@ test("matching connects a published mission to a compatible intérimaire", async
   await page.waitForURL(/\/company\/missions\/[0-9a-f-]{36}$/);
   const missionUrl = page.url();
 
-  // Un brouillon n'est visible d'aucun intérimaire : lui rapprocher des profils
-  // laisserait croire à un vivier qui ne peut pas répondre. Le rapprochement ne
-  // démarre qu'à la publication, et l'écran le dit.
-  const profils = page.locator(".layout-rail");
-  await expect(profils).toContainText(/rapprochement commence à la publication/);
+  // Le moteur reste actif côté worker, mais aucun profil non-candidat n'est
+  // exposé à l'entreprise, y compris sur un brouillon.
+  await expect(
+    page.getByRole("heading", { name: "Talents recommandés" }),
+  ).toHaveCount(0);
 
   await page.getByRole("button", { name: "Publier la mission" }).click();
   await page
@@ -1367,7 +1367,7 @@ test("matching connects a published mission to a compatible intérimaire", async
   await openAccount(page);
   await page.getByRole("button", { name: "Se déconnecter" }).click();
 
-  // ---- L'entreprise retrouve ce profil parmi les candidats rapprochés ----
+  // ---- Le matching reste côté worker, sans exposer des non-candidats à l'entreprise ----
   await signIn(page, `match.${suffix}@example.test`);
   // Attendre l'arrivée : naviguer avant que la session soit posée renverrait
   // vers la page de connexion.
@@ -1375,23 +1375,17 @@ test("matching connects a published mission to a compatible intérimaire", async
   await page.goto(missionUrl);
   await expect(
     page.getByRole("heading", { name: "Talents recommandés" }),
-  ).toBeVisible();
-  const rail = page.locator(".layout-rail");
-  // La frontiere doit etre ecrite noir sur blanc : ces profils ne sont pas des
-  // candidatures, et rien ne se decide a leur sujet.
-  await expect(rail).toContainText("n’ont pas postulé");
-  const candidats = page.locator(".candidate-list");
-  await expect(candidats).toContainText("Camille N.");
-  // Nom complet et adresse électronique n'ont pas à figurer avant candidature.
-  await expect(candidats).not.toContainText("Nguyen");
-  await expect(candidats).not.toContainText("@example.test");
-  await expect(candidats.locator(".match-badge").first()).toHaveText(
-    "Compatible à 100 %",
+  ).toHaveCount(0);
+  const applications = page.getByRole("region", {
+    name: "Candidatures reçues",
+  });
+  await expect(applications).toContainText(
+    "Aucune candidature reçue pour cette mission.",
   );
-  await expect(candidats).toContainText("Service en salle");
+  await expect(applications).not.toContainText("Camille");
 
   await page.screenshot({
-    path: testInfo.outputPath("company-candidates.png"),
+    path: testInfo.outputPath("company-mission-without-recommendations.png"),
     fullPage: true,
   });
 
