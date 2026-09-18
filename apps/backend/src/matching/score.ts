@@ -20,7 +20,12 @@
  */
 
 export type BlockerCode =
-  "paused" | "missing_required_skills" | "unavailable" | "out_of_range";
+  | "paused"
+  | "missing_required_skills"
+  | "unavailable"
+  | "out_of_range"
+  /** Déjà engagé ailleurs sur ce créneau : une candidature acceptée. */
+  | "engaged";
 
 export interface MissionCriteria {
   job: string;
@@ -39,6 +44,19 @@ export interface AvailabilitySlot {
   status: "available" | "unavailable";
 }
 
+/**
+ * Un créneau déjà réservé par une candidature acceptée.
+ *
+ * Distinct d'une indisponibilité déclarée : l'intérimaire n'a rien retiré de
+ * son calendrier, il s'est engagé. La nuance compte, parce qu'un engagement se
+ * déduit d'un fait vérifiable — une décision d'entreprise — tandis qu'une
+ * indisponibilité est une intention que lui seul peut exprimer.
+ */
+export interface Engagement {
+  starts_at: string;
+  ends_at: string;
+}
+
 export interface WorkerCriteria {
   main_job: string | null;
   secondary_jobs: string[];
@@ -49,6 +67,8 @@ export interface WorkerCriteria {
   open_to_missions: boolean;
   skill_ids: string[];
   availabilities: AvailabilitySlot[];
+  /** Missions déjà acceptées. Elles bloquent leur intervalle, et lui seul. */
+  engagements: Engagement[];
 }
 
 /**
@@ -189,6 +209,35 @@ export function coversMission(
 }
 
 /* ------------------------------------------------------------------ */
+/* Engagements                                                         */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Deux intervalles se chevauchent si et seulement si chacun commence avant que
+ * l'autre ne finisse.
+ *
+ * Les bornes sont semi-ouvertes [début, fin), comme en base : une mission qui
+ * s'achève à 16 h et une autre qui débute à 16 h ne se disputent aucune minute.
+ * C'est la convention qui permet d'enchaîner un service du midi et un service
+ * du soir, situation ordinaire du métier — et la seule qui rende l'algèbre
+ * cohérente avec `merge` et `subtract` employés plus haut.
+ *
+ * Une borne illisible produit `NaN`, et toute comparaison avec `NaN` est
+ * fausse : l'intervalle est alors ignoré. C'est délibéré. On ne peut pas
+ * affirmer un chevauchement qu'on est incapable de situer, et refuser une
+ * mission sur une date qu'on n'a pas su lire serait une exclusion muette.
+ */
+export function overlaps(
+  a: { starts_at: string; ends_at: string },
+  b: { starts_at: string; ends_at: string },
+) {
+  return (
+    Date.parse(a.starts_at) < Date.parse(b.ends_at) &&
+    Date.parse(b.starts_at) < Date.parse(a.ends_at)
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /* Évaluation                                                          */
 /* ------------------------------------------------------------------ */
 
@@ -219,6 +268,10 @@ export function evaluate(
     blockers.push("missing_required_skills");
   if (!coversMission(worker.availabilities, mission))
     blockers.push("unavailable");
+  // Un engagement n'ampute pas les disponibilités : il réserve son propre
+  // intervalle. L'intérimaire reste donc proposable avant et après.
+  if (worker.engagements.some((taken) => overlaps(taken, mission)))
+    blockers.push("engaged");
 
   // La distance ne peut exclure que si elle est connue. Faute de coordonnées,
   // on ne peut pas affirmer que la mission est hors zone : la retenir serait

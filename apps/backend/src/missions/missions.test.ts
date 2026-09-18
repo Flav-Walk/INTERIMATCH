@@ -1507,3 +1507,152 @@ describe("rapprochement — symétrie des deux espaces", () => {
     }
   });
 });
+
+/**
+ * Engagements et rapprochement, bout en bout.
+ *
+ * Le moteur sait depuis `score.ts` qu'un engagement bloque son intervalle ;
+ * reste a verifier que le service le lui fournit reellement depuis la base, et
+ * que les deux espaces restent d'accord.
+ */
+describe("rapprochement - engagements acceptes", () => {
+  const publish = async (over: Record<string, unknown> = {}) => {
+    const id = await missions.create(bossId, draft(over));
+    await publishMission(id);
+    return id;
+  };
+
+  /** Inscrit une candidature acceptee sans passer par l'API entreprise. */
+  const engage = (workerProfileId: string, missionId: string) =>
+    db.query(
+      `INSERT INTO applications(mission_id,worker_id,status)
+       VALUES($1,$2,'accepted')`,
+      [missionId, workerProfileId],
+    );
+
+  const proposedTo = async (profileId: string) =>
+    (await matching.missionsForWorker(profileId, false)).matches.map(
+      (m) => m.mission.id,
+    );
+
+  it("retire une mission chevauchant un engagement, et elle seule", async () => {
+    const engage1 = (await accounts.register("engage1@example.test", password))
+      .access_token;
+    const engageId = (await accounts.authenticate(engage1)).id;
+    await makeEmployable(engageId);
+
+    // Trois missions le meme jour : avant, pendant, apres l'engagement.
+    const matin = await publish({ title: "Matin", ...day(70, 6, 4) });
+    const midi = await publish({ title: "Midi", ...day(70, 11, 4) });
+    const soir = await publish({ title: "Soir", ...day(70, 18, 4) });
+
+    expect(await proposedTo(engageId)).toEqual(
+      expect.arrayContaining([matin, midi, soir]),
+    );
+
+    await engage(engageId, midi);
+    const restantes = await proposedTo(engageId);
+    // La mission acceptee sort de la liste des propositions, et celle qui la
+    // chevauche aussi ; les autres restent.
+    expect(restantes).toEqual(expect.arrayContaining([matin, soir]));
+    expect(restantes).not.toContain(midi);
+  });
+
+  it("laisse les disponibilites declarees intactes", async () => {
+    // Le point valide : un engagement ne retire rien du calendrier.
+    const stable = (await accounts.register("stable@example.test", password))
+      .access_token;
+    const stableId = (await accounts.authenticate(stable)).id;
+    await makeEmployable(stableId);
+    const avant = (
+      await db.query<{ n: string }>(
+        "SELECT count(*)::text AS n FROM availabilities WHERE profile_id=$1",
+        [stableId],
+      )
+    ).rows[0].n;
+
+    const mission = await publish({ title: "Sans effet", ...day(71, 9, 4) });
+    await engage(stableId, mission);
+
+    const apres = (
+      await db.query<{ n: string }>(
+        "SELECT count(*)::text AS n FROM availabilities WHERE profile_id=$1",
+        [stableId],
+      )
+    ).rows[0].n;
+    expect(apres).toBe(avant);
+  });
+
+  it("remonte le motif d exclusion dans le decompte", async () => {
+    const motif = (await accounts.register("motif@example.test", password))
+      .access_token;
+    const motifId = (await accounts.authenticate(motif)).id;
+    await makeEmployable(motifId);
+    const occupee = await publish({ title: "Occupee", ...day(72, 9, 6) });
+    const concurrente = await publish({
+      title: "Concurrente",
+      ...day(72, 12, 6),
+    });
+    await engage(motifId, occupee);
+
+    const { excluded } = await matching.missionsForWorker(motifId, false);
+    expect(excluded.reasons.engaged).toBeGreaterThan(0);
+    expect(await proposedTo(motifId)).not.toContain(concurrente);
+  });
+
+  it("garde deux missions adjacentes compatibles", async () => {
+    const suite = (await accounts.register("suite@example.test", password))
+      .access_token;
+    const suiteId = (await accounts.authenticate(suite)).id;
+    await makeEmployable(suiteId);
+    const premier = await publish({ title: "Premier", ...day(73, 10, 6) });
+    const second = await publish({ title: "Second", ...day(73, 16, 6) });
+    await engage(suiteId, premier);
+
+    expect(await proposedTo(suiteId)).toContain(second);
+  });
+
+  it("retire des talents recommandes une personne qui a deja postule", async () => {
+    // La frontiere doit tenir des deux cotes : quelqu'un qui a postule est une
+    // candidature, pas une suggestion. Le voir dans les deux zones donnerait
+    // deux sens differents a la meme personne sur le meme ecran.
+    const postulant = (
+      await accounts.register("postulant@example.test", password)
+    ).access_token;
+    const postulantId = (await accounts.authenticate(postulant)).id;
+    await makeEmployable(postulantId);
+    const mission = await publish({ title: "Deja postule", ...day(75, 9, 6) });
+
+    expect(
+      (await matching.candidatesForMission(bossId, mission, false)).candidates.map(
+        (c) => c.id,
+      ),
+    ).toContain(postulantId);
+
+    await db.query(
+      "INSERT INTO applications(mission_id,worker_id) VALUES($1,$2)",
+      [mission, postulantId],
+    );
+
+    expect(
+      (await matching.candidatesForMission(bossId, mission, false)).candidates.map(
+        (c) => c.id,
+      ),
+    ).not.toContain(postulantId);
+  });
+
+  it("ecarte du rapprochement entreprise un profil deja engage ailleurs", async () => {
+    // La symetrie vaut aussi pour les engagements : proposer a une entreprise
+    // quelqu un qui ne peut pas venir n a aucun sens.
+    const occupe = (await accounts.register("occupe@example.test", password))
+      .access_token;
+    const occupeId = (await accounts.authenticate(occupe)).id;
+    await makeEmployable(occupeId);
+    const ailleurs = await publish({ title: "Ailleurs", ...day(74, 9, 6) });
+    const cible = await publish({ title: "Cible", ...day(74, 12, 6) });
+    await engage(occupeId, ailleurs);
+
+    const selection = await matching.candidatesForMission(bossId, cible, false);
+    expect(selection.candidates.map((c) => c.id)).not.toContain(occupeId);
+  });
+});
