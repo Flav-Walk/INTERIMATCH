@@ -576,3 +576,89 @@ describe("annulation — événement métier", () => {
     expect(publish).not.toHaveBeenCalled();
   });
 });
+
+/**
+ * Onglets de la liste entreprise : compteurs et listes doivent concorder.
+ *
+ * Ils filtraient sur `missions.status`. Comme `filled` et `completed` ne sont
+ * jamais ecrits, une mission reellement pourvue restait `open` : elle affichait
+ * « Pourvue » sur sa fiche et n apparaissait dans AUCUN onglet correspondant.
+ * L onglet « Pourvues » etait vide par construction, et son compteur aussi.
+ */
+describe("liste entreprise - regroupement par onglet", () => {
+  const liste = async () =>
+    auth(request(app).get("/api/v1/missions"), ownerToken);
+
+  /** Les missions d un groupe, telles que la liste les sert. */
+  const dansLeGroupe = async (groupe: string) =>
+    ((await liste()).body.missions as { id: string; group: string }[])
+      .filter((m) => m.group === groupe)
+      .map((m) => m.id);
+
+  it("range une mission pourvue dans les pourvues, statut ecrit inchange", async () => {
+    const id = await published("Onglet pourvue", { ...slotAt(70, 9, 6) });
+    const worker = await newWorker("cycle.onglet.pourvue@example.test");
+    const candidature = (await applyTo(id, worker.token)).body.id;
+    await decide(id, candidature, "accepted");
+
+    const mission = (await readMission(id)).body;
+    // Le statut ecrit ne bouge pas : etre pourvue decrit le recrutement.
+    expect(mission.status).toBe("open");
+    expect(mission.capacity.full).toBe(true);
+    expect(mission.group).toBe("filled");
+    expect(await dansLeGroupe("filled")).toContain(id);
+    expect(await dansLeGroupe("open")).not.toContain(id);
+  });
+
+  it("range une mission passee dans les terminees", async () => {
+    const id = await published("Onglet terminee", { ...slotAt(71, 9, 6) });
+    await moveWindow(id, -10, -4);
+    expect((await readMission(id)).body.group).toBe("completed");
+    expect(await dansLeGroupe("completed")).toContain(id);
+  });
+
+  it("range brouillon et annulation selon l intention", async () => {
+    const brouillon = await newDraft("Onglet brouillon");
+    expect((await readMission(brouillon)).body.group).toBe("draft");
+
+    const annulee = await published("Onglet annulee", { ...slotAt(72, 9, 6) });
+    await cancel(annulee);
+    expect((await readMission(annulee)).body.group).toBe("cancelled");
+  });
+
+  it("accorde chaque compteur avec la taille reelle de sa liste", async () => {
+    // L invariant qui manquait : les compteurs venaient d un GROUP BY status,
+    // les listes d un filtre sur le meme champ. Les deux avaient tort ensemble,
+    // ce qui les rendait coherents et faux.
+    const reponse = await liste();
+    const counts = reponse.body.counts as Record<string, number>;
+    const missions = reponse.body.missions as { group: string }[];
+
+    const observe: Record<string, number> = {};
+    for (const mission of missions)
+      observe[mission.group] = (observe[mission.group] ?? 0) + 1;
+
+    expect(counts).toEqual(observe);
+    // Et la somme couvre bien toutes les missions : aucun groupe orphelin.
+    const total = Object.values(counts).reduce((a, b) => a + b, 0);
+    expect(total).toBe(missions.length);
+  });
+
+  it("ne presente jamais une mission pourvue comme encore recrutante", async () => {
+    // La contradiction exacte signalee : rangee dans « Pourvues » d un cote,
+    // annoncee ouverte de l autre.
+    const missions = (await liste()).body.missions as {
+      group: string;
+      recruiting: boolean;
+      capacity: { full: boolean };
+    }[];
+    expect(missions.length).toBeGreaterThan(0);
+    for (const mission of missions) {
+      if (mission.group === "filled") {
+        expect(mission.recruiting).toBe(false);
+        expect(mission.capacity.full).toBe(true);
+      }
+      if (mission.recruiting) expect(mission.group).toBe("open");
+    }
+  });
+});

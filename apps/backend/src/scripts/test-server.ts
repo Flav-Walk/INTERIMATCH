@@ -49,7 +49,11 @@ await pg.exec(
      ('engage.b.desktop@example.test','E2E'),('engage.b.mobile@example.test','E2E'),
      -- Rapprochement et score : entreprise dédiée, pour que la liste des
      -- profils correspondants ne dépende d'aucune candidature déposée ailleurs.
-     ('scoring.desktop@example.test','E2E'),('scoring.mobile@example.test','E2E')
+     ('scoring.desktop@example.test','E2E'),('scoring.mobile@example.test','E2E'),
+     -- Attribution : une mission à un poste et deux candidats, pour observer ce
+     -- que devient celui qui n'a pas été retenu faute de place.
+     ('attribution.desktop@example.test','E2E'),
+     ('attribution.mobile@example.test','E2E')
    ON CONFLICT DO NOTHING`,
 );
 
@@ -437,6 +441,120 @@ for (const project of projects) {
       `INSERT INTO availabilities(profile_id,starts_at,ends_at,status)
        VALUES($1,now(),now()+interval '60 days','available')`,
       [account.id],
+    );
+  }
+}
+
+/**
+ * Attribution — la dernière place, et celui qui l'a manquée.
+ *
+ * Une mission à UN poste, deux candidats complets. C'est le plus petit montage
+ * qui fasse apparaître la situation que SL2d devait rendre lisible : lorsque la
+ * place part, la seconde candidature reste « en attente » — le serveur ne la
+ * refuse pas d'office, l'entreprise n'ayant rien décidé à son sujet — mais elle
+ * n'a plus d'issue, et les deux espaces doivent le dire.
+ *
+ * Fixture dédiée : les comptes partagés reçoivent des candidatures déposées par
+ * d'autres parcours, et la capacité observée ici dépendrait alors de l'ordre
+ * d'exécution des suites.
+ */
+for (const project of projects) {
+  const session = await accounts.register(
+    `attribution.${project}@example.test`,
+    "Browser-test-password-42!",
+  );
+  const company = await accounts.authenticate(session.access_token);
+  await db.query("UPDATE profiles SET tour_version=1 WHERE id=$1", [
+    company.id,
+  ]);
+
+  const missionId = await missions.create(company.id, {
+    title: `Attribution ${project}`,
+    job: "serveur",
+    city: "Lyon",
+    postal_code: "69002",
+    headcount: 1,
+    description: "Un seul poste : la place part au premier retenu.",
+    address: "",
+    pay_amount: null,
+    pay_unit: null,
+    min_years_experience: null,
+    required_skill_ids: [],
+    desired_skill_ids: [],
+    ...slot(15, 9, 6),
+  });
+  await db.query(
+    "UPDATE missions SET status='open', published_at=now() WHERE id=$1",
+    [missionId],
+  );
+
+  // Une mission déjà passée, pour que l'onglet « Terminées » ait de quoi se
+  // remplir. Aucune route ne sait la créer — `publish` refuse une mission déjà
+  // commencée — donc les bornes sont reculées après coup, relativement à
+  // `now()` : une date écrite en dur finirait par ne plus être passée.
+  const passeeId = await missions.create(company.id, {
+    title: `Attribution passée ${project}`,
+    job: "serveur",
+    city: "Lyon",
+    postal_code: "69002",
+    headcount: 1,
+    description: "Mission dont le créneau est derrière nous.",
+    address: "",
+    pay_amount: null,
+    pay_unit: null,
+    min_years_experience: null,
+    required_skill_ids: [],
+    desired_skill_ids: [],
+    ...slot(16, 9, 6),
+  });
+  await db.query(
+    `UPDATE missions
+        SET status='open', published_at=now(),
+            starts_at=now()-interval '10 hours',
+            ends_at=now()-interval '4 hours'
+      WHERE id=$1`,
+    [passeeId],
+  );
+
+  // Prénoms propres au projet : les deux suites partagent ce serveur.
+  const noms =
+    project === "desktop"
+      ? [
+          { first: "Irène", last: "Dumas" },
+          { first: "Jonas", last: "Leclerc" },
+        ]
+      : [
+          { first: "Ilona", last: "Dumas" },
+          { first: "Jules", last: "Leclerc" },
+        ];
+
+  for (const [index, role] of ["retenu", "attente"].entries()) {
+    const compte = await accounts.register(
+      `attribution.${role}.${project}@example.test`,
+      "Browser-test-password-42!",
+    );
+    const worker = await accounts.authenticate(compte.access_token);
+    await db.query(
+      `UPDATE profiles
+          SET first_name=$2,last_name=$3,onboarding_completed=true,tour_version=1
+        WHERE id=$1`,
+      [worker.id, noms[index].first, noms[index].last],
+    );
+    await db.query(
+      `INSERT INTO worker_profiles(
+         profile_id,city,postal_code,latitude,longitude,mobility_radius_km,
+         main_job,open_to_missions)
+       VALUES($1,'Lyon','69002',45.75,4.85,50,'serveur',true)`,
+      [worker.id],
+    );
+    await db.query(
+      `INSERT INTO worker_skills(profile_id,skill_id) SELECT $1,id FROM skills`,
+      [worker.id],
+    );
+    await db.query(
+      `INSERT INTO availabilities(profile_id,starts_at,ends_at,status)
+       VALUES($1,now(),now()+interval '60 days','available')`,
+      [worker.id],
     );
   }
 }

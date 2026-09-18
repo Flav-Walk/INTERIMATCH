@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { jobValues, payUnitValues } from "../domain/reference.js";
 import type {
+  MissionGroup,
   MissionLifecycle,
   MissionPhase,
   NotOpenReason,
@@ -223,6 +224,8 @@ export interface Mission {
    * jamais stockés : voir `lifecycle.ts` pour le raisonnement.
    */
   phase?: MissionPhase;
+  /** Onglet de la liste entreprise où cette mission se range. */
+  group?: MissionGroup;
   recruiting?: boolean;
   recruiting_blocked?: NotOpenReason | null;
   min_years_experience: string | null;

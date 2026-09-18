@@ -156,6 +156,8 @@ export function notOpenToWorkers(
  */
 export interface MissionLifecycle {
   phase: MissionPhase;
+  /** Onglet de la liste entreprise où cette mission se range. */
+  group: MissionGroup;
   /**
    * La mission peut encore recevoir une candidature **et** une acceptation.
    *
@@ -171,6 +173,51 @@ export interface MissionLifecycle {
   recruiting_blocked: NotOpenReason | null;
 }
 
+/**
+ * Où cette mission se range dans la liste de l'entreprise.
+ *
+ * POURQUOI CE CHAMP EXISTE. Les onglets « Publiées / Pourvues / Terminées /
+ * Brouillons / Annulées » filtraient sur `missions.status`. Or `filled` et
+ * `completed` ne sont jamais écrits : une mission dont tous les postes étaient
+ * pris restait `open`, affichait bien « Pourvue » sur sa fiche, et n'apparaissait
+ * dans AUCUN onglet correspondant. L'onglet « Pourvues » était vide par
+ * construction, et « Terminées également ».
+ *
+ * La correction ne consiste pas à écrire ces statuts en base — ils redeviendraient
+ * faux dès la minute suivante — mais à exposer le regroupement là où il est
+ * calculable sans risque de désynchronisation : ici, à la lecture, à partir des
+ * trois dimensions que le modèle possède déjà — le statut écrit, les dates, la
+ * capacité.
+ *
+ * LES GROUPES SONT EXCLUSIFS. Chaque mission en occupe exactement un, ce qui
+ * permet aux compteurs d'être la taille réelle des listes affichées. L'ordre
+ * suit celui de `missionPhase`, pour que les deux ne puissent pas se
+ * contredire : l'intention d'abord, le calendrier ensuite, le recrutement en
+ * dernier. Une mission complète ET terminée est donc « terminée » — ce qui
+ * s'est passé prime sur la façon dont elle s'est remplie.
+ */
+export const missionGroupValues = [
+  "cancelled",
+  "draft",
+  "completed",
+  "filled",
+  "open",
+] as const;
+
+export type MissionGroup = (typeof missionGroupValues)[number];
+
+export function missionGroup(
+  mission: MissionTiming,
+  capacity: Pick<MissionCapacity, "full">,
+  now: Date = new Date(),
+): MissionGroup {
+  if (mission.status === "cancelled") return "cancelled";
+  if (mission.status === "draft") return "draft";
+  if (new Date(mission.ends_at).getTime() <= now.getTime()) return "completed";
+  if (capacity.full) return "filled";
+  return "open";
+}
+
 /** Assemble la lecture complète à partir de la mission et de sa capacité. */
 export function missionLifecycle(
   mission: MissionTiming,
@@ -180,6 +227,7 @@ export function missionLifecycle(
   const blocked = notOpenToWorkers(mission, now, capacity);
   return {
     phase: missionPhase(mission, capacity.filled, now),
+    group: missionGroup(mission, capacity, now),
     recruiting: blocked === null,
     recruiting_blocked: blocked,
   };

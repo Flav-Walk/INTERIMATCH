@@ -1431,3 +1431,149 @@ describe("engagement - frontiere temporelle complete", () => {
     expect((await decideAs(b, ib, "accepted")).status).toBe(200);
   });
 });
+
+/**
+ * SL2d — ce que chaque côté comprend une fois les postes pourvus.
+ *
+ * LA REGLE RETENUE, ET POURQUOI. Quand la derniere place part, les
+ * candidatures restantes ne sont PAS refusees d office. Les refuser
+ * attribuerait a l entreprise une decision qu elle n a pas prise, et effacerait
+ * la difference entre « ecarte apres examen » et « arrive trop tard ». C est le
+ * meme raisonnement que pour l annulation d une mission : le statut d une
+ * candidature enregistre une decision humaine, pas une consequence mecanique.
+ *
+ * Ce qui manquait n etait donc pas le statut, mais le CONTEXTE. L entreprise
+ * voyait deja qu elle ne pouvait plus retenir personne ; l interimaire, lui,
+ * lisait « en attente » indefiniment, sans savoir que sa chance etait passee.
+ */
+describe("SL2d - mission pourvue : ce que chaque cote comprend", () => {
+  const applyTo = async (missionId: string, token: string) =>
+    (
+      await authenticated(
+        request(app).post("/api/v1/workers/me/applications"),
+        token,
+      ).send({ mission_id: missionId })
+    ).body.id as string;
+
+  const workerView = async (token: string, missionId: string) =>
+    (
+      await authenticated(
+        request(app).get("/api/v1/workers/me/applications"),
+        token,
+      )
+    ).body.applications.find(
+      (one: { mission_id: string }) => one.mission_id === missionId,
+    );
+
+  /** Une mission a un poste, pourvue, avec un second candidat laisse en attente. */
+  const pourvue = async (label: string, day: number) => {
+    const mission = await publishedMission(`SL2d ${label}`, {
+      headcount: 1,
+      ...slotAt(day, 9, 6),
+    });
+    const retenu = await newWorker(`sl2d.${label}.retenu@example.test`);
+    const attente = await newWorker(`sl2d.${label}.attente@example.test`);
+    const premiere = await applyTo(mission, retenu.token);
+    const seconde = await applyTo(mission, attente.token);
+    expect((await decideAs(mission, premiere, "accepted")).status).toBe(200);
+    return { mission, retenu, attente, premiere, seconde };
+  };
+
+  it("laisse la candidature restante en attente, sans la refuser d office", async () => {
+    const { seconde } = await pourvue("intacte", 200);
+    const { rows } = await db.query<{ status: string }>(
+      "SELECT status FROM applications WHERE id=$1",
+      [seconde],
+    );
+    expect(rows[0].status).toBe("pending");
+  });
+
+  it("dit a l interimaire en attente que les postes sont pourvus", async () => {
+    // Le point de SL2d. Sans ce contexte, cette candidature est indistinguable
+    // d une candidature encore jouable.
+    const { attente, mission } = await pourvue("contexte", 201);
+    const vue = await workerView(attente.token, mission);
+    expect(vue.status).toBe("pending");
+    expect(vue.mission.capacity).toMatchObject({
+      headcount: 1,
+      filled: 1,
+      remaining: 0,
+      full: true,
+    });
+    expect(vue.mission.recruiting).toBe(false);
+    expect(vue.mission.recruiting_blocked).toBe("full");
+  });
+
+  it("montre a l interimaire retenu une mission confirmee et pourvue", async () => {
+    const { retenu, mission } = await pourvue("confirmee", 202);
+    const vue = await workerView(retenu.token, mission);
+    expect(vue.status).toBe("accepted");
+    expect(vue.mission.phase).toBe("upcoming");
+    expect(vue.mission.capacity.full).toBe(true);
+  });
+
+  it("laisse une mission avec de la place ouverte au recrutement", async () => {
+    // Le pendant : deux postes, un pourvu. Rien ne doit se fermer.
+    const mission = await publishedMission("SL2d place restante", {
+      headcount: 2,
+      ...slotAt(203, 9, 6),
+    });
+    const un = await newWorker("sl2d.place.un@example.test");
+    const deux = await newWorker("sl2d.place.deux@example.test");
+    const premiere = await applyTo(mission, un.token);
+    await applyTo(mission, deux.token);
+    await decideAs(mission, premiere, "accepted");
+
+    const vue = await workerView(deux.token, mission);
+    expect(vue.mission.capacity).toMatchObject({ filled: 1, remaining: 1 });
+    expect(vue.mission.recruiting).toBe(true);
+    expect(vue.mission.recruiting_blocked).toBe(null);
+  });
+
+  it("sert le meme vocabulaire au tableau de bord entreprise", async () => {
+    // Les deux cotes doivent decrire la meme situation avec les memes mots :
+    // c est ce qui empeche les ecrans de se contredire.
+    const { mission } = await pourvue("entreprise", 204);
+    const vue = (
+      await authenticated(
+        request(app).get("/api/v1/company/me/applications"),
+        ownerToken,
+      )
+    ).body.applications.filter(
+      (one: { mission: { id: string } }) => one.mission.id === mission,
+    );
+    expect(vue.length).toBe(2);
+    for (const candidature of vue) {
+      expect(candidature.mission.recruiting).toBe(false);
+      expect(candidature.mission.recruiting_blocked).toBe("full");
+      expect(candidature.mission.capacity.full).toBe(true);
+    }
+    // Le decompte par statut reste celui des faits : une acceptee, une en
+    // attente. Le contexte n a rien reecrit.
+    const statuts = vue.map((c: { status: string }) => c.status).sort();
+    expect(statuts).toEqual(["accepted", "pending"]);
+  });
+
+  it("refuse toujours une acceptation supplementaire, sans rien casser", async () => {
+    const { mission, seconde } = await pourvue("refus", 205);
+    const tentative = await decideAs(mission, seconde, "accepted");
+    expect(tentative.status).toBe(409);
+    expect(tentative.body.error.code).toBe("MISSION_FULL");
+
+    // Et le refus explicite reste possible : c est la seule action qui reste.
+    expect((await decideAs(mission, seconde, "rejected")).status).toBe(200);
+  });
+
+  it("signale l annulation plutot que la completude quand les deux sont vraies", async () => {
+    // Priorite du motif : une mission annulee n a rien pourvu. Repondre
+    // « full » ferait dire a l ecran « tous les postes sont pourvus » d une
+    // offre retiree.
+    const { mission, attente } = await pourvue("annulee", 206);
+    await db.query("UPDATE missions SET status='cancelled' WHERE id=$1", [
+      mission,
+    ]);
+    const vue = await workerView(attente.token, mission);
+    expect(vue.mission.phase).toBe("cancelled");
+    expect(vue.mission.recruiting_blocked).toBe("cancelled");
+  });
+});
