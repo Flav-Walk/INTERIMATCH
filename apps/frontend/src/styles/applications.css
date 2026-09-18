@@ -270,7 +270,10 @@
 }
 .application-context.is-rejected,
 .application-context.is-cancelled,
-.application-context.is-completed {
+.application-context.is-completed,
+/* Les postes sont pris : la candidature n'a plus d'issue, elle rejoint les
+   états éteints plutôt que de garder la teinte de l'attente. */
+.application-context.is-filled {
   color: var(--muted);
 }
 .worker-application-main h2 {

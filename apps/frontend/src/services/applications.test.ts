@@ -441,6 +441,49 @@ describe("interface candidatures", () => {
     expect(rejected).not.toContain(">Postuler<");
   });
 
+  it("dit sur la fiche que les postes sont pourvus, sans se fier au statut", () => {
+    // REGRESSION SL2d. Cet écran testait `mission.status === "filled"`, un
+    // statut qu'aucune transition n'écrit : une mission complète reste `open`.
+    // La branche était morte, et un intérimaire dont la mission venait de se
+    // remplir ne lisait rien du tout — ni sur la fiche, ni ailleurs.
+    const pourvue = render(
+      createElement(ApplicationAction, {
+        application: { ...application, status: "pending" },
+        loading: false,
+        applying: false,
+        error: "",
+        onApply: vi.fn(),
+        mission: {
+          ...workerApplication.mission,
+          establishment_name: null,
+          status: "open" as const,
+          recruiting_blocked: "full" as const,
+        },
+      }),
+    );
+    expect(pourvue).toContain("Tous les postes de cette mission sont pourvus");
+    // Et le message dit aussi ce qui arrive à la candidature : elle reste
+    // enregistrée, elle n'a pas été refusée.
+    expect(pourvue).toContain("reste enregistrée");
+
+    // Une mission qui recrute encore ne dit rien de tel.
+    const ouverte = render(
+      createElement(ApplicationAction, {
+        application: { ...application, status: "pending" },
+        loading: false,
+        applying: false,
+        error: "",
+        onApply: vi.fn(),
+        mission: {
+          ...workerApplication.mission,
+          establishment_name: null,
+          status: "open" as const,
+        },
+      }),
+    );
+    expect(ouverte).not.toContain("postes de cette mission sont pourvus");
+  });
+
   it("traduit WORKER_ENGAGED sans calculer de conflit côté client", () => {
     expect(
       workerApplicationError(new ApiError("Brut", 409, "WORKER_ENGAGED")),
@@ -504,6 +547,9 @@ describe("lecture des candidatures", () => {
     starts: string,
     ends: string,
     missionStatus: MissionStatus = "open",
+    // Le serveur sert ce motif avec la candidature. `undefined` décrit une
+    // mission qui recrute encore ; rien n'est déduit ici du nombre de places.
+    recruitingBlocked?: "full" | "cancelled" | "ended",
   ) => ({
     id: `${status}-${starts}`,
     mission_id: "m-" + starts,
@@ -518,6 +564,8 @@ describe("lecture des candidatures", () => {
       city: "Lyon",
       postal_code: "69002",
       status: missionStatus,
+      recruiting_blocked: recruitingBlocked ?? null,
+      recruiting: recruitingBlocked === undefined,
     },
     company: { establishment_name: null },
   });
@@ -526,6 +574,95 @@ describe("lecture des candidatures", () => {
     new Date(Date.now() + days * 86_400_000).toISOString();
   const past = (days: number) =>
     new Date(Date.now() - days * 86_400_000).toISOString();
+
+  /**
+   * SL2d — une candidature en attente n'a pas toujours le même avenir.
+   *
+   * Tant qu'il reste une place, « en attente » veut dire « on vous répondra ».
+   * Une fois tous les postes pris, la même candidature garde le même statut —
+   * le serveur ne la refuse pas d'office, l'entreprise n'ayant rien décidé à son
+   * sujet — mais elle n'a plus d'issue. L'afficher à l'identique laisserait
+   * quelqu'un attendre une réponse qui ne viendra pas.
+   */
+  it("distingue une attente encore jouable d'une attente dépassée", () => {
+    const jouable = withMission("pending", future(3), future(4));
+    const depassee = withMission(
+      "pending",
+      future(3),
+      future(4),
+      "open",
+      "full",
+    );
+
+    expect(workerMissionContext(jouable)).toEqual({
+      key: "pending",
+      label: "Candidature en attente",
+    });
+    expect(workerMissionContext(depassee)).toEqual({
+      key: "filled",
+      label: "Tous les postes sont pourvus",
+    });
+  });
+
+  it("lit le motif du serveur plutôt que de recompter les places", () => {
+    // Le statut de la mission reste `open` : une mission complète ne change pas
+    // de statut, elle cesse de recruter. Si l'interface s'était fiée au statut,
+    // elle n'aurait rien vu.
+    const depassee = withMission(
+      "pending",
+      future(3),
+      future(4),
+      "open",
+      "full",
+    );
+    expect(depassee.mission.status).toBe("open");
+    expect(workerMissionContext(depassee).key).toBe("filled");
+  });
+
+  it("ne dégrade pas une candidature acceptée sur une mission complète", () => {
+    // La mission est pleine PARCE QUE cette personne a été retenue : lui
+    // annoncer « postes pourvus » serait absurde.
+    const retenue = withMission(
+      "accepted",
+      future(3),
+      future(4),
+      "open",
+      "full",
+    );
+    expect(workerMissionContext(retenue)).toEqual({
+      key: "confirmed",
+      label: "Mission confirmée",
+    });
+  });
+
+  it("laisse l'annulation et la fin primer sur la complétude", () => {
+    // Une mission annulée n'a rien pourvu, et une mission passée ne recrute
+    // plus pour une autre raison. L'ordre des motifs doit rester celui du
+    // serveur.
+    const annulee = withMission(
+      "pending",
+      future(3),
+      future(4),
+      "cancelled",
+      "full",
+    );
+    expect(workerMissionContext(annulee).key).toBe("cancelled");
+    const finie = withMission("pending", past(5), past(4), "open", "full");
+    expect(workerMissionContext(finie).key).toBe("completed");
+  });
+
+  it("compte toujours la candidature dépassée parmi celles sans réponse", () => {
+    // Le décompte dit un fait : l'entreprise n'a pas répondu. Le contexte dit
+    // ce qui reste possible. Les deux sont vrais et ne se remplacent pas.
+    const depassee = withMission(
+      "pending",
+      future(3),
+      future(4),
+      "open",
+      "full",
+    );
+    expect(awaitingReply([depassee])).toHaveLength(1);
+  });
 
   it("ne retient comme engagement que l acceptee, a venir, non annulee", () => {
     const list = [

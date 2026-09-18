@@ -167,11 +167,31 @@ export function CompanyMissionDetail() {
 
   const required = mission.skills.filter((s) => s.required);
   const desired = mission.skills.filter((s) => !s.required);
-  const missionFull = capacity?.full === true;
-  const presentation = missionStatePresentation(mission);
-  const shownStatus = missionFull
-    ? { ...presentation, label: "Pourvue", className: "is-running" }
-    : presentation;
+  /**
+   * Le badge de la mission, décidé par la fonction commune — avec la capacité
+   * la plus fraîche dont cette page dispose.
+   *
+   * CE QUI ÉTAIT FAUX. Cette page corrigeait le libellé pour son compte :
+   * `full ? { ...presentation, label: "Pourvue" } : presentation`. Le ternaire
+   * remplaçait le libellé **inconditionnellement**, y compris lorsque la
+   * cascade venait de répondre « Annulée » ou « Terminée ». Une mission
+   * annulée dont les postes avaient été pourvus avant l'annulation s'affichait
+   * donc « Pourvue », et une mission passée et complète aussi.
+   *
+   * La priorité métier n'appartient pas à cet écran. Il fournit la donnée, la
+   * fonction tranche : annulée, brouillon, terminée, en cours, pourvue,
+   * à pourvoir — dans cet ordre, et au même endroit pour toute l'application.
+   *
+   * POURQUOI PASSER `capacity` PLUTÔT QUE `mission.capacity`. Les deux décrivent
+   * la même chose, mais `capacity` vient de l'appel candidatures, rafraîchi
+   * après chaque décision, là où `mission` peut dater de la lecture
+   * précédente. Le `??` ne fait que préférer la plus récente ; il ne décide de
+   * rien.
+   */
+  const presentation = missionStatePresentation({
+    ...mission,
+    capacity: capacity ?? mission.capacity,
+  });
   const decisionsClosed =
     presentation.temporal === "cancelled"
       ? "Mission annulée : aucune décision n’est encore possible."
@@ -188,10 +208,10 @@ export function CompanyMissionDetail() {
 
       <div className="section-head">
         <h1>{mission.title}</h1>
-        <span className={`mission-status is-inline ${shownStatus.className}`}>
-          {shownStatus.label}
+        <span className={`mission-status is-inline ${presentation.className}`}>
+          {presentation.label}
         </span>
-        {shownStatus.temporal === "upcoming" && mission.status !== "draft" && (
+        {presentation.temporal === "upcoming" && mission.status !== "draft" && (
           <span className="mission-timing is-inline">À venir</span>
         )}
         <div className="head-actions">

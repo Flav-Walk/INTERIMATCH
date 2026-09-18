@@ -95,11 +95,11 @@ export function MissionCard({
   pendingApplications?: number;
 }) {
   const seats = Array.from({ length: Math.min(mission.headcount, 3) });
-  const full = score === undefined && mission.capacity?.full === true;
-  const presentation = missionStatePresentation(mission);
-  const status = full
-    ? { ...presentation, label: "Pourvue", className: "is-running" }
-    : presentation;
+  // La carte corrigeait ici le libellé pour son compte, parce que
+  // `missionStatePresentation` s'appuyait sur un statut jamais écrit. Elle le
+  // lit désormais de la fonction commune, qui consulte la capacité servie par
+  // le serveur : une règle, un endroit.
+  const status = missionStatePresentation(mission);
   return (
     <Link className="mission-card" to={`${basePath}/${mission.id}`}>
       <div className="mission-media">
