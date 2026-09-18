@@ -1,5 +1,6 @@
 import type { Db } from "../db.js";
 import { HttpError } from "../errors.js";
+import type { BusinessEventPublisher } from "../events/dispatcher.js";
 import type { Geocoder } from "../worker/geocode.js";
 import {
   brokenRule,
@@ -124,6 +125,7 @@ export class MissionService {
   constructor(
     public db: Db,
     private geocode?: Geocoder,
+    private events?: BusinessEventPublisher,
   ) {}
 
   private async attachSkills<T extends { id: string; skills: MissionSkill[] }>(
@@ -502,7 +504,11 @@ export class MissionService {
         [missionId, companyId],
       );
     });
-    return this.get(companyId, missionId);
+    const mission = await this.get(companyId, missionId);
+    // Publication après COMMIT et relecture finale : une transition refusée,
+    // rollbackée ou une réponse métier incomplète ne produit aucune notification.
+    this.events?.publish("mission.published", { mission_id: missionId });
+    return mission;
   }
 
   /** Vérifie qu'un profil est bien une entreprise avant de lui attacher une mission. */

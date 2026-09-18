@@ -8,10 +8,10 @@ Backend Node 24/TypeScript/Express : app.ts testable séparément de server.ts, 
 
 integrations/clients.ts prépare les factories Supabase admin, PostgreSQL et MongoDB sans connexion automatique ; config absente = erreur explicite à l’appel. Aucune migration/table/collection. services et repositories sont des emplacements documentés.
 
-matching/config.ts centralise poids 45/25/20/10, seuils 70/60/50 et version 1.0, sans moteur. events/business-event.ts valide l’enveloppe versionnée, sans émetteur/dispatcher/outbox.
+matching/config.ts centralise poids 45/25/20/10, seuils 70/60/50 et version 1.0. `events/business-event.ts` valide l’enveloppe versionnée ; `events/dispatcher.ts` signe et livre les événements à n8n avec retries bornés. Les services worker, missions et candidatures publient après commit. Il n’existe pas encore d’outbox persistante.
 
 ## Lots suivants
 
-Auth classique backend + Google Supabase (D01), session applicative et permissions serveur. PostgreSQL source de vérité ; contrôle de propriété et privilèges/RLS restrictifs. MongoDB pour traces désensibilisées. Matching pur TypeScript, transactions atomiques et outbox transactionnelle. n8n possède les emails métier ; backend les emails auth via EmailService à créer. Signature/retry/idempotence non implémentés. Pas de service ATS séparé.
+Auth classique backend + Google Supabase (D01), session applicative et permissions serveur. PostgreSQL source de vérité ; contrôle de propriété et privilèges/RLS restrictifs. MongoDB pour traces désensibilisées. Une outbox transactionnelle reste à ajouter pour garantir la reprise des événements après un arrêt du processus. n8n possède les emails métier ; backend les emails auth via EmailService à créer. Pas de service ATS séparé.
 
 Vercel déploiera frontend depuis apps/frontend ; Render backend depuis apps/backend. Aucun déploiement effectué.

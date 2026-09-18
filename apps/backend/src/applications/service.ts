@@ -1,5 +1,6 @@
 import type { Db } from "../db.js";
 import { HttpError } from "../errors.js";
+import type { BusinessEventPublisher } from "../events/dispatcher.js";
 import type { ApplicationStatus } from "./schemas.js";
 
 interface ApplicationRow {
@@ -85,14 +86,17 @@ const databaseCode = (error: unknown) =>
     : undefined;
 
 export class ApplicationService {
-  constructor(public readonly db: Db) {}
+  constructor(
+    public readonly db: Db,
+    private events?: BusinessEventPublisher,
+  ) {}
 
   /**
    * La mission doit être exactement celle qu'un worker peut encore consulter :
    * publiée, non terminée et du même univers réel/démo que son compte.
    */
   async create(workerId: string, missionId: string) {
-    return this.db.transaction(async (db) => {
+    const application = await this.db.transaction(async (db) => {
       const mission = await db.query<{
         id: string;
         headcount: number;
@@ -158,6 +162,11 @@ export class ApplicationService {
         throw error;
       }
     });
+    // L'identifiant n'est publié qu'après le COMMIT de la nouvelle candidature.
+    this.events?.publish("application.created", {
+      application_id: application.id,
+    });
+    return application;
   }
 
   async getForWorkerMission(workerId: string, missionId: string) {
@@ -316,7 +325,7 @@ export class ApplicationService {
     applicationId: string,
     status: "accepted" | "rejected",
   ) {
-    return this.db.transaction(async (db) => {
+    const application = await this.db.transaction(async (db) => {
       const mission = (
         await db.query<{
           headcount: number;
@@ -416,6 +425,12 @@ export class ApplicationService {
       ).rows[0];
       return this.toCompanyApplication({ ...application, ...updated });
     });
+    // Une seule transition est autorisée depuis pending. L'émission après
+    // COMMIT garantit qu'un refus métier ou un rollback ne part jamais vers n8n.
+    this.events?.publish(`application.${status}`, {
+      application_id: application.id,
+    });
+    return application;
   }
 
   private async assertOwnedMission(

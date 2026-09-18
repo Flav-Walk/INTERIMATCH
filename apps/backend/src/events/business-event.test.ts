@@ -4,7 +4,7 @@ import { businessEventSchema, createBusinessEvent } from "./business-event.js";
 // The envelope is the contract handed to the n8n developer: it must stay strict.
 const envelope = {
   event_id: randomUUID(),
-  event_type: "candidate.matched" as const,
+  event_type: "mission.published" as const,
   occurred_at: "2027-01-02T12:00:00Z",
   schema_version: "1.0" as const,
   idempotency_key: "mission-1:candidate-1",
@@ -13,7 +13,7 @@ const envelope = {
 describe("business event envelope", () => {
   it("accepts a complete versioned envelope", () => {
     expect(businessEventSchema.parse(envelope).event_type).toBe(
-      "candidate.matched",
+      "mission.published",
     );
   });
   it("requires an idempotency key so a retried workflow cannot duplicate work", () => {
@@ -28,11 +28,14 @@ describe("business event envelope", () => {
         .success,
     ).toBe(false);
   });
-  it("accepte les événements du profil intérimaire", () => {
-    // Les deux seuls types dont la source métier existe aujourd'hui.
+  it("accepte les six événements réellement émis", () => {
     for (const event_type of [
       "worker.profile.updated",
       "worker.onboarding.completed",
+      "mission.published",
+      "application.created",
+      "application.accepted",
+      "application.rejected",
     ] as const)
       expect(
         businessEventSchema.parse({ ...envelope, event_type }).event_type,
@@ -40,8 +43,10 @@ describe("business event envelope", () => {
   });
   it("refuses an unknown event type and undeclared fields", () => {
     expect(
-      businessEventSchema.safeParse({ ...envelope, event_type: "mission.sold" })
-        .success,
+      businessEventSchema.safeParse({
+        ...envelope,
+        event_type: "mission.created",
+      }).success,
     ).toBe(false);
     expect(
       businessEventSchema.safeParse({ ...envelope, extra: true }).success,
