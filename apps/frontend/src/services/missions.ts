@@ -81,41 +81,6 @@ export interface MatchResult {
   distance_km: number | null;
 }
 
-/** Ce qu'une entreprise voit d'un profil rapproché, avant toute candidature. */
-export interface Candidate {
-  id: string;
-  first_name: string;
-  last_initial: string;
-  main_job: string | null;
-  city: string | null;
-  years_experience: number | null;
-  matched_skills: MissionSkill[];
-  match: MatchResult;
-}
-
-/**
- * Pourquoi le rapprochement ne tourne pas sur une mission, tel que le serveur
- * le nomme. Une mission qui n'est offerte à aucun intérimaire ne peut pas non
- * plus proposer de profils : les deux espaces suivent la même règle.
- */
-export type MatchingInactive = "draft" | "ended" | "closed";
-
-export interface CandidateList {
-  /** Palier retenu — 70, 60 ou 50 — ou null si personne n'atteint 50. */
-  band: number | null;
-  band_label: string | null;
-  candidates: Candidate[];
-  /** `null` quand le rapprochement a bien tourné. */
-  inactive: MatchingInactive | null;
-}
-
-/**
- * Profils rapprochés d'une mission de l'entreprise. Le serveur applique les
- * paliers du cahier des charges et n'élargit que faute de candidat au-dessus.
- */
-export const listCandidates = (missionId: string) =>
-  api<CandidateList>(`/missions/${missionId}/candidates`);
-
 /**
  * Missions offertes, toutes entreprises confondues, de la plus proche à la plus
  * lointaine. Aucun classement par affinité : le rapprochement viendra ensuite,

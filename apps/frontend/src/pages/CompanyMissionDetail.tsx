@@ -25,7 +25,6 @@ import {
   missionSchedule,
 } from "../components/mission/MissionCard";
 import { MissionApplications } from "../components/applications/MissionApplications";
-import { CandidateList } from "../components/mission/CandidateList";
 
 const payLabels: Record<string, string> = {
   hour: "de l’heure",
@@ -182,7 +181,7 @@ export function CompanyMissionDetail() {
         </p>
       </ConfirmDialog>
 
-      <div className="layout">
+      <div className="layout layout-single">
         <div className="layout-main">
           <section className="rail-card">
             <div className="detail-grid">
@@ -260,11 +259,6 @@ export function CompanyMissionDetail() {
 
           <MissionApplications missionId={mission.id} />
         </div>
-
-        <aside className="layout-rail">
-          {/* `CandidateList` est déjà une carte : l'envelopper en imbriquerait deux. */}
-          <CandidateList missionId={mission.id} revision={revision} />
-        </aside>
       </div>
     </section>
   );

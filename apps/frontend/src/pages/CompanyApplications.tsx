@@ -77,9 +77,8 @@ function Card({ application }: { application: CompanyApplication }) {
  * moteur de matching à venir, livré depuis. Il montre désormais exactement ce
  * que son nom annonce — des personnes qui ont postulé, et rien d'autre.
  *
- * Les profils suggérés par le rapprochement n'y figurent pas : ils vivent sur
- * la mission concernée, sous « Talents recommandés », parce qu'un profil qui
- * n'a rien demandé ne se traite pas, il se consulte.
+ * Les profils suggérés par le rapprochement n'y figurent pas : l'entreprise ne
+ * traite que les personnes qui ont réellement choisi de postuler.
  */
 export function CompanyApplicationsPage() {
   const { applications, counts, loading, error } = useCompanyData();

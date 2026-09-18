@@ -27,6 +27,19 @@ async function logout(page: Page) {
   await expect(page).toHaveURL(/\/login$/);
 }
 
+async function missionIdFromCompany(page: Page, title: string) {
+  await page.goto("/company/missions");
+  const href = await page
+    .getByRole("link")
+    .filter({
+      has: page.getByRole("heading", { name: title, exact: true }),
+    })
+    .getAttribute("href");
+  const missionId = href?.split("/").at(-1) ?? "";
+  expect(missionId).toBeTruthy();
+  return missionId;
+}
+
 test("un worker postule, l’entreprise accepte et l’état persiste", async ({
   page,
 }, testInfo) => {
@@ -38,13 +51,7 @@ test("un worker postule, l’entreprise accepte et l’état persiste", async ({
   await signIn(page, companyEmail);
   await expect(page).toHaveURL(/\/company$/);
   await completeTour(page);
-  await page.goto("/company/missions");
-  const companyMission = page
-    .getByRole("link")
-    .filter({ hasText: "Serveur candidature" });
-  const companyHref = await companyMission.getAttribute("href");
-  const missionId = companyHref?.split("/").at(-1) ?? "";
-  expect(missionId).toBeTruthy();
+  const missionId = await missionIdFromCompany(page, "Serveur candidature");
   await logout(page);
 
   await signIn(page, workerEmail);
@@ -88,7 +95,9 @@ test("un worker postule, l’entreprise accepte et l’état persiste", async ({
   const recentes = page.locator(".application-rows");
   await expect(recentes).toContainText("Camille Recette");
   await expect(recentes).toContainText("Serveur candidature");
-  await expect(page.getByText(/candidature attend votre réponse/)).toBeVisible();
+  await expect(
+    page.getByText(/candidature attend votre réponse/),
+  ).toBeVisible();
 
   // Le badge de navigation porte le meme chiffre, double d'un texte lisible
   // par un lecteur d'ecran : une pastille coloree seule n'informe personne.
@@ -98,7 +107,9 @@ test("un worker postule, l’entreprise accepte et l’état persiste", async ({
 
   // L'ecran Candidatures liste de vraies candidatures, pas des suggestions.
   await page.goto("/company/applications");
-  await expect(page.getByRole("heading", { name: "Candidatures" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Candidatures" }),
+  ).toBeVisible();
   await expect(page.locator(".application-cards")).toContainText(
     "Camille Recette",
   );
@@ -142,4 +153,64 @@ test("un worker postule, l’entreprise accepte et l’état persiste", async ({
     path: testInfo.outputPath("worker-application-accepted.png"),
     fullPage: true,
   });
+});
+
+test("une candidature refusée reste visible et ne redevient pas disponible", async ({
+  page,
+}, testInfo) => {
+  const workerEmail = `application.worker.${testInfo.project.name}@example.test`;
+  const companyEmail = `application.company.${testInfo.project.name}@example.test`;
+  const title = "Serveur candidature non retenue";
+
+  await signIn(page, companyEmail);
+  await expect(page).toHaveURL(/\/company$/);
+  await completeTour(page);
+  const missionId = await missionIdFromCompany(page, title);
+  await logout(page);
+
+  await signIn(page, workerEmail);
+  await expect(page).toHaveURL(/\/worker$/);
+  await page.goto("/worker/missions");
+  await page.locator(`a[href="/worker/missions/${missionId}"]`).click();
+  await page.getByRole("button", { name: "Postuler" }).click();
+  await expect(
+    page.getByText("Candidature envoyée", { exact: false }),
+  ).toBeVisible();
+  await logout(page);
+
+  await signIn(page, companyEmail);
+  await expect(page).toHaveURL(/\/company$/);
+  await page.goto(`/company/missions/${missionId}`);
+  await expect(
+    page.getByRole("heading", { name: "Talents recommandés" }),
+  ).toHaveCount(0);
+  const applications = page.getByRole("region", {
+    name: "Candidatures reçues",
+  });
+  await applications.getByRole("button", { name: "Refuser" }).click();
+  await expect(
+    applications.getByText("Non retenue", { exact: true }),
+  ).toBeVisible();
+  await logout(page);
+
+  await signIn(page, workerEmail);
+  await expect(page).toHaveURL(/\/worker$/);
+  await page.goto("/worker/applications");
+  const history = page.locator(".worker-application-list");
+  await expect(history).toContainText(title);
+  await expect(history.getByText("Non retenue", { exact: true })).toBeVisible();
+  await page.reload();
+  await expect(history.getByText("Non retenue", { exact: true })).toBeVisible();
+  await page.screenshot({
+    path: testInfo.outputPath("worker-rejected-application-history.png"),
+    fullPage: true,
+  });
+
+  await page.goto("/worker/missions");
+  await expect(
+    page.getByRole("heading", { name: "Missions disponibles" }),
+  ).toBeVisible();
+  await expect(
+    page.locator(`a[href="/worker/missions/${missionId}"]`),
+  ).toHaveCount(0);
 });
