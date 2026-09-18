@@ -1,5 +1,10 @@
 import { z } from "zod";
 import { jobValues, payUnitValues } from "../domain/reference.js";
+import type {
+  MissionLifecycle,
+  MissionPhase,
+  NotOpenReason,
+} from "./lifecycle.js";
 
 export const missionStatusValues = [
   "draft",
@@ -180,6 +185,14 @@ export interface OpenMission extends Omit<Mission, "company_id"> {
   company: OpenMissionCompany;
 }
 
+/**
+ * Une mission telle qu'elle est servie : ce qu'elle contient, plus ce qu'elle
+ * signifie. Les trois champs dérivés sont toujours présents dans les réponses
+ * de l'API ; ils restent optionnels dans `Mission` parce que ce type décrit
+ * aussi une ligne fraîchement lue, avant que le service ne l'ait complétée.
+ */
+export type MissionView = Mission & MissionLifecycle;
+
 export interface Mission {
   id: string;
   company_id: string;
@@ -205,7 +218,21 @@ export interface Mission {
    * toutes. C'est une question que le serveur sait trancher, et lui seul.
    */
   capacity?: MissionCapacity;
+  /**
+   * Où en est la mission, et peut-elle encore recruter. Calculés à la lecture,
+   * jamais stockés : voir `lifecycle.ts` pour le raisonnement.
+   */
+  phase?: MissionPhase;
+  recruiting?: boolean;
+  recruiting_blocked?: NotOpenReason | null;
   min_years_experience: string | null;
+  /**
+   * Statut **écrit**. Trois valeurs seulement sont atteignables : `draft`,
+   * `open`, `cancelled`. `filled` et `completed` survivent dans la contrainte
+   * SQL depuis la migration 004, mais aucune transition n'y mène — voir
+   * `lifecycle.ts`. Un écran qui filtre dessus n'affichera jamais rien : c'est
+   * `phase` qu'il doit lire.
+   */
   status: MissionStatus;
   published_at: string | null;
   demo: boolean;

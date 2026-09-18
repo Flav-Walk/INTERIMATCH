@@ -1,6 +1,8 @@
 import type { Db } from "../db.js";
 import { HttpError } from "../errors.js";
 import { capacityOf } from "../missions/service.js";
+import { missionPhase, notOpenToWorkers } from "../missions/lifecycle.js";
+import type { MissionStatus } from "../missions/schemas.js";
 import type { BusinessEventPublisher } from "../events/dispatcher.js";
 import { loadApplicationEventData } from "../events/payloads.js";
 import type { ApplicationStatus } from "./schemas.js";
@@ -21,7 +23,8 @@ interface WorkerApplicationRow extends ApplicationRow {
   ends_at: Date | string;
   city: string;
   postal_code: string;
-  mission_status: string;
+  mission_status: MissionStatus;
+  mission_filled: number;
   establishment_name: string | null;
 }
 
@@ -32,7 +35,8 @@ interface MissionSummaryRow {
   mission_starts_at: Date | string;
   mission_ends_at: Date | string;
   mission_city: string;
-  mission_status: string;
+  mission_status: MissionStatus;
+  mission_filled: number;
   headcount: number;
 }
 
@@ -82,6 +86,18 @@ const engagedElsewhere = (sql: {
 const applicationFields =
   "a.id,a.mission_id,a.worker_id,a.status,a.created_at,a.updated_at";
 
+/**
+ * Nombre d'intérimaires retenus sur la mission de la ligne courante.
+ *
+ * C'est la seule information qui manque, dans une liste de candidatures, pour
+ * situer la mission dans son cycle : les dates et le statut sont déjà là, le
+ * décompte des acceptations sépare « à venir » de « publiée ». Sous-requête
+ * corrélée plutôt que jointure agrégée, parce qu'elle tombe exactement sur
+ * `applications_accepted_idx`, l'index partiel de la migration 007.
+ */
+const acceptedOnMission = `(SELECT count(*) FROM applications af
+    WHERE af.mission_id=m.id AND af.status='accepted')::int AS mission_filled`;
+
 const databaseCode = (error: unknown) =>
   typeof error === "object" && error !== null && "code" in error
     ? String(error.code)
@@ -102,12 +118,14 @@ export class ApplicationService {
       const mission = await db.query<{
         id: string;
         headcount: number;
+        status: MissionStatus;
+        starts_at: Date | string;
+        ends_at: Date | string;
         mission_demo: boolean;
         worker_demo: boolean;
-        candidatable: boolean;
       }>(
-        `SELECT m.id,m.headcount,m.demo AS mission_demo,p.demo AS worker_demo,
-                (m.status='open' AND m.ends_at > now()) AS candidatable
+        `SELECT m.id,m.headcount,m.status,m.starts_at,m.ends_at,
+                m.demo AS mission_demo,p.demo AS worker_demo
            FROM missions m
            JOIN profiles p ON p.id=$2
           WHERE m.id=$1
@@ -117,7 +135,25 @@ export class ApplicationService {
       const target = mission.rows[0];
       if (!target || target.mission_demo !== target.worker_demo)
         throw new HttpError(404, "MISSION_NOT_FOUND", "Mission introuvable.");
-      if (!target.candidatable)
+
+      // Le motif, et plus seulement le refus. « Cette mission n'accepte plus de
+      // candidatures » est vrai d'un brouillon, d'une mission annulée et d'une
+      // mission passée — trois situations que l'intérimaire ne vit pas de la
+      // même façon, et dont une seule signifie qu'il a raté quelque chose.
+      const blocked = notOpenToWorkers(target);
+      if (blocked === "cancelled")
+        throw new HttpError(
+          409,
+          "MISSION_CANCELLED",
+          "Cette mission a été annulée par l’entreprise.",
+        );
+      if (blocked === "ended")
+        throw new HttpError(
+          409,
+          "MISSION_ENDED",
+          "Cette mission est terminée.",
+        );
+      if (blocked)
         throw new HttpError(
           409,
           "APPLICATION_CLOSED",
@@ -190,7 +226,8 @@ export class ApplicationService {
     const { rows } = await this.db.query<WorkerApplicationRow>(
       `SELECT ${applicationFields},
               m.title,m.job,m.starts_at,m.ends_at,m.city,m.postal_code,
-              m.status AS mission_status,c.establishment_name
+              m.status AS mission_status,${acceptedOnMission},
+              c.establishment_name
          FROM applications a
          JOIN missions m ON m.id=a.mission_id
          LEFT JOIN company_profiles c ON c.profile_id=m.company_id
@@ -212,6 +249,16 @@ export class ApplicationService {
         city: row.city,
         postal_code: row.postal_code,
         status: row.mission_status,
+        // L'intérimaire doit pouvoir distinguer « ma mission est annulée » de
+        // « ma mission est passée » sans rejouer la règle dans le navigateur.
+        phase: missionPhase(
+          {
+            status: row.mission_status,
+            starts_at: row.starts_at,
+            ends_at: row.ends_at,
+          },
+          row.mission_filled,
+        ),
       },
       company: { establishment_name: row.establishment_name },
     }));
@@ -242,7 +289,7 @@ export class ApplicationService {
                 w.city,w.main_job,${conflict} AS conflict,
                 m.title,m.job,m.starts_at AS mission_starts_at,
                 m.ends_at AS mission_ends_at,m.city AS mission_city,
-                m.status AS mission_status,m.headcount
+                m.status AS mission_status,m.headcount,${acceptedOnMission}
            FROM applications a
            JOIN missions m ON m.id=a.mission_id
            JOIN profiles p ON p.id=a.worker_id
@@ -276,6 +323,14 @@ export class ApplicationService {
           ends_at: row.mission_ends_at,
           city: row.mission_city,
           status: row.mission_status,
+          phase: missionPhase(
+            {
+              status: row.mission_status,
+              starts_at: row.mission_starts_at,
+              ends_at: row.mission_ends_at,
+            },
+            row.mission_filled,
+          ),
           headcount: row.headcount,
         },
       })),
@@ -344,10 +399,11 @@ export class ApplicationService {
       const mission = (
         await db.query<{
           headcount: number;
+          status: MissionStatus;
           starts_at: Date | string;
           ends_at: Date | string;
         }>(
-          `SELECT headcount,starts_at,ends_at FROM missions
+          `SELECT headcount,status,starts_at,ends_at FROM missions
             WHERE id=$1 AND company_id=$2 FOR UPDATE`,
           [missionId, companyId],
         )
@@ -387,6 +443,32 @@ export class ApplicationService {
         );
 
       if (status === "accepted") {
+        // L'état de la mission passe avant tout le reste.
+        //
+        // Ce contrôle manquait : `decide()` ne lisait que la capacité et
+        // l'engagement, si bien qu'une mission annulée — ou dont le créneau
+        // était passé — continuait d'accepter des candidatures. On engageait
+        // quelqu'un sur un travail qui n'aurait pas lieu, ou qui avait déjà eu
+        // lieu sans lui.
+        //
+        // Le refus, lui, reste ouvert dans tous les cas : il est plus bas, hors
+        // de cette branche. Une entreprise qui annule doit pouvoir continuer de
+        // clore les dossiers en attente — c'est même la seule chose qu'il lui
+        // reste à faire.
+        const blocked = notOpenToWorkers(mission);
+        if (blocked === "cancelled")
+          throw new HttpError(
+            409,
+            "MISSION_CANCELLED",
+            "Cette mission a été annulée : elle ne peut plus recruter.",
+          );
+        if (blocked === "ended")
+          throw new HttpError(
+            409,
+            "MISSION_ENDED",
+            "Cette mission est terminée : elle ne peut plus recruter.",
+          );
+
         // Verrou sur la personne, avant de chercher un conflit.
         //
         // Le verrou pris plus haut porte sur la mission : il empêche deux

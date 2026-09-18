@@ -1,6 +1,5 @@
 import type { Db } from "../db.js";
 import {
-  notOpenToWorkers,
   type MissionService,
   type NotOpenReason,
 } from "../missions/service.js";
@@ -402,7 +401,15 @@ export class MatchingService {
     demo: boolean,
   ): Promise<CandidateSelection> {
     const mission = await this.missions.get(companyId, missionId);
-    const inactive = notOpenToWorkers(mission);
+    // Un seul motif, déjà posé sur la mission par le service qui la sert.
+    //
+    // Il y avait ici deux lectures — l'une pour le cycle de vie, l'autre pour la
+    // capacité — et donc deux endroits où la règle pouvait diverger de ce que
+    // l'API annonçait par ailleurs. `recruiting_blocked` répond aux deux, avec
+    // le même vocabulaire que le reste du contrat : `cancelled` pour une mission
+    // retirée, `ended` pour une mission passée, `full` pour une mission qui a
+    // simplement trouvé tout son monde — elle reste publiée et active.
+    const inactive = mission.recruiting_blocked ?? null;
     if (inactive)
       return {
         band: null,
@@ -410,17 +417,6 @@ export class MatchingService {
         candidates: [],
         outside_zone: [],
         inactive,
-      };
-    // Mission complète : le rapprochement s'arrête, mais la mission reste
-    // publiée et active. Le motif le dit — `closed` laisserait croire qu'elle
-    // a été fermée, alors qu'elle a simplement trouvé tout son monde.
-    if (!(await this.missions.hasCapacity(mission.id)))
-      return {
-        band: null,
-        band_label: null,
-        candidates: [],
-        outside_zone: [],
-        inactive: "full",
       };
 
     const criteria = criteriaOf(mission);

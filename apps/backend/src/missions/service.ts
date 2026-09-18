@@ -3,6 +3,7 @@ import { HttpError } from "../errors.js";
 import type { BusinessEventPublisher } from "../events/dispatcher.js";
 import { loadMissionEventData } from "../events/payloads.js";
 import type { Geocoder } from "../worker/geocode.js";
+import { missionLifecycle } from "./lifecycle.js";
 import {
   brokenRule,
   type Mission,
@@ -14,13 +15,32 @@ import {
   type OpenMission,
 } from "./schemas.js";
 
+export {
+  missionLifecycle,
+  missionPhase,
+  notOpenToWorkers,
+  type MissionLifecycle,
+  type MissionPhase,
+  type NotOpenReason,
+} from "./lifecycle.js";
+
 /**
- * Transitions de statut autorisées. Le SL2a n'en implémente qu'une, la
- * publication. `filled`, `completed` et `cancelled` s'ajouteront ici : la règle
- * reste déclarée à un seul endroit, et `assertTransition` n'a pas à changer.
+ * Transitions de statut autorisées, déclarées à un seul endroit.
+ *
+ * Deux seulement, et c'est délibéré : ce sont les deux seules décisions qu'une
+ * entreprise prend réellement. Tout le reste de ce qu'on appelle couramment
+ * « le statut d'une mission » — pourvue, à venir, en cours, terminée — se lit
+ * dans les dates et le décompte des acceptations, et n'a donc pas à s'écrire.
+ * Voir `lifecycle.ts` pour le raisonnement complet.
+ *
+ * L'annulation part de `open` seulement. Un brouillon n'a jamais été offert à
+ * personne : l'annuler ne retirerait rien et n'avertirait personne, alors que
+ * l'événement `mission.cancelled` promet le contraire. Un brouillon dont on ne
+ * veut plus se modifie ou se laisse là, il ne s'annule pas.
  */
 const transitions: Partial<Record<MissionStatus, readonly MissionStatus[]>> = {
   draft: ["open"],
+  open: ["cancelled"],
 };
 
 /** Colonnes qu'une modification peut écrire directement, dans cet ordre figé. */
@@ -82,43 +102,6 @@ const openToWorkers = (demoParam: string) =>
   `m.status = 'open' AND m.ends_at > now() AND m.demo = ${demoParam}
    AND (SELECT count(*) FROM applications a
          WHERE a.mission_id = m.id AND a.status = 'accepted') < m.headcount`;
-
-/**
- * Pourquoi une mission n'est pas offerte aux intérimaires.
- *
- * `full` est à part : la mission est toujours publiée, toujours active, elle
- * n'a simplement plus de place. La confondre avec `closed` ferait annoncer
- * « cette mission n'est plus ouverte » d'une mission qui l'est encore.
- */
-export type NotOpenReason = "draft" | "ended" | "closed" | "full";
-
-/**
- * Pendant TypeScript de `openToWorkers`, pour les décisions qui ne passent pas
- * par une requête — typiquement : faut-il rapprocher des profils de cette
- * mission ? Le SQL répond « oui / non » ; ici on veut aussi le motif, pour
- * pouvoir le dire à l'entreprise plutôt que de lui servir une liste vide.
- *
- * Les deux prédicats doivent rester d'accord. `missions.test.ts` le vérifie en
- * confrontant, sur les mêmes missions, ce que `listOpen` retient et ce que
- * cette fonction déclare offert.
- *
- * La cloison démo n'est pas reprise : elle sépare deux univers de comptes, et
- * une entreprise consulte toujours ses propres missions, donc son propre
- * univers. Le partage démo / réel reste appliqué là où il a un sens, sur
- * l'ensemble des intérimaires interrogés.
- *
- * `ended` passe avant le statut : un brouillon dont le créneau est passé ne se
- * publie plus, et lui répondre « publiez-la » serait faux.
- */
-export function notOpenToWorkers(
-  mission: { status: MissionStatus; ends_at: string | Date },
-  now: Date = new Date(),
-): NotOpenReason | null {
-  if (new Date(mission.ends_at) <= now) return "ended";
-  if (mission.status === "draft") return "draft";
-  if (mission.status !== "open") return "closed";
-  return null;
-}
 
 /**
  * Capacité d'une mission, lue à la demande.
@@ -195,16 +178,32 @@ export class MissionService {
   }
 
   /**
-   * Attache la capacité à plusieurs missions en une requête.
+   * Attache à chaque mission son recrutement et sa position dans le cycle.
    *
    * Même forme qu'`attachSkills` : une seule lecture pour toute la liste. La
    * jointure est externe, car une mission sans aucune candidature acceptée doit
    * répondre « zéro poste pourvu », pas disparaître du décompte.
+   *
+   * Les deux sont posés ensemble parce qu'ils viennent du même décompte : la
+   * phase a besoin de savoir si quelqu'un est retenu pour distinguer « à venir »
+   * de « publiée », et `recruiting` a besoin de savoir s'il reste une place. Les
+   * calculer en deux passes rouvrirait la porte à deux réponses divergentes.
+   *
+   * L'instant de lecture est fixé une fois pour toute la liste : deux missions
+   * de la même réponse ne doivent pas être jugées à deux millisecondes d'écart.
    */
   private async attachCapacity<
-    T extends { id: string; headcount: number; capacity?: MissionCapacity },
+    T extends {
+      id: string;
+      headcount: number;
+      status: MissionStatus;
+      starts_at: string | Date;
+      ends_at: string | Date;
+      capacity?: MissionCapacity;
+    },
   >(missions: T[]) {
     if (!missions.length) return missions;
+    const now = new Date();
     const { rows } = await this.db.query<{ mission_id: string; n: string }>(
       `SELECT mission_id, count(*)::text AS n FROM applications
         WHERE mission_id = ANY($1::uuid[]) AND status = 'accepted'
@@ -224,6 +223,7 @@ export class MissionService {
         remaining: Math.max(0, mission.headcount - filled),
         full: filled >= mission.headcount,
       };
+      Object.assign(mission, missionLifecycle(mission, mission.capacity, now));
     }
     return missions;
   }
@@ -289,7 +289,7 @@ export class MissionService {
       [demo],
     );
     const missions = rows.map((row) => this.toOpenMission(row));
-    return this.attachSkills(missions);
+    return this.attachCapacity(await this.attachSkills(missions));
   }
 
   /** Détail d'une mission offerte. Toute autre est introuvable, jamais interdite. */
@@ -303,7 +303,11 @@ export class MissionService {
     );
     if (!rows[0])
       throw new HttpError(404, "MISSION_NOT_FOUND", "Mission introuvable.");
-    return (await this.attachSkills([this.toOpenMission(rows[0])]))[0];
+    return (
+      await this.attachCapacity(
+        await this.attachSkills([this.toOpenMission(rows[0])]),
+      )
+    )[0];
   }
 
   /**
@@ -325,7 +329,11 @@ export class MissionService {
     );
     if (!rows[0])
       throw new HttpError(404, "MISSION_NOT_FOUND", "Mission introuvable.");
-    return (await this.attachSkills([this.toOpenMission(rows[0])]))[0];
+    return (
+      await this.attachCapacity(
+        await this.attachSkills([this.toOpenMission(rows[0])]),
+      )
+    )[0];
   }
 
   /** Une mission pleine reste dans l'historique entreprise, mais sort du matching. */
@@ -587,6 +595,62 @@ export class MissionService {
     // Publication après COMMIT et relecture finale : une transition refusée,
     // rollbackée ou une réponse métier incomplète ne produit aucune notification.
     this.events?.publish("mission.published", eventData);
+    return mission;
+  }
+
+  /**
+   * Annulation : `open` → `cancelled`. L'entreprise retire son offre.
+   *
+   * CE QUE L'ANNULATION NE FAIT PAS. Elle n'écrit pas une ligne dans
+   * `applications`. Aucune candidature n'est supprimée, aucune n'est refusée
+   * d'office, aucune acceptation n'est défaite. C'est le choix le plus
+   * conservateur, et c'est aussi le seul honnête : quelqu'un qui avait été
+   * retenu l'avait bien été, et le marquer « refusé » après coup réécrirait son
+   * historique pour une décision qui n'est pas la sienne. Le statut de la
+   * mission porte à lui seul toute l'information — « vous étiez accepté sur une
+   * mission annulée » se lit en croisant les deux, et reste vrai indéfiniment.
+   *
+   * CE QU'ELLE PRODUIT QUAND MÊME. Le créneau de l'intérimaire se libère
+   * immédiatement, sans qu'aucune donnée ne bouge : le déclencheur
+   * `applications_engagement` (migration 008) et la lecture `engagedElsewhere`
+   * ignorent tous deux les missions annulées. Une personne retenue sur une
+   * mission annulée peut donc être acceptée le jour même ailleurs, ce qui est
+   * exactement ce que le métier attend.
+   *
+   * POURQUOI LE CRÉNEAU COMMENCÉ EST REFUSÉ. Une fois la mission en cours, des
+   * gens sont sur place. « Annuler » n'y voudrait plus dire retirer une offre
+   * mais interrompre un travail commencé — une autre décision, avec d'autres
+   * conséquences (heures dues, remplacement), qu'aucune partie du système ne
+   * sait traiter aujourd'hui. Prétendre la couvrir d'un changement de statut
+   * serait pire que ne pas l'offrir.
+   */
+  async cancel(companyId: string, missionId: string) {
+    const eventData = await this.db.transaction(async (db) => {
+      const current = await this.lock(db, companyId, missionId);
+      this.assertTransition(current.status, "cancelled");
+      const now = Date.now();
+      if (new Date(current.ends_at).getTime() <= now)
+        throw new HttpError(
+          409,
+          "MISSION_ENDED",
+          "Une mission terminée ne peut plus être annulée.",
+        );
+      if (new Date(current.starts_at).getTime() <= now)
+        throw new HttpError(
+          409,
+          "MISSION_ALREADY_STARTED",
+          "Une mission déjà commencée ne peut plus être annulée.",
+        );
+      await db.query(
+        "UPDATE missions SET status = 'cancelled' WHERE id = $1 AND company_id = $2",
+        [missionId, companyId],
+      );
+      return loadMissionEventData(db, missionId);
+    });
+    const mission = await this.get(companyId, missionId);
+    // Après COMMIT, comme la publication : une annulation refusée ou rollbackée
+    // ne doit jamais faire partir d'avis d'annulation.
+    this.events?.publish("mission.cancelled", eventData);
     return mission;
   }
 

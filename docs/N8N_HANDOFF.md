@@ -31,6 +31,7 @@ Le contrat accepte uniquement :
 - `worker.profile.updated` ;
 - `worker.onboarding.completed` ;
 - `mission.published` ;
+- `mission.cancelled` ;
 - `application.created` ;
 - `application.accepted` ;
 - `application.rejected`.
@@ -137,6 +138,34 @@ missions, mais est renseigné pour cet événement. `skills` peut être vide. Da
 `establishment_name`, `sector` et `phone` peuvent être `null` si l’établissement
 n’a pas encore été renseigné. Automatisations : notification des travailleurs
 compatibles et email complet présentant la mission.
+
+### `mission.cancelled`
+
+Déclencheur : après le commit de `open → cancelled` dans
+`MissionService.cancel`. Une annulation refusée n’émet rien — ni sur un
+brouillon, ni sur une mission déjà annulée, ni sur une mission déjà
+commencée ou terminée, toutes refusées en 409.
+
+Payload : **strictement la même structure que `mission.published`** — mêmes
+clés, mêmes types, mêmes nullabilités. Ce qui a déjà été construit pour
+lire l’un lit l’autre sans adaptation. Une seule différence de valeur :
+`mission.status` vaut `"cancelled"`, la mission étant relue APRÈS la décision,
+dans la transaction qui l’a écrite.
+
+Ce que le payload ne contient volontairement pas : la liste des candidatures.
+Le backend ne décide pas qui prévenir. Les figer ici les daterait à l’instant
+de l’émission, alors que `mission_id` permet de les interroger au moment où
+l’automatisation en a besoin.
+
+À savoir pour construire la notification : **aucune candidature n’est modifiée
+par l’annulation**. Les personnes acceptées restent `accepted`, celles en
+attente restent `pending` — l’historique n’est pas réécrit. Ce sont donc bien
+les candidats `accepted` et `pending` de cette mission qu’il faut avertir, et
+leur statut ne sert pas à distinguer qui a été prévenu.
+
+Automatisations attendues : avis d’annulation aux intérimaires concernés. Leur
+créneau est libéré immédiatement côté produit — ils peuvent être acceptés sur
+une autre mission au même horaire dès cet instant.
 
 ### Structure commune des événements candidature
 

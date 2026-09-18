@@ -27,8 +27,10 @@ const identifier = z.uuid();
  *    « pour moi » : c'est là que le rapprochement viendra les ordonner, sans
  *    changer l'URL ni le contrat.
  *
- * Les transitions `filled`, `completed` et `cancelled` ne sont pas exposées :
- * elles viendront avec la candidature et l'attribution.
+ * Deux transitions seulement sont exposées, et ce sont les deux seules qui
+ * existent : publier et annuler. « Pourvue », « en cours » et « terminée » ne
+ * sont pas des actions — ce sont des lectures, servies par `phase` sur la
+ * mission elle-même.
  */
 export function missionRouter(missions: MissionService) {
   const router = Router();
@@ -90,6 +92,19 @@ export function missionRouter(missions: MissionService) {
   router.post("/missions/:id/publish", company, async (req, res) =>
     // Sans corps : la date de publication est décidée par le serveur.
     res.json(await missions.publish(me(res), identifier.parse(req.params.id))),
+  );
+
+  /**
+   * Annulation. Sans corps, comme la publication : il n'y a rien à fournir, et
+   * le motif d'un refus est porté par le code d'erreur, pas par la requête.
+   *
+   * Un POST plutôt qu'un PATCH du statut, pour la même raison que `publish` :
+   * `status` n'est pas un champ que le client écrit. Le laisser passer par la
+   * modification générale ouvrirait la porte à `{"status":"completed"}`, que
+   * rien ne devrait pouvoir écrire.
+   */
+  router.post("/missions/:id/cancel", company, async (req, res) =>
+    res.json(await missions.cancel(me(res), identifier.parse(req.params.id))),
   );
 
   /**
