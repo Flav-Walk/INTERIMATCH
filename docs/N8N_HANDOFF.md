@@ -1,60 +1,148 @@
-# Passation n8n — préparation documentaire
+# Passation n8n — événements métier InteriMatch
 
-Basé sur `N8N_HANDOFF_TEMPLATE.md`. **Statut : À implémenter. Socle backend créé ; aucun workflow prêt.** Ne pas construire d’intégration sur la base de routes supposées.
+## État opérationnel
 
-## 1. Architecture cible
+Le backend envoie les événements métier vers l’unique webhook configuré par
+`N8N_WEBHOOK_URL`, signé avec `N8N_WEBHOOK_SECRET`. Ces deux variables restent
+optionnelles mais doivent être définies ensemble. Aucune valeur de production
+n’est documentée ni versionnée ici.
 
-Frontend → backend → transaction métier + outbox → dispatcher → n8n → Brevo. PostgreSQL fait autorité ; MongoDB contient les traces complémentaires. API de production prévue : `https://interimatch.onrender.com`, non vérifiée/déployée dans ce Lot 0.
+La recette réelle T1 à T8 des événements worker, de la signature, de la
+déduplication et des refus de contrat a été validée le 17/09/2026. Les quatre
+événements missions/candidatures ci-dessous utilisent exactement le même
+dispatcher et le même contrat ; ils doivent faire l’objet de leur propre recette
+sur l’environnement déployé après déploiement du backend.
 
-## 2. Événements prévus, aucun émetteur réel
+## Architecture réellement utilisée
 
-`mission.created`, `mission.updated`, `mission.published`, `matching.completed`, `candidate.matched`, `candidate.accepted`, `candidate.refused`, `mission.filled`, `mission.unfilled`, `mission.completed`.
+Une action HTTP appelle le service métier, qui valide les règles puis termine sa
+transaction PostgreSQL. Après le commit, le service remet l’événement au
+`AsyncBusinessEventPublisher`. Celui-ci construit une seule enveloppe logique et
+la livre au webhook n8n hors du chemin HTTP.
 
-## 3. Enveloppe validée dans le code, données métier non figées
+Chaque enveloppe contient exactement :
 
-Champs validés par le schéma : `event_id` UUID, `event_type`, `occurred_at` ISO-8601 UTC, `schema_version` « 1.0 », `idempotency_key`, `data`. Aucun payload métier réel de `data` disponible. Les futures tentatives de livraison devront conserver le même event_id et la même clé d’idempotence.
+```json
+{
+  "event_id": "<uuid-v4>",
+  "event_type": "<type autorisé>",
+  "occurred_at": "<date ISO-8601 UTC>",
+  "schema_version": "1.0",
+  "idempotency_key": "<clé non vide>",
+  "data": {}
+}
+```
 
-## 4. Workflow A — proposition compatible
+Le corps JSON exact est signé en HMAC-SHA256 avec le timestamp :
+`HMAC(secret, timestamp + "." + raw_body)`. Les headers envoyés sont :
 
-Objectif : informer l’intérimaire après publication, calcul et enregistrement d’une proposition valide. Déclenchement candidat : `candidate.matched`, à figer avec le code. Ne pas notifier un brouillon ni envoyer à nouveau depuis `matching.completed` pour la même proposition. Seuils et hors-zone décrits dans DECISIONS.md. Propriétaire prévu de l’email : n8n.
+- `content-type: application/json` ;
+- `x-interimatch-timestamp` ;
+- `x-interimatch-signature: sha256=<signature>` ;
+- `x-correlation-id: <event_id>`.
 
-## 5. Workflow B — acceptation
+Un timeout de 10 secondes s’applique à chaque tentative. Les erreurs réseau et
+les réponses 5xx sont réessayées après 1 puis 5 secondes. Toutes les tentatives
+réutilisent strictement le même corps, le même `event_id` et la même
+`idempotency_key` ; seul le timestamp et donc la signature de transport sont
+recalculés. Les réponses `200 accepted` et `200 duplicate` sont des succès. Les
+réponses 400 (`invalid_payload`) et 401 (`invalid_signature`) sont permanentes et
+ne sont pas réessayées.
 
-Objectif : informer l’entreprise après enregistrement atomique d’une acceptation. Déclenchement candidat : `candidate.accepted`. Cette acceptation ne signifie pas attribution définitive. Propriétaire prévu de l’email : n8n.
+Les logs de livraison ne contiennent que `event_id`, `event_type`, `attempt`,
+`http_status`, `result` ou une catégorie/code d’erreur technique sûr. Le secret,
+la signature, les headers et le corps métier ne sont jamais journalisés.
 
-## 6. Fiches opérationnelles à compléter depuis le code
+## Types officiellement acceptés
 
-Pour A et B, tous les éléments suivants sont **indisponibles** : fichier/fonction émettrice, endpoint/méthode, headers, authentification/signature exacte, payload, exemple anonymisé, réponse, codes d’erreur, politique de retry, déduplication réelle, tables/collections migrées, transitions implémentées, template Brevo, curl exécutable et scénarios automatisés. Reprendre la fiche complète du gabarit lorsque chaque événement existe ; ne pas remplacer ces manques par des exemples inventés.
+Le contrat `schema_version = "1.0"` accepte uniquement :
 
-## 7. Fiabilité à mettre en œuvre
+- `worker.profile.updated` ;
+- `worker.onboarding.completed` ;
+- `mission.published` ;
+- `application.created` ;
+- `application.accepted` ;
+- `application.rejected`.
 
-Outbox transactionnelle ; signature HMAC du corps brut et timestamp ; contrôle anti-rejeu ; idempotence persistante du consommateur ; reprise bornée avec backoff et échec final visible. Schéma des headers et délais à figer/tester au Lot 6. Une garantie « exactement une fois » ne doit pas être annoncée : traiter explicitement le cas d’un envoi Brevo réussi suivi d’une perte d’accusé de réception.
+Les anciens noms prospectifs ne font pas partie du contrat. Notamment,
+`mission.created`, `candidate.created`, `candidate.accepted`,
+`candidate.refused` et `candidate.rejected` doivent recevoir
+`400 invalid_payload` côté webhook.
 
-Variables prévues : `N8N_WEBHOOK_URL`, `N8N_WEBHOOK_SECRET`, `WEBHOOK_SIGNING_SECRET`, `BREVO_API_KEY`, `BREVO_SENDER_EMAIL`, `BREVO_SENDER_NAME`. Aucune valeur requise maintenant. Définir des rôles distincts pour le secret d’accès et celui de signature avant implémentation.
+## Événements et conditions d’émission
 
-## 8. Propriété des emails
+### `worker.profile.updated`
 
-| Type | Propriétaire prévu |
-| --- | --- |
-| Auth classique : vérification/récupération | Backend / EmailService Brevo |
-| Proposition de mission compatible | n8n |
-| Acceptation reçue | n8n |
-| Attribution confirmée | n8n |
-| Mission non pourvue, si implémentée | n8n |
+- Moment : après le commit d’une modification effective du profil worker.
+- `data` : `{ "worker_id": "<uuid>" }`.
+- Ne part pas : écriture sans changement, validation refusée ou rollback.
 
-Aucun secours backend pour les emails métier sans décision explicite transférant leur propriété. Notifications en application détenues par le backend.
+### `worker.onboarding.completed`
 
-## 9. Avant remise opérationnelle
+- Moment : après le commit de la transition réelle de l’onboarding de `false` à
+  `true`.
+- `data` : `{ "worker_id": "<uuid>" }`.
+- Ne part pas : profil encore incomplet, profil déjà complet, modification
+  ultérieure ou rollback.
 
-- [ ] Émetteurs, payloads versionnés et exemples vérifiés.
-- [ ] Deux workflows réels réalisés par le développeur n8n.
-- [ ] Signature, rejeu, doublons et retry testés.
-- [ ] Propriété des emails et templates Brevo vérifiés.
-- [ ] Endpoints, réponses, erreurs et curl issus du code.
-- [ ] Tests E2E des deux parcours et exports/captures livrés.
-- [ ] Aucun secret ni donnée personnelle réelle dans la passation.
+### `mission.published`
 
+- Moment : après le commit de la transition réelle `draft → open`, effectuée
+  par `MissionService.publish` via `POST /api/v1/missions/:id/publish`.
+- `data` : `{ "mission_id": "<uuid>" }`.
+- Ne part pas : création du brouillon, modification d’une mission ouverte,
+  seconde publication, mission déjà commencée, mission absente/non détenue,
+  validation refusée ou rollback.
+- La création directe en statut publié n’existe pas : le statut est décidé par
+  le serveur et toute mission est créée en brouillon.
 
-## Fondation effectivement implémentée
+### `application.created`
 
-apps/backend/src/events/business-event.ts exporte businessEventSchema et BusinessEvent : validation stricte des six champs, UUID, date ISO UTC, version 1.0, event_type dans la liste, clé non vide, data objet générique. Aucun événement émis, aucune route n8n, signature/retry/outbox encore absents. Le healthcheck ne déclenche rien. Aucun payload métier exact ni service Brevo disponible.
+- Moment : après le commit de l’INSERT d’une nouvelle candidature validée par
+  `ApplicationService.create`, via `POST /api/v1/workers/me/applications`.
+- `data` : `{ "application_id": "<uuid>" }`.
+- Ne part pas : doublon, mission inexistante, brouillon, mission expirée,
+  mission pleine, séparation réel/démo, validation refusée ou rollback.
+
+### `application.accepted`
+
+- Moment : après le commit de la transition réelle `pending → accepted`,
+  effectuée par `ApplicationService.decide`.
+- `data` : `{ "application_id": "<uuid>" }`.
+- Ne part pas : candidature déjà décidée, mission pleine, intérimaire déjà
+  engagé sur un créneau chevauchant, candidature/mission absente ou non détenue,
+  transition invalide ou rollback.
+
+### `application.rejected`
+
+- Moment : après le commit de la transition réelle `pending → rejected`,
+  effectuée par `ApplicationService.decide`.
+- `data` : `{ "application_id": "<uuid>" }`.
+- Ne part pas : candidature déjà décidée, candidature/mission absente ou non
+  détenue, transition invalide ou rollback.
+
+Les payloads application n’embarquent pas `mission_id` : `application_id`
+identifie sans ambiguïté la ressource persistée et évite de dupliquer une donnée
+déjà disponible en base. Aucun email, téléphone, nom, adresse, token, profil ou
+détail de matching n’est envoyé.
+
+## AUTOMATISATIONS MAINTENANT DISPONIBLES
+
+- `mission.published` → préparer la notification des intérimaires compatibles ;
+- `application.created` → prévenir l’entreprise d’une nouvelle candidature ;
+- `application.accepted` → informer l’intérimaire qu’il est retenu ;
+- `application.rejected` → informer l’intérimaire qu’il n’est pas retenu.
+
+Jimmy peut déclencher ces événements depuis les vraies actions de l’application.
+Le workflow n8n doit dédupliquer durablement sur `event_id` (ou
+`idempotency_key`) avant tout effet externe.
+
+## Limite de fiabilité à connaître
+
+Il n’existe pas encore d’outbox transactionnelle. L’ordre actuel exclut le cas
+« n8n reçoit un événement alors que la transaction métier rollbacke », car la
+publication commence après le commit. En revanche, un arrêt du processus entre
+le commit et l’appel webhook, ou l’épuisement des retries, peut laisser une
+opération métier validée sans événement livré. Les échecs sont journalisés mais
+ne sont pas rejoués après redémarrage. Une outbox persistante est la dette à
+traiter avant d’exiger une garantie de livraison forte en production.

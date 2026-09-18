@@ -4,16 +4,10 @@ import { z } from "zod";
 export const businessEventTypes = [
   "worker.profile.updated",
   "worker.onboarding.completed",
-  "mission.created",
-  "mission.updated",
   "mission.published",
-  "matching.completed",
-  "candidate.matched",
-  "candidate.accepted",
-  "candidate.refused",
-  "mission.filled",
-  "mission.unfilled",
-  "mission.completed",
+  "application.created",
+  "application.accepted",
+  "application.rejected",
 ] as const;
 
 export const businessEventSchema = z

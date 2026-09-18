@@ -35,9 +35,9 @@ const events =
       )
     : undefined;
 const workers = db ? new WorkerService(db, geocoder, events) : undefined;
-const missions = db ? new MissionService(db, geocoder) : undefined;
+const missions = db ? new MissionService(db, geocoder, events) : undefined;
 const admin = db ? new AdminService(db) : undefined;
-const applications = db ? new ApplicationService(db) : undefined;
+const applications = db ? new ApplicationService(db, events) : undefined;
 const server = createApp(
   config,
   accounts,
