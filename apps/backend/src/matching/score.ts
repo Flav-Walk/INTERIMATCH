@@ -95,6 +95,45 @@ export const WEIGHTS = {
 
 export type DimensionKey = keyof typeof WEIGHTS;
 
+/**
+ * Ce qu'une dimension apporte, ou ce qu'elle coûte.
+ *
+ * Une note seule n'explique rien : « Proximité 40 % » est un chiffre, pas une
+ * raison. Cette qualification est ce qui permet d'écrire « point limitant :
+ * localisation » sans qu'aucune interface n'ait à redécider, chacune de son
+ * côté, à partir de quel ratio un critère devient un reproche.
+ */
+export type DimensionTone = "strength" | "neutral" | "limitation";
+
+/**
+ * Où passent les frontières, en une seule déclaration.
+ *
+ * Elles portent sur le **ratio**, jamais sur les points : une dimension légère
+ * presque entièrement satisfaite reste un point fort, et une dimension lourde
+ * largement manquée reste un point limitant, quel que soit son poids. Mélanger
+ * les deux ferait dépendre la qualification de la pondération, et un simple
+ * changement de poids transformerait un compliment en reproche sans que rien
+ * n'ait bougé chez le candidat.
+ *
+ * À mi-chemin exactement — ratio 0,5 — la dimension est donc **neutre**, et non
+ * limitante : elle est à moitié acquise autant qu'à moitié manquante, et la
+ * ranger d'un côté plutôt que de l'autre serait un parti pris que les données
+ * ne soutiennent pas.
+ *
+ * Les valeurs sont volontairement asymétriques. Il faut presque tout avoir pour
+ * qu'un critère soit mis en avant (75 %), mais il suffit d'en manquer la plus
+ * grande part pour qu'il soit signalé (40 %) : une explication doit être
+ * prudente dans l'éloge et franche sur ce qui manque. Entre les deux, la
+ * dimension existe, compte dans le score, et ne mérite ni l'un ni l'autre.
+ */
+export const DIMENSION_TONES = { strength: 0.75, limitation: 0.4 } as const;
+
+export function toneOf(ratio: number): DimensionTone {
+  if (ratio >= DIMENSION_TONES.strength) return "strength";
+  if (ratio <= DIMENSION_TONES.limitation) return "limitation";
+  return "neutral";
+}
+
 export interface Dimension {
   key: DimensionKey;
   /** Formulation destinée à l'intérimaire comme à l'entreprise. */
@@ -104,6 +143,22 @@ export interface Dimension {
   ratio: number;
   /** Points réellement acquis, arrondis à l'affichage seulement. */
   points: number;
+  /**
+   * Point fort, point limitant, ou ni l'un ni l'autre.
+   *
+   * Calculé ici, et nulle part ailleurs. C'est la règle qui distingue une
+   * explication d'une paraphrase du score, et elle n'a pas à exister en double
+   * dans un navigateur.
+   */
+  tone: DimensionTone;
+  /**
+   * Points laissés sur la table : `weight - points`.
+   *
+   * Sert à ordonner les points limitants par ce qu'ils coûtent réellement. Sans
+   * lui, une interface qui voudrait afficher « le » frein devrait refaire cette
+   * soustraction — donc reconstituer un morceau de moteur.
+   */
+  lost: number;
 }
 
 /** Compétences détenues sur compétences demandées : de quoi écrire « 2/3 ». */
@@ -144,6 +199,24 @@ export interface MatchResult {
   outside_zone: boolean | null;
   /** De quoi dire « 3 compétences obligatoires sur 3 » sans recompter. */
   skills: { required: SkillTally; desired: SkillTally };
+  /**
+   * Palier atteint par ce score, calculé sur la valeur **non arrondie**.
+   *
+   * POURQUOI IL VOYAGE AVEC LE RÉSULTAT. Le score public est arrondi : 69,6 %
+   * s'affiche « 70 % ». Une interface qui déduirait le palier de ce nombre
+   * rangerait ce profil dans les « très compatibles », alors que le serveur l'a
+   * placé dans la tranche 60–69 — et l'écran afficherait deux vérités
+   * contradictoires sur la même personne.
+   *
+   * Exposer `raw_score` résoudrait le symptôme en déplaçant le problème : le
+   * navigateur referait la comparaison, donc détiendrait une copie de la règle.
+   * C'est la conclusion qui traverse la frontière, pas la donnée qui permet de
+   * la reconstituer.
+   *
+   * `null` en dessous de 50 : aucun palier du cahier n'est atteint.
+   */
+  band: number | null;
+  band_label: string | null;
 }
 
 /* ------------------------------------------------------------------ */
@@ -267,6 +340,29 @@ export function overlaps(
 }
 
 /* ------------------------------------------------------------------ */
+/* Paliers                                                             */
+/* ------------------------------------------------------------------ */
+
+/** Paliers du cahier des charges, du plus exigeant au plus large. */
+export const BANDS = [
+  { min: 70, label: "Très compatibles" },
+  { min: 60, label: "Compatibles" },
+  { min: 50, label: "Envisageables" },
+] as const;
+
+/**
+ * Dans quel palier tombe un score.
+ *
+ * Prend le score **non arrondi**, toujours. C'est toute la raison d'être de
+ * cette fonction : l'arrondi fait franchir des frontières que le score
+ * n'atteint pas, et un palier qui bougerait selon qu'on l'a calculé avant ou
+ * après l'affichage ne serait pas un palier.
+ */
+export function bandOf(rawScore: number) {
+  return BANDS.find(({ min }) => rawScore >= min) ?? null;
+}
+
+/* ------------------------------------------------------------------ */
 /* Évaluation                                                          */
 /* ------------------------------------------------------------------ */
 
@@ -332,12 +428,15 @@ export function evaluate(
   const add = (key: DimensionKey, label: string, ratio: number | null) => {
     if (ratio === null) return;
     const bounded = Math.min(1, Math.max(0, ratio));
+    const points = WEIGHTS[key] * bounded;
     dimensions.push({
       key,
       label,
       weight: WEIGHTS[key],
       ratio: bounded,
-      points: WEIGHTS[key] * bounded,
+      points,
+      tone: toneOf(bounded),
+      lost: WEIGHTS[key] - points,
     });
   };
 
@@ -347,15 +446,27 @@ export function evaluate(
     ratioOfCoverage(mission.desired_skill_ids, held),
   );
 
+  // Rayon nul : seul le point exact convient.
+  //
+  // L'ancienne rédaction accordait 1 à tout candidat dès que le rayon valait
+  // zéro, au motif qu'il « avait déjà passé le filtre ». C'était faux : le
+  // filtre n'écarte personne, il pose un bloqueur. Un profil à 300 km d'une
+  // mission, rayon 0, cumulait donc `out_of_range` ET une proximité parfaite,
+  // et pouvait atteindre 100 % — un score qui contredisait son propre bloqueur.
+  //
+  // La distance nulle reste le seul cas qui mérite le point : à rayon zéro, la
+  // proximité est satisfaite sur place, et nulle part ailleurs.
   add(
     "proximity",
     "Proximité",
-    distance !== null && radius !== null && radius > 0
-      ? 1 - distance / radius
-      : distance !== null && radius === 0
-        ? // Rayon nul : seul le point exact convient, et il a déjà passé le filtre.
-          1
-        : null,
+    distance === null || radius === null
+      ? null
+      : radius > 0
+        ? // `add` borne à [0, 1] : au-delà du rayon, la part tombe à zéro.
+          1 - distance / radius
+        : distance === 0
+          ? 1
+          : 0,
   );
 
   add(
@@ -379,6 +490,7 @@ export function evaluate(
   const totalWeight = dimensions.reduce((sum, d) => sum + d.weight, 0);
   const earned = dimensions.reduce((sum, d) => sum + d.points, 0);
   const raw = totalWeight === 0 ? 0 : (earned / totalWeight) * 100;
+  const band = bandOf(raw);
 
   return {
     compatible: blockers.length === 0,
@@ -392,19 +504,14 @@ export function evaluate(
       required: tally(mission.required_skill_ids),
       desired: tally(mission.desired_skill_ids),
     },
+    band: band?.min ?? null,
+    band_label: band?.label ?? null,
   };
 }
 
 /* ------------------------------------------------------------------ */
 /* Paliers de recherche                                                */
 /* ------------------------------------------------------------------ */
-
-/** Paliers du cahier des charges, du plus exigeant au plus large. */
-export const BANDS = [
-  { min: 70, label: "Très compatibles" },
-  { min: 60, label: "Compatibles" },
-  { min: 50, label: "Envisageables" },
-] as const;
 
 export interface BandedSelection<T> {
   /** Palier retenu, ou null si aucun candidat n'atteint 50. */

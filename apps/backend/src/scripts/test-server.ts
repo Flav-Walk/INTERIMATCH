@@ -46,7 +46,10 @@ await pg.exec(
      -- Recette des conflits d'engagement : deux entreprises distinctes, pour
      -- que la seconde acceptation vienne réellement d'ailleurs.
      ('engage.a.desktop@example.test','E2E'),('engage.a.mobile@example.test','E2E'),
-     ('engage.b.desktop@example.test','E2E'),('engage.b.mobile@example.test','E2E')
+     ('engage.b.desktop@example.test','E2E'),('engage.b.mobile@example.test','E2E'),
+     -- Rapprochement et score : entreprise dédiée, pour que la liste des
+     -- profils correspondants ne dépende d'aucune candidature déposée ailleurs.
+     ('scoring.desktop@example.test','E2E'),('scoring.mobile@example.test','E2E')
    ON CONFLICT DO NOTHING`,
 );
 
@@ -287,6 +290,155 @@ for (const project of projects) {
      VALUES($1,now(),now()+interval '30 days','available')`,
     [engaged.id],
   );
+}
+
+/**
+ * Rapprochement et score — fixture dédiée.
+ *
+ * Trois profils choisis pour que le moteur ait réellement quelque chose à dire,
+ * et pour que chacun illustre un cas distinct du classement :
+ *
+ *  - Adèle, métier principal, toutes les compétences, sur place, expérimentée :
+ *    le haut du palier, et une explication faite de points forts ;
+ *  - Basile, mêmes compétences qu'Adèle mais chef de rang seulement en métier
+ *    secondaire, et un an d'expérience face aux trois demandés : le même écran
+ *    doit savoir nommer ce qui le limite, pas seulement le classer plus bas.
+ *    Ses compétences le maintiennent dans le palier des 70 ; c'est ce qui rend
+ *    l'explication nécessaire, puisque le score seul ne dirait pas où est
+ *    l'écart avec Adèle ;
+ *  - Céleste, parfaitement qualifiée mais à Marseille avec un rayon de 30 km :
+ *    seule la distance l'écarte, donc elle doit rester consultable hors zone.
+ *
+ * L'entreprise est propre à ce scénario. Les fixtures partagées reçoivent des
+ * candidatures déposées par d'autres parcours, et une personne qui a postulé
+ * quitte la liste des profils correspondants : le classement observé ici
+ * dépendrait alors de l'ordre d'exécution des suites.
+ */
+for (const project of projects) {
+  const companySession = await accounts.register(
+    `scoring.${project}@example.test`,
+    "Browser-test-password-42!",
+  );
+  const company = await accounts.authenticate(companySession.access_token);
+  await db.query("UPDATE profiles SET tour_version=1 WHERE id=$1", [
+    company.id,
+  ]);
+
+  const skillId = async (name: string) =>
+    (
+      await db.query<{ id: string }>("SELECT id FROM skills WHERE name=$1", [
+        name,
+      ])
+    ).rows[0].id;
+  const salle = await skillId("Service en salle");
+  const commande = await skillId("Prise de commande");
+  const encaissement = await skillId("Encaissement");
+
+  const missionId = await missions.create(company.id, {
+    title: `Chef de rang événement ${project}`,
+    job: "chef_de_rang",
+    city: "Lyon",
+    postal_code: "69002",
+    headcount: 2,
+    description: "Rapprochement et score : mission de référence.",
+    address: "",
+    pay_amount: null,
+    pay_unit: null,
+    min_years_experience: 3,
+    required_skill_ids: [salle],
+    desired_skill_ids: [commande, encaissement],
+    ...slot(12, 18, 5),
+  });
+  await db.query(
+    "UPDATE missions SET status='open', published_at=now() WHERE id=$1",
+    [missionId],
+  );
+
+  // Les deux projets Playwright partagent ce serveur, et une entreprise voit
+  // TOUS les intérimaires, pas seulement les siens. Deux fixtures homonymes
+  // deviendraient donc indistinguables à l'écran, où seuls le prénom et
+  // l'initiale s'affichent. Chaque projet a donc ses propres prénoms.
+  const named = (desktop: string, mobile: string) =>
+    project === "desktop" ? desktop : mobile;
+
+  const profiles = [
+    {
+      email: `scoring.fort.${project}@example.test`,
+      first_name: named("Adèle", "Alizée"),
+      last_name: "Fontaine",
+      main_job: "chef_de_rang",
+      secondary_jobs: "{}",
+      latitude: 45.75,
+      longitude: 4.85,
+      radius: 40,
+      years: 8,
+      skills: [salle, commande, encaissement],
+    },
+    {
+      email: `scoring.limite.${project}@example.test`,
+      first_name: named("Basile", "Bastien"),
+      last_name: "Marchand",
+      main_job: "serveur",
+      secondary_jobs: "{chef_de_rang}",
+      latitude: 45.75,
+      longitude: 4.85,
+      radius: 40,
+      years: 1,
+      skills: [salle, commande, encaissement],
+    },
+    {
+      // Marseille : environ 275 km de Lyon, hors d'un rayon de 30 km.
+      email: `scoring.loin.${project}@example.test`,
+      first_name: named("Céleste", "Clémence"),
+      last_name: "Arnaud",
+      main_job: "chef_de_rang",
+      secondary_jobs: "{}",
+      latitude: 43.3,
+      longitude: 5.37,
+      radius: 30,
+      years: 9,
+      skills: [salle, commande, encaissement],
+    },
+  ];
+
+  for (const profile of profiles) {
+    const session = await accounts.register(
+      profile.email,
+      "Browser-test-password-42!",
+    );
+    const account = await accounts.authenticate(session.access_token);
+    await db.query(
+      `UPDATE profiles
+          SET first_name=$2,last_name=$3,onboarding_completed=true,tour_version=1
+        WHERE id=$1`,
+      [account.id, profile.first_name, profile.last_name],
+    );
+    await db.query(
+      `INSERT INTO worker_profiles(
+         profile_id,city,postal_code,latitude,longitude,mobility_radius_km,
+         main_job,secondary_jobs,years_experience,open_to_missions)
+       VALUES($1,'Lyon','69002',$2,$3,$4,$5,$6::text[],$7,true)`,
+      [
+        account.id,
+        profile.latitude,
+        profile.longitude,
+        profile.radius,
+        profile.main_job,
+        profile.secondary_jobs,
+        profile.years,
+      ],
+    );
+    for (const skill of profile.skills)
+      await db.query(
+        "INSERT INTO worker_skills(profile_id,skill_id) VALUES($1,$2)",
+        [account.id, skill],
+      );
+    await db.query(
+      `INSERT INTO availabilities(profile_id,starts_at,ends_at,status)
+       VALUES($1,now(),now()+interval '60 days','available')`,
+      [account.id],
+    );
+  }
 }
 
 createApp(

@@ -68,6 +68,11 @@ const publicMatch = (match: MatchResult): PublicMatch => ({
   distance_km: match.distance_km,
   outside_zone: match.outside_zone,
   skills: match.skills,
+  // Le palier, pas de quoi le recalculer. C'est la conclusion du moteur qui
+  // traverse la frontière ; `raw_score`, qui permettrait de la refaire, reste
+  // en deçà.
+  band: match.band,
+  band_label: match.band_label,
 });
 
 /** Ce qu'une entreprise apprend d'un candidat avant toute mise en relation. */
@@ -335,11 +340,17 @@ export class MatchingService {
     // fondé. L'écran a déjà de quoi dire quoi faire : compléter le profil.
     if (!criteria) return { matches: [], excluded: { total: 0, reasons: {} } };
 
+    // Le résultat complet est conservé le temps du classement, puis seulement
+    // réduit à sa forme publique.
+    //
+    // Trier sur le score arrondi perdait la différence réelle : deux missions à
+    // 69,6 % et 69,5 % s'affichent toutes deux « 70 % » et devenaient donc
+    // équivalentes pour le tri, qui retombait alors sur l'ordre où la base les
+    // avait rendues — c'est-à-dire sur rien de garanti. L'ordre pouvait changer
+    // d'une requête à l'autre sans qu'aucune donnée n'ait bougé.
     const evaluated = open.map((mission) => ({
       mission,
-      match: publicMatch(
-        evaluate(criteriaOf(mission), elsewhere(criteria, mission.id)),
-      ),
+      match: evaluate(criteriaOf(mission), elsewhere(criteria, mission.id)),
     }));
 
     const excluded: Exclusions = { total: 0, reasons: {} };
@@ -353,7 +364,20 @@ export class MatchingService {
     return {
       matches: evaluated
         .filter((entry) => entry.match.compatible)
-        .sort((a, b) => b.match.score - a.match.score),
+        .sort(
+          (a, b) =>
+            b.match.raw_score - a.match.raw_score ||
+            // Ex æquo réels : l'identifiant départage, comme dans
+            // `selectByBands`. Un classement qui changerait tout seul ne serait
+            // pas un classement, et aucun test ne pourrait l'affirmer stable.
+            a.mission.id.localeCompare(b.mission.id),
+        )
+        // La réduction publique vient APRÈS le tri : `raw_score` a servi, il ne
+        // sort pas.
+        .map((entry) => ({
+          mission: entry.mission,
+          match: publicMatch(entry.match),
+        })),
       excluded,
     };
   }
