@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  missionGroup,
+  missionGroupValues,
   missionLifecycle,
   missionPhase,
   notOpenToWorkers,
@@ -177,6 +179,7 @@ describe("lecture complète servie au frontend", () => {
       missionLifecycle(mission("open", 24, 30), capacity(3, 1), NOW),
     ).toEqual({
       phase: "upcoming",
+      group: "open",
       recruiting: true,
       recruiting_blocked: null,
     });
@@ -189,6 +192,7 @@ describe("lecture complète servie au frontend", () => {
       missionLifecycle(mission("open", 24, 30), capacity(2, 2), NOW),
     ).toEqual({
       phase: "upcoming",
+      group: "filled",
       recruiting: false,
       recruiting_blocked: "full",
     });
@@ -199,6 +203,7 @@ describe("lecture complète servie au frontend", () => {
       missionLifecycle(mission("cancelled", 24, 30), capacity(2, 1), NOW),
     ).toEqual({
       phase: "cancelled",
+      group: "cancelled",
       recruiting: false,
       recruiting_blocked: "cancelled",
     });
@@ -209,8 +214,89 @@ describe("lecture complète servie au frontend", () => {
       missionLifecycle(mission("open", -10, -4), capacity(2, 2), NOW),
     ).toEqual({
       phase: "completed",
+      group: "completed",
       recruiting: false,
       recruiting_blocked: "ended",
     });
+  });
+});
+
+/**
+ * Regroupement pour la liste entreprise.
+ *
+ * Les onglets filtraient sur `missions.status`. Comme `filled` et `completed`
+ * ne sont jamais ecrits, une mission reellement pourvue restait `open` : elle
+ * affichait « Pourvue » sur sa fiche et n apparaissait dans AUCUN onglet
+ * correspondant. L onglet « Pourvues » etait vide par construction.
+ */
+describe("regroupement des missions d une entreprise", () => {
+  it("range une mission publiee avec de la place dans les publiees", () => {
+    expect(missionGroup(mission("open", 24, 30), capacity(3, 1), NOW)).toBe(
+      "open",
+    );
+  });
+
+  it("range une mission pourvue dans les pourvues, sans toucher au statut", () => {
+    // LE CAS DE LA REVIEW. Le statut ecrit reste `open` — etre pourvue decrit le
+    // recrutement, pas le cycle de vie — et pourtant la mission doit se ranger
+    // dans « Pourvues ».
+    const pleine = mission("open", 24, 30);
+    expect(pleine.status).toBe("open");
+    expect(missionGroup(pleine, capacity(2, 2), NOW)).toBe("filled");
+  });
+
+  it("range une mission passee dans les terminees", () => {
+    expect(missionGroup(mission("open", -10, -4), capacity(2, 0), NOW)).toBe(
+      "completed",
+    );
+  });
+
+  it("laisse le calendrier primer sur le recrutement", () => {
+    // Une mission complete ET passee est « terminee » : ce qui s est passe prime
+    // sur la facon dont elle s est remplie. Meme ordre que `missionPhase`.
+    expect(missionGroup(mission("open", -10, -4), capacity(2, 2), NOW)).toBe(
+      "completed",
+    );
+  });
+
+  it("laisse l intention primer sur tout le reste", () => {
+    expect(
+      missionGroup(mission("cancelled", -10, -4), capacity(2, 2), NOW),
+    ).toBe("cancelled");
+    expect(missionGroup(mission("draft", -10, -4), capacity(1, 0), NOW)).toBe(
+      "draft",
+    );
+  });
+
+  it("n attribue jamais deux groupes a la meme mission", () => {
+    // L exclusivite est ce qui permet aux compteurs d etre la taille reelle des
+    // listes affichees. Un groupe unique par mission, toujours defini.
+    const cas: [MissionTiming, MissionCapacity][] = [
+      [mission("open", 24, 30), capacity(3, 0)],
+      [mission("open", 24, 30), capacity(3, 3)],
+      [mission("open", -1, 5), capacity(2, 2)],
+      [mission("open", -10, -4), capacity(1, 1)],
+      [mission("draft", 24, 30), capacity(1, 0)],
+      [mission("cancelled", 24, 30), capacity(1, 1)],
+    ];
+    for (const [cible, places] of cas) {
+      const groupe = missionGroup(cible, places, NOW);
+      expect(missionGroupValues).toContain(groupe);
+    }
+  });
+
+  it("accorde toujours le groupe avec ce que la fiche affiche", () => {
+    // L invariant qui interdit la contradiction signalee : une mission rangee
+    // dans « Pourvues » ne doit pas se declarer encore recrutante ailleurs.
+    const cas: [MissionTiming, MissionCapacity][] = [
+      [mission("open", 24, 30), capacity(2, 2)],
+      [mission("open", 24, 30), capacity(2, 1)],
+      [mission("open", -10, -4), capacity(2, 2)],
+    ];
+    for (const [cible, places] of cas) {
+      const lecture = missionLifecycle(cible, places, NOW);
+      if (lecture.group === "filled") expect(lecture.recruiting).toBe(false);
+      if (lecture.recruiting) expect(lecture.group).toBe("open");
+    }
   });
 });

@@ -1,7 +1,7 @@
 import type { Db } from "../db.js";
 import { HttpError } from "../errors.js";
 import { capacityOf } from "../missions/service.js";
-import { missionPhase, notOpenToWorkers } from "../missions/lifecycle.js";
+import { missionLifecycle, notOpenToWorkers } from "../missions/lifecycle.js";
 import type { MissionStatus } from "../missions/schemas.js";
 import type { BusinessEventPublisher } from "../events/dispatcher.js";
 import { loadApplicationEventData } from "../events/payloads.js";
@@ -24,6 +24,7 @@ interface WorkerApplicationRow extends ApplicationRow {
   city: string;
   postal_code: string;
   mission_status: MissionStatus;
+  headcount: number;
   mission_filled: number;
   establishment_name: string | null;
 }
@@ -97,6 +98,41 @@ const applicationFields =
  */
 const acceptedOnMission = `(SELECT count(*) FROM applications af
     WHERE af.mission_id=m.id AND af.status='accepted')::int AS mission_filled`;
+
+/**
+ * Ce qu'une candidature doit dire de la mission qu'elle vise.
+ *
+ * CE QUI MANQUAIT. Une candidature en attente sur une mission dont tous les
+ * postes viennent d'être pourvus s'affichait exactement comme une candidature
+ * encore jouable : « en attente », indéfiniment. L'entreprise, elle, voyait
+ * déjà qu'elle ne pouvait plus la retenir. Les deux côtés décrivaient la même
+ * situation différemment, et c'est l'intérimaire qui restait dans le flou.
+ *
+ * La candidature n'est pas modifiée pour autant — voir `decide` : une place
+ * prise ailleurs n'est pas un refus de l'entreprise, et l'écrire serait lui
+ * attribuer une décision qu'elle n'a pas prise. C'est le contexte qui manquait,
+ * pas le statut.
+ *
+ * `missionLifecycle` est réutilisée telle quelle : `phase`, `recruiting` et
+ * `recruiting_blocked` ont ici exactement le sens qu'ils ont sur une mission
+ * servie par `MissionService`. Deux vocabulaires pour une même notion auraient
+ * fini par diverger.
+ */
+const missionContext = (row: {
+  status: MissionStatus;
+  starts_at: Date | string;
+  ends_at: Date | string;
+  headcount: number;
+  filled: number;
+}) => {
+  const capacity = {
+    headcount: row.headcount,
+    filled: row.filled,
+    remaining: Math.max(0, row.headcount - row.filled),
+    full: row.filled >= row.headcount,
+  };
+  return { capacity, ...missionLifecycle(row, capacity, new Date()) };
+};
 
 const databaseCode = (error: unknown) =>
   typeof error === "object" && error !== null && "code" in error
@@ -226,7 +262,7 @@ export class ApplicationService {
     const { rows } = await this.db.query<WorkerApplicationRow>(
       `SELECT ${applicationFields},
               m.title,m.job,m.starts_at,m.ends_at,m.city,m.postal_code,
-              m.status AS mission_status,${acceptedOnMission},
+              m.status AS mission_status,m.headcount,${acceptedOnMission},
               c.establishment_name
          FROM applications a
          JOIN missions m ON m.id=a.mission_id
@@ -250,15 +286,15 @@ export class ApplicationService {
         postal_code: row.postal_code,
         status: row.mission_status,
         // L'intérimaire doit pouvoir distinguer « ma mission est annulée » de
-        // « ma mission est passée » sans rejouer la règle dans le navigateur.
-        phase: missionPhase(
-          {
-            status: row.mission_status,
-            starts_at: row.starts_at,
-            ends_at: row.ends_at,
-          },
-          row.mission_filled,
-        ),
+        // « ma mission est passée » — et de « tous les postes sont pris » —
+        // sans rejouer aucune de ces règles dans le navigateur.
+        ...missionContext({
+          status: row.mission_status,
+          starts_at: row.starts_at,
+          ends_at: row.ends_at,
+          headcount: row.headcount,
+          filled: row.mission_filled,
+        }),
       },
       company: { establishment_name: row.establishment_name },
     }));
@@ -323,15 +359,14 @@ export class ApplicationService {
           ends_at: row.mission_ends_at,
           city: row.mission_city,
           status: row.mission_status,
-          phase: missionPhase(
-            {
-              status: row.mission_status,
-              starts_at: row.mission_starts_at,
-              ends_at: row.mission_ends_at,
-            },
-            row.mission_filled,
-          ),
           headcount: row.headcount,
+          ...missionContext({
+            status: row.mission_status,
+            starts_at: row.mission_starts_at,
+            ends_at: row.mission_ends_at,
+            headcount: row.headcount,
+            filled: row.mission_filled,
+          }),
         },
       })),
       counts,

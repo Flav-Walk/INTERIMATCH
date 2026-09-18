@@ -3,7 +3,8 @@ import { HttpError } from "../errors.js";
 import type { BusinessEventPublisher } from "../events/dispatcher.js";
 import { loadMissionEventData } from "../events/payloads.js";
 import type { Geocoder } from "../worker/geocode.js";
-import { missionLifecycle } from "./lifecycle.js";
+import { missionGroup, missionLifecycle } from "./lifecycle.js";
+import type { MissionGroup } from "./lifecycle.js";
 import {
   brokenRule,
   type Mission,
@@ -16,9 +17,11 @@ import {
 } from "./schemas.js";
 
 export {
+  missionGroup,
   missionLifecycle,
   missionPhase,
   notOpenToWorkers,
+  type MissionGroup,
   type MissionLifecycle,
   type MissionPhase,
   type NotOpenReason,
@@ -238,15 +241,51 @@ export class MissionService {
     return this.attachCapacity(await this.attachSkills(rows));
   }
 
-  /** Répartition par statut, pour les compteurs des filtres. */
+  /**
+   * Répartition par onglet, pour les compteurs des filtres.
+   *
+   * COMPTAIT AUTREFOIS PAR STATUT ÉCRIT, et se trompait donc exactement là où
+   * les onglets se trompaient : `filled` et `completed` n'étant jamais écrits,
+   * leurs compteurs affichaient zéro en permanence, quel que soit le nombre de
+   * missions réellement pourvues ou passées.
+   *
+   * Le regroupement est désormais celui de `missionGroup`, la même fonction que
+   * celle posée sur chaque mission servie. Compteur et liste ne peuvent donc
+   * plus diverger : ils répondent à la même question par le même chemin.
+   *
+   * Le regroupement se fait en mémoire plutôt qu'en SQL. La règle croise trois
+   * dimensions dont l'une, la capacité, vit dans une autre table ; l'écrire une
+   * seconde fois en SQL, c'est accepter qu'elle diverge. Le volume d'un POC ne
+   * justifie pas ce risque, et l'instant de lecture est fixé une fois pour
+   * toutes.
+   */
   async counts(companyId: string) {
-    const { rows } = await this.db.query<{ status: MissionStatus; n: string }>(
-      "SELECT status, count(*)::text AS n FROM missions WHERE company_id=$1 GROUP BY status",
+    const { rows } = await this.db.query<{
+      status: MissionStatus;
+      starts_at: string | Date;
+      ends_at: string | Date;
+      headcount: number;
+      filled: number;
+    }>(
+      `SELECT m.status, m.starts_at, m.ends_at, m.headcount,
+              count(a.id) FILTER (WHERE a.status = 'accepted')::int AS filled
+         FROM missions m
+         LEFT JOIN applications a ON a.mission_id = m.id
+        WHERE m.company_id = $1
+        GROUP BY m.id, m.status, m.starts_at, m.ends_at, m.headcount`,
       [companyId],
     );
-    return Object.fromEntries(
-      rows.map((r) => [r.status, Number(r.n)]),
-    ) as Partial<Record<MissionStatus, number>>;
+    const now = new Date();
+    const tally: Partial<Record<MissionGroup, number>> = {};
+    for (const row of rows) {
+      const group = missionGroup(
+        row,
+        { full: row.filled >= row.headcount },
+        now,
+      );
+      tally[group] = (tally[group] ?? 0) + 1;
+    }
+    return tally;
   }
 
   async get(companyId: string, missionId: string) {
