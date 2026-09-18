@@ -79,6 +79,17 @@ describe("événements métier du profil intérimaire", () => {
       "worker.profile.updated",
       "worker.onboarding.completed",
     ]);
+    expect(publish).toHaveBeenNthCalledWith(2, "worker.onboarding.completed", {
+      worker_id: workerId,
+      worker: {
+        id: workerId,
+        first_name: "Jimmy",
+        last_name: "Martin",
+        email: "events@example.test",
+        main_job: "serveur",
+        city: "Lyon",
+      },
+    });
     publish.mockClear();
     await workers.updateAvailability(workerId, created.id, {
       status: "available",

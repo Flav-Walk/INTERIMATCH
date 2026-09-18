@@ -1,6 +1,7 @@
 import type { Db } from "../db.js";
 import { HttpError } from "../errors.js";
 import type { BusinessEventPublisher } from "../events/dispatcher.js";
+import { loadApplicationEventData } from "../events/payloads.js";
 import type { ApplicationStatus } from "./schemas.js";
 
 interface ApplicationRow {
@@ -96,7 +97,7 @@ export class ApplicationService {
    * publiée, non terminée et du même univers réel/démo que son compte.
    */
   async create(workerId: string, missionId: string) {
-    const application = await this.db.transaction(async (db) => {
+    const outcome = await this.db.transaction(async (db) => {
       const mission = await db.query<{
         id: string;
         headcount: number;
@@ -144,7 +145,7 @@ export class ApplicationService {
         );
 
       try {
-        return (
+        const application = (
           await db.query<ApplicationRow>(
             `INSERT INTO applications(mission_id,worker_id)
              VALUES($1,$2)
@@ -152,6 +153,10 @@ export class ApplicationService {
             [missionId, workerId],
           )
         ).rows[0];
+        return {
+          application,
+          eventData: await loadApplicationEventData(db, application.id),
+        };
       } catch (error) {
         if (databaseCode(error) === "23505")
           throw new HttpError(
@@ -163,10 +168,8 @@ export class ApplicationService {
       }
     });
     // L'identifiant n'est publié qu'après le COMMIT de la nouvelle candidature.
-    this.events?.publish("application.created", {
-      application_id: application.id,
-    });
-    return application;
+    this.events?.publish("application.created", outcome.eventData);
+    return outcome.application;
   }
 
   async getForWorkerMission(workerId: string, missionId: string) {
@@ -325,7 +328,7 @@ export class ApplicationService {
     applicationId: string,
     status: "accepted" | "rejected",
   ) {
-    const application = await this.db.transaction(async (db) => {
+    const outcome = await this.db.transaction(async (db) => {
       const mission = (
         await db.query<{
           headcount: number;
@@ -423,14 +426,15 @@ export class ApplicationService {
           [applicationId, status],
         )
       ).rows[0];
-      return this.toCompanyApplication({ ...application, ...updated });
+      return {
+        application: this.toCompanyApplication({ ...application, ...updated }),
+        eventData: await loadApplicationEventData(db, applicationId),
+      };
     });
     // Une seule transition est autorisée depuis pending. L'émission après
     // COMMIT garantit qu'un refus métier ou un rollback ne part jamais vers n8n.
-    this.events?.publish(`application.${status}`, {
-      application_id: application.id,
-    });
-    return application;
+    this.events?.publish(`application.${status}`, outcome.eventData);
+    return outcome.application;
   }
 
   private async assertOwnedMission(

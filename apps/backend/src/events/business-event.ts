@@ -10,16 +10,131 @@ export const businessEventTypes = [
   "application.rejected",
 ] as const;
 
-export const businessEventSchema = z
+const workerSchema = z
   .object({
-    event_id: z.uuid(),
-    event_type: z.enum(businessEventTypes),
-    occurred_at: z.iso.datetime(),
-    schema_version: z.literal("1.0"),
-    idempotency_key: z.string().min(1),
-    data: z.record(z.string(), z.unknown()),
+    id: z.uuid(),
+    first_name: z.string(),
+    last_name: z.string(),
+    email: z.email(),
+    main_job: z.string().nullable(),
+    city: z.string().nullable(),
   })
   .strict();
+
+const companySchema = z
+  .object({
+    id: z.uuid(),
+    email: z.email(),
+    legal_name: z.string().nullable(),
+    establishment_name: z.string().nullable(),
+    sector: z.string().nullable(),
+    phone: z.string().nullable(),
+  })
+  .strict();
+
+const missionSchema = z
+  .object({
+    id: z.uuid(),
+    title: z.string(),
+    description: z.string(),
+    status: z.enum(["draft", "open", "filled", "completed", "cancelled"]),
+    starts_at: z.iso.datetime(),
+    ends_at: z.iso.datetime(),
+    address: z.string(),
+    city: z.string(),
+    postal_code: z.string(),
+    job: z.string(),
+    headcount: z.number().int().positive(),
+    pay_amount: z.string().nullable(),
+    pay_unit: z.string().nullable(),
+    published_at: z.iso.datetime().nullable(),
+    skills: z.array(
+      z
+        .object({
+          id: z.uuid(),
+          name: z.string(),
+          required: z.boolean(),
+        })
+        .strict(),
+    ),
+  })
+  .strict();
+
+const applicationDataSchema = (status: "pending" | "accepted" | "rejected") =>
+  z
+    .object({
+      application_id: z.uuid(),
+      application: z
+        .object({
+          id: z.uuid(),
+          status: z.literal(status),
+          created_at: z.iso.datetime(),
+          updated_at: z.iso.datetime(),
+        })
+        .strict(),
+      worker: workerSchema,
+      mission: missionSchema,
+      company: companySchema,
+    })
+    .strict();
+
+const envelope = {
+  event_id: z.uuid(),
+  occurred_at: z.iso.datetime(),
+  schema_version: z.literal("1.0"),
+  idempotency_key: z.string().min(1),
+};
+
+export const businessEventSchema = z.discriminatedUnion("event_type", [
+  z
+    .object({
+      ...envelope,
+      event_type: z.literal("worker.profile.updated"),
+      data: z.object({ worker_id: z.uuid() }).strict(),
+    })
+    .strict(),
+  z
+    .object({
+      ...envelope,
+      event_type: z.literal("worker.onboarding.completed"),
+      data: z.object({ worker_id: z.uuid(), worker: workerSchema }).strict(),
+    })
+    .strict(),
+  z
+    .object({
+      ...envelope,
+      event_type: z.literal("mission.published"),
+      data: z
+        .object({
+          mission_id: z.uuid(),
+          mission: missionSchema,
+          company: companySchema,
+        })
+        .strict(),
+    })
+    .strict(),
+  z
+    .object({
+      ...envelope,
+      event_type: z.literal("application.created"),
+      data: applicationDataSchema("pending"),
+    })
+    .strict(),
+  z
+    .object({
+      ...envelope,
+      event_type: z.literal("application.accepted"),
+      data: applicationDataSchema("accepted"),
+    })
+    .strict(),
+  z
+    .object({
+      ...envelope,
+      event_type: z.literal("application.rejected"),
+      data: applicationDataSchema("rejected"),
+    })
+    .strict(),
+]);
 
 export type BusinessEvent = z.infer<typeof businessEventSchema>;
 export type BusinessEventType = BusinessEvent["event_type"];
@@ -38,7 +153,7 @@ export function createBusinessEvent(
     schema_version: "1.0",
     idempotency_key:
       options.idempotencyKey ??
-      `${eventType}:${String(data.worker_id ?? eventId)}:${eventId}`,
+      `${eventType}:${String(data.worker_id ?? data.mission_id ?? data.application_id ?? eventId)}:${eventId}`,
     data,
   });
 }
