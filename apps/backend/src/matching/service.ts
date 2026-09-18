@@ -411,13 +411,16 @@ export class MatchingService {
         outside_zone: [],
         inactive,
       };
+    // Mission complète : le rapprochement s'arrête, mais la mission reste
+    // publiée et active. Le motif le dit — `closed` laisserait croire qu'elle
+    // a été fermée, alors qu'elle a simplement trouvé tout son monde.
     if (!(await this.missions.hasCapacity(mission.id)))
       return {
         band: null,
         band_label: null,
         candidates: [],
         outside_zone: [],
-        inactive: "closed",
+        inactive: "full",
       };
 
     const criteria = criteriaOf(mission);
