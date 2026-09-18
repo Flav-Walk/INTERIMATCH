@@ -1211,3 +1211,223 @@ describe("candidatures - aucun evenement sur decision refusee", () => {
     expect(publish).not.toHaveBeenCalled();
   });
 });
+
+/**
+ * Engagement d un interimaire : la frontiere complete.
+ *
+ * Une candidature acceptee reserve un creneau. Personne ne peut etre a deux
+ * endroits a la fois, et aucune entreprise ne doit pouvoir le lui imposer —
+ * meme en acceptant au meme instant qu une autre.
+ *
+ * Convention de bornes : [debut, fin). Deux missions qui se touchent bout a
+ * bout se cumulent — service du midi puis service du soir, quotidien du metier.
+ */
+describe("engagement - frontiere temporelle complete", () => {
+  const applyTo = async (missionId: string, token: string) =>
+    (
+      await authenticated(
+        request(app).post("/api/v1/workers/me/applications"),
+        token,
+      ).send({ mission_id: missionId })
+    ).body.id as string;
+
+  /**
+   * Engage l interimaire sur une premiere mission, puis tente de l engager sur
+   * une seconde. Renvoie la reponse de la seconde tentative.
+   */
+  const engageThen = async (
+    email: string,
+    first: { day: number; hour: number; hours: number },
+    second: { day: number; hour: number; hours: number },
+  ) => {
+    const a = await publishedMission(
+      `Engage A ${email}`,
+      slotAt(first.day, first.hour, first.hours),
+    );
+    const b = await publishedMission(
+      `Engage B ${email}`,
+      slotAt(second.day, second.hour, second.hours),
+    );
+    const worker = await newWorker(email);
+    const ia = await applyTo(a, worker.token);
+    const ib = await applyTo(b, worker.token);
+    expect((await decideAs(a, ia, "accepted")).status).toBe(200);
+    return { worker, a, b, ib, second: await decideAs(b, ib, "accepted") };
+  };
+
+  it("accepte un interimaire sans aucun engagement", async () => {
+    const mission = await publishedMission("Engage libre", slotAt(140, 8, 6));
+    const worker = await newWorker("eng.libre@example.test");
+    const application = await applyTo(mission, worker.token);
+    expect((await decideAs(mission, application, "accepted")).status).toBe(200);
+  });
+
+  it("accepte une seconde mission sans chevauchement", async () => {
+    const { second } = await engageThen(
+      "eng.disjoint@example.test",
+      { day: 141, hour: 8, hours: 4 },
+      { day: 142, hour: 8, hours: 4 },
+    );
+    expect(second.status).toBe(200);
+  });
+
+  it("accepte une mission qui commence exactement a la fin de l engagement", async () => {
+    // [10h, 16h) puis [16h, 22h) : aucune minute reclamee deux fois.
+    const { second } = await engageThen(
+      "eng.apres@example.test",
+      { day: 143, hour: 10, hours: 6 },
+      { day: 143, hour: 16, hours: 6 },
+    );
+    expect(second.status).toBe(200);
+  });
+
+  it("accepte une mission qui se termine exactement au debut de l engagement", async () => {
+    // Le symetrique : l engagement est pris sur le service du soir, la seconde
+    // mission est celle du midi.
+    const { second } = await engageThen(
+      "eng.avant@example.test",
+      { day: 144, hour: 16, hours: 6 },
+      { day: 144, hour: 10, hours: 6 },
+    );
+    expect(second.status).toBe(200);
+  });
+
+  it("refuse un chevauchement partiel", async () => {
+    const { second } = await engageThen(
+      "eng.partiel@example.test",
+      { day: 145, hour: 8, hours: 6 },
+      { day: 145, hour: 10, hours: 6 },
+    );
+    expect(second.status).toBe(409);
+    expect(second.body.error.code).toBe("WORKER_ENGAGED");
+  });
+
+  it("refuse une mission entierement contenue dans l engagement", async () => {
+    const { second } = await engageThen(
+      "eng.inclus@example.test",
+      { day: 146, hour: 6, hours: 12 },
+      { day: 146, hour: 10, hours: 2 },
+    );
+    expect(second.status).toBe(409);
+    expect(second.body.error.code).toBe("WORKER_ENGAGED");
+  });
+
+  it("refuse une mission qui englobe entierement l engagement", async () => {
+    const { second } = await engageThen(
+      "eng.englobe@example.test",
+      { day: 147, hour: 10, hours: 2 },
+      { day: 147, hour: 6, hours: 12 },
+    );
+    expect(second.status).toBe(409);
+  });
+
+  it("refuse un intervalle strictement identique", async () => {
+    const { second } = await engageThen(
+      "eng.identique@example.test",
+      { day: 148, hour: 9, hours: 6 },
+      { day: 148, hour: 9, hours: 6 },
+    );
+    expect(second.status).toBe(409);
+  });
+
+  it("ne laisse aucune trace apres un refus pour conflit", async () => {
+    // La regle exige un etat strictement inchange : ni candidature modifiee,
+    // ni poste consomme sur la mission refusee.
+    const { b, ib, second } = await engageThen(
+      "eng.intact@example.test",
+      { day: 149, hour: 8, hours: 6 },
+      { day: 149, hour: 10, hours: 6 },
+    );
+    expect(second.status).toBe(409);
+
+    const { rows } = await db.query<{ status: string }>(
+      "SELECT status FROM applications WHERE id=$1",
+      [ib],
+    );
+    expect(rows[0].status).toBe("pending");
+
+    const capacity = (
+      await authenticated(request(app).get(`/api/v1/missions/${b}`), ownerToken)
+    ).body.capacity;
+    expect(capacity.filled).toBe(0);
+    expect(capacity.full).toBe(false);
+  });
+
+  it("ignore une candidature refusee ailleurs", async () => {
+    const a = await publishedMission("Conflit refuse A", slotAt(150, 8, 6));
+    const b = await publishedMission("Conflit refuse B", slotAt(150, 10, 6));
+    const worker = await newWorker("eng.refusee@example.test");
+    const ia = await applyTo(a, worker.token);
+    const ib = await applyTo(b, worker.token);
+    // La premiere est refusee : elle ne reserve rien.
+    expect((await decideAs(a, ia, "rejected")).status).toBe(200);
+    expect((await decideAs(b, ib, "accepted")).status).toBe(200);
+  });
+
+  it("ignore une candidature encore en attente ailleurs", async () => {
+    const a = await publishedMission("Conflit pending A", slotAt(151, 8, 6));
+    const b = await publishedMission("Conflit pending B", slotAt(151, 10, 6));
+    const worker = await newWorker("eng.pending@example.test");
+    await applyTo(a, worker.token);
+    const ib = await applyTo(b, worker.token);
+    // Rien n est decide sur A : seule une acceptation reserve un creneau.
+    expect((await decideAs(b, ib, "accepted")).status).toBe(200);
+  });
+
+  it("n oppose jamais l engagement d une autre personne", async () => {
+    const a = await publishedMission("Conflit autrui A", slotAt(152, 8, 6));
+    const b = await publishedMission("Conflit autrui B", slotAt(152, 10, 6));
+    const un = await newWorker("eng.autrui.un@example.test");
+    const deux = await newWorker("eng.autrui.deux@example.test");
+    const ia = await applyTo(a, un.token);
+    const ib = await applyTo(b, deux.token);
+    expect((await decideAs(a, ia, "accepted")).status).toBe(200);
+    expect((await decideAs(b, ib, "accepted")).status).toBe(200);
+  });
+
+  it("garantit l absence de double engagement en base, hors du service", async () => {
+    // Le point decisif. Deux entreprises acceptant simultanement la meme
+    // personne sur deux missions differentes verrouillent deux lignes mission
+    // differentes : rien ne les sérialise. Seule la base peut trancher.
+    const a = await publishedMission("SQL engage A", slotAt(160, 8, 6));
+    const b = await publishedMission("SQL engage B", slotAt(160, 10, 6));
+    const worker = await newWorker("eng.sql@example.test");
+    const ia = await applyTo(a, worker.token);
+    const ib = await applyTo(b, worker.token);
+    expect((await decideAs(a, ia, "accepted")).status).toBe(200);
+
+    await expect(
+      db.query("UPDATE applications SET status='accepted' WHERE id=$1", [ib]),
+    ).rejects.toThrow();
+
+    const { rows } = await db.query<{ n: string }>(
+      "SELECT count(*)::text AS n FROM applications WHERE id=$1 AND status='accepted'",
+      [ib],
+    );
+    expect(Number(rows[0].n)).toBe(0);
+  });
+
+  it("laisse la base accepter deux creneaux adjacents", async () => {
+    // Le declencheur ne doit pas etre plus strict que la regle metier.
+    const a = await publishedMission("SQL adjacent A", slotAt(161, 10, 6));
+    const b = await publishedMission("SQL adjacent B", slotAt(161, 16, 6));
+    const worker = await newWorker("eng.sql.adjacent@example.test");
+    const ia = await applyTo(a, worker.token);
+    const ib = await applyTo(b, worker.token);
+    expect((await decideAs(a, ia, "accepted")).status).toBe(200);
+    await expect(
+      db.query("UPDATE applications SET status='accepted' WHERE id=$1", [ib]),
+    ).resolves.toBeTruthy();
+  });
+
+  it("libere le creneau quand la mission engageante est annulee", async () => {
+    const a = await publishedMission("SQL annulee A", slotAt(162, 8, 6));
+    const b = await publishedMission("SQL annulee B", slotAt(162, 10, 6));
+    const worker = await newWorker("eng.sql.annule@example.test");
+    const ia = await applyTo(a, worker.token);
+    const ib = await applyTo(b, worker.token);
+    await decideAs(a, ia, "accepted");
+    await db.query("UPDATE missions SET status='cancelled' WHERE id=$1", [a]);
+    expect((await decideAs(b, ib, "accepted")).status).toBe(200);
+  });
+});

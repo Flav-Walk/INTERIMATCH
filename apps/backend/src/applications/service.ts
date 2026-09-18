@@ -387,6 +387,23 @@ export class ApplicationService {
         );
 
       if (status === "accepted") {
+        // Verrou sur la personne, avant de chercher un conflit.
+        //
+        // Le verrou pris plus haut porte sur la mission : il empêche deux
+        // acceptations concurrentes de dépasser la capacité **de cette
+        // mission**. Il ne dit rien de ce qui se décide au même instant sur une
+        // autre mission pour la même personne — deux entreprises verrouillent
+        // alors deux lignes différentes et ne se voient pas.
+        //
+        // Celui-ci sérialise toutes les acceptations visant cet intérimaire.
+        // L'ordre reste mission puis personne, partout, donc sans interblocage.
+        // Le déclencheur `applications_engagement` tient la même garantie en
+        // base ; ce verrou-ci existe pour que la seconde entreprise reçoive un
+        // refus métier lisible plutôt qu'une erreur du moteur SQL.
+        await db.query("SELECT 1 FROM profiles WHERE id=$1 FOR UPDATE", [
+          application.worker_id,
+        ]);
+
         const taken = Number(
           (
             await db.query<{ n: string }>(
@@ -427,14 +444,12 @@ export class ApplicationService {
           );
       }
 
-      const updated = (
-        await db.query<ApplicationRow>(
-          `UPDATE applications SET status=$2
-            WHERE id=$1
-            RETURNING id,mission_id,worker_id,status,created_at,updated_at`,
-          [applicationId, status],
-        )
-      ).rows[0];
+      const updated = await this.write(
+        db,
+        applicationId,
+        status,
+        mission.headcount,
+      );
       return {
         application: this.toCompanyApplication({ ...application, ...updated }),
         eventData: await loadApplicationEventData(db, applicationId),
@@ -444,6 +459,49 @@ export class ApplicationService {
     // COMMIT garantit qu'un refus métier ou un rollback ne part jamais vers n8n.
     this.events?.publish(`application.${status}`, outcome.eventData);
     return outcome.application;
+  }
+
+  /**
+   * Écrit la décision, en traduisant les refus de la base en refus métier.
+   *
+   * Les deux déclencheurs — capacité et engagement — sont la garantie réelle :
+   * ils tiennent même pour une écriture qui ne passerait pas par ce service. Le
+   * service les précède par ses propres contrôles, si bien qu'en temps normal
+   * ils ne parlent jamais. Mais s'ils parlent, l'appelant doit lire un motif,
+   * pas une erreur de contrainte.
+   */
+  private async write(
+    db: Db,
+    applicationId: string,
+    status: "accepted" | "rejected",
+    headcount: number,
+  ) {
+    try {
+      return (
+        await db.query<ApplicationRow>(
+          `UPDATE applications SET status=$2
+            WHERE id=$1
+            RETURNING id,mission_id,worker_id,status,created_at,updated_at`,
+          [applicationId, status],
+        )
+      ).rows[0];
+    } catch (error) {
+      if (databaseCode(error) !== "23514") throw error;
+      const message = String((error as { message?: unknown }).message ?? "");
+      if (message.includes("already engaged"))
+        throw new HttpError(
+          409,
+          "WORKER_ENGAGED",
+          "Cette personne a accepté une autre mission sur ce créneau.",
+        );
+      throw new HttpError(
+        409,
+        "MISSION_FULL",
+        headcount > 1
+          ? `Les ${headcount} postes de cette mission sont déjà pourvus.`
+          : "Le poste de cette mission est déjà pourvu.",
+      );
+    }
   }
 
   private async assertOwnedMission(
