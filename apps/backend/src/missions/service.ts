@@ -375,23 +375,9 @@ export class MissionService {
     )[0];
   }
 
-  /** Une mission pleine reste dans l'historique entreprise, mais sort du matching. */
   /** Capacité d'une mission isolée. Voir `capacityOf`. */
   capacity(missionId: string) {
     return capacityOf(this.db, missionId);
-  }
-
-  async hasCapacity(missionId: string) {
-    const { rows } = await this.db.query<{ available: boolean }>(
-      `SELECT count(a.id) < m.headcount AS available
-         FROM missions m
-         LEFT JOIN applications a
-           ON a.mission_id = m.id AND a.status = 'accepted'
-        WHERE m.id = $1
-        GROUP BY m.id, m.headcount`,
-      [missionId],
-    );
-    return rows[0]?.available === true;
   }
 
   /**
@@ -540,6 +526,10 @@ export class MissionService {
       const broken = brokenRule(final);
       if (broken) throw new HttpError(400, "INVALID_MISSION", broken);
 
+      // Ce que l'attribution a déjà accordé ne se défait pas en modifiant la
+      // mission sous les candidatures. Voir `assertHonoursAttribution`.
+      await this.assertHonoursAttribution(db, missionId, patch, current, final);
+
       const values: unknown[] = [];
       const assignments: string[] = [];
       const set = (column: string, value: unknown) => {
@@ -599,6 +589,103 @@ export class MissionService {
       }
     });
     return this.get(companyId, missionId);
+  }
+
+  /**
+   * Une modification ne doit pas rendre impossible ce qui a déjà été accordé.
+   *
+   * CE QUI MANQUAIT, ET POURQUOI. Les deux invariants de l'attribution — au plus
+   * `headcount` personnes retenues (migration 007), une seule mission par
+   * créneau et par personne (migration 008) — sont tenus par des déclencheurs
+   * posés sur `applications`. Ils s'exécutent quand une **candidature** change,
+   * et à ce moment-là seulement. Modifier la **mission** ne les réveille pas :
+   * les bornes du problème se déplaçaient sans que rien ne revérifie que les
+   * décisions déjà prises tenaient encore.
+   *
+   * Deux requêtes suffisaient à produire un état que le reste du système
+   * s'interdit :
+   *  - ramener `headcount` à 1 sur une mission comptant deux personnes retenues
+   *    laissait `filled > headcount`, et la fiche annonçait « tous les postes
+   *    sont pourvus (2 sur 1) » ;
+   *  - ramener le créneau d'une mission sur celui d'une autre engageait la même
+   *    personne deux fois au même moment — exactement ce que le déclencheur
+   *    d'engagement existe pour empêcher, contourné par l'autre côté.
+   *
+   * CE QUI N'EST PAS INTERDIT POUR AUTANT. Descendre l'effectif jusqu'au nombre
+   * de personnes retenues reste permis : c'est ainsi qu'une entreprise clôt son
+   * recrutement. Déplacer un créneau reste permis tant qu'il ne chevauche rien.
+   * Une mission annulée ne réserve plus rien et n'oppose donc aucun conflit,
+   * comme partout ailleurs.
+   *
+   * ORDRE DES VERROUS. La mission est déjà verrouillée par `lock`, ce qui
+   * sérialise ce contrôle avec `decide`. Les personnes retenues sont ensuite
+   * verrouillées par identifiant croissant : mission puis personne, le même
+   * ordre que `decide`, `create` et le déclencheur d'engagement — donc aucune
+   * inversion possible, donc aucun interblocage.
+   */
+  private async assertHonoursAttribution(
+    db: Db,
+    missionId: string,
+    patch: MissionPatch,
+    current: { starts_at: string | Date; ends_at: string | Date },
+    final: { starts_at: string; ends_at: string },
+  ) {
+    // Les instants sont comparés, jamais les chaînes : « …T09:00:00Z » et
+    // « …T09:00:00.000Z » désignent le même moment et ne doivent pas passer
+    // pour un déplacement.
+    const moved =
+      Date.parse(final.starts_at) !== new Date(current.starts_at).getTime() ||
+      Date.parse(final.ends_at) !== new Date(current.ends_at).getTime();
+    if (patch.headcount === undefined && !moved) return;
+
+    const retained = (
+      await db.query<{ worker_id: string }>(
+        `SELECT worker_id FROM applications
+          WHERE mission_id = $1 AND status = 'accepted'
+          ORDER BY worker_id`,
+        [missionId],
+      )
+    ).rows.map((row) => row.worker_id);
+    // Rien n'a encore été accordé : la mission reste librement modifiable.
+    if (!retained.length) return;
+
+    if (patch.headcount !== undefined && patch.headcount < retained.length)
+      throw new HttpError(
+        409,
+        "HEADCOUNT_BELOW_FILLED",
+        retained.length > 1
+          ? `${retained.length} personnes sont déjà retenues sur cette mission : l’effectif ne peut pas descendre en dessous.`
+          : "Une personne est déjà retenue sur cette mission : l’effectif ne peut pas descendre en dessous.",
+      );
+
+    if (!moved) return;
+    await db.query(
+      "SELECT 1 FROM profiles WHERE id = ANY($1::uuid[]) ORDER BY id FOR UPDATE",
+      [retained],
+    );
+    const { rows } = await db.query(
+      `SELECT 1 FROM applications a
+         JOIN missions m2 ON m2.id = a.mission_id
+        WHERE a.worker_id = ANY($1::uuid[])
+          AND a.status = 'accepted'
+          AND a.mission_id <> $2
+          AND m2.status <> 'cancelled'
+          AND m2.starts_at < $4::timestamptz
+          AND $3::timestamptz < m2.ends_at
+        LIMIT 1`,
+      [
+        retained,
+        missionId,
+        new Date(final.starts_at).toISOString(),
+        new Date(final.ends_at).toISOString(),
+      ],
+    );
+    if (rows.length)
+      throw new HttpError(
+        409,
+        "WORKER_ENGAGED",
+        "Ce créneau chevaucherait une autre mission déjà acceptée par une personne retenue ici.",
+      );
   }
 
   private assertTransition(from: MissionStatus, to: MissionStatus) {
