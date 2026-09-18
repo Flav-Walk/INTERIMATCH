@@ -1295,6 +1295,27 @@ describe("rapprochement — candidats côté entreprise", () => {
     expect(typeof r.body.band_label).toBe("string");
   });
 
+  it("livre de quoi expliquer chaque score, sans le recalculer", async () => {
+    // Le frontend ne doit pas redecider ce qui est un point fort : la
+    // qualification voyage avec le score, depuis le moteur qui l'a produit.
+    const r = await candidates();
+    for (const c of r.body.candidates) {
+      expect(c.match.dimensions.length).toBeGreaterThan(0);
+      for (const d of c.match.dimensions) {
+        expect(["strength", "neutral", "limitation"]).toContain(d.tone);
+        expect(d.points + d.lost).toBeCloseTo(d.weight, 6);
+      }
+    }
+  });
+
+  it("n'expose toujours pas le score non arrondi", async () => {
+    // `raw_score` sert aux paliers ; l'afficher donnerait a une estimation une
+    // precision qu'elle n'a pas. L'ajout de la qualification ne l'a pas
+    // fait entrer par la fenetre.
+    const r = await candidates();
+    expect(JSON.stringify(r.body)).not.toContain("raw_score");
+  });
+
   it("classe du meilleur au moins bon", async () => {
     const scores = (await candidates()).body.candidates.map(
       (c: { match: { score: number } }) => c.match.score,

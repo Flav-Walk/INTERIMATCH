@@ -1,11 +1,14 @@
 import { describe, it, expect } from "vitest";
 import {
   BANDS,
+  DIMENSION_TONES,
   WEIGHTS,
+  bandOf,
   coversMission,
   distanceKm,
   evaluate,
   selectByBands,
+  toneOf,
   type MissionCriteria,
   type WorkerCriteria,
 } from "./score.js";
@@ -676,5 +679,384 @@ describe("paliers : precision et determinisme", () => {
     expect(backward.results.map((r) => r.id)).toEqual(
       forward.results.map((r) => r.id),
     );
+  });
+});
+
+/**
+ * Qualification des dimensions — ce qui transforme un score en explication.
+ *
+ * Le score dit combien ; la qualification dit pourquoi. Elle est calculee ici
+ * et nulle part ailleurs : une interface qui redeciderait a partir de quel
+ * ratio un critere devient un reproche finirait par contredire le score
+ * qu elle pretend commenter.
+ */
+describe("qualification des dimensions", () => {
+  const dimension = (result: ReturnType<typeof evaluate>, key: string) =>
+    result.dimensions.find((d) => d.key === key)!;
+
+  it("place les frontieres exactement ou elles sont declarees", () => {
+    expect(toneOf(DIMENSION_TONES.strength)).toBe("strength");
+    expect(toneOf(DIMENSION_TONES.limitation)).toBe("limitation");
+  });
+
+  it("laisse neutre ce qui est juste sous le point fort", () => {
+    // Une frontiere doit etre franche des deux cotes, sinon elle se deplace au
+    // gre des arrondis de celui qui la lit.
+    expect(toneOf(DIMENSION_TONES.strength - 0.0001)).toBe("neutral");
+    expect(toneOf(DIMENSION_TONES.limitation + 0.0001)).toBe("neutral");
+  });
+
+  it("qualifie de point fort un critere pleinement satisfait", () => {
+    const result = evaluate(
+      mission({ desired_skill_ids: [SKILL.salle, SKILL.commande] }),
+      worker({ skill_ids: [SKILL.salle, SKILL.commande] }),
+    );
+    expect(dimension(result, "desired_skills").tone).toBe("strength");
+  });
+
+  it("qualifie de point limitant un critere largement manque", () => {
+    const result = evaluate(
+      mission({
+        desired_skill_ids: [SKILL.salle, SKILL.commande, SKILL.hygiene],
+      }),
+      worker({ skill_ids: [SKILL.salle] }),
+    );
+    // Une competence sur trois : 33 %, sous le seuil des 40 %.
+    expect(dimension(result, "desired_skills").tone).toBe("limitation");
+  });
+
+  it("qualifie de neutre un critere a moitie satisfait", () => {
+    const result = evaluate(
+      mission({ desired_skill_ids: [SKILL.salle, SKILL.commande] }),
+      worker({ skill_ids: [SKILL.salle] }),
+    );
+    expect(dimension(result, "desired_skills").tone).toBe("neutral");
+  });
+
+  it("signale un metier absent du profil comme point limitant", () => {
+    const result = evaluate(
+      mission({ job: "barman" }),
+      worker({ main_job: "serveur" }),
+    );
+    expect(dimension(result, "job").tone).toBe("limitation");
+  });
+
+  it("ne qualifie pas de point fort un metier seulement secondaire", () => {
+    // 0,6 : le candidat sait faire, ce n est pas son metier. Ni eloge ni
+    // reproche — exactement ce que « neutre » veut dire.
+    const result = evaluate(
+      mission({ job: "barman" }),
+      worker({ main_job: "serveur", secondary_jobs: ["barman"] }),
+    );
+    expect(dimension(result, "job").tone).toBe("neutral");
+  });
+
+  it("chiffre ce que chaque dimension laisse sur la table", () => {
+    const result = evaluate(
+      mission({ desired_skill_ids: [SKILL.salle, SKILL.commande] }),
+      worker({ skill_ids: [SKILL.salle] }),
+    );
+    const desired = dimension(result, "desired_skills");
+    expect(desired.points).toBeCloseTo(WEIGHTS.desired_skills / 2, 10);
+    expect(desired.lost).toBeCloseTo(WEIGHTS.desired_skills / 2, 10);
+  });
+
+  it("maintient points + lost egal au poids, sur toutes les dimensions", () => {
+    // L invariant qui garantit qu une explication ne peut pas mentir sur ce
+    // qu un critere a coute : les deux moities couvrent exactement le poids.
+    const result = evaluate(
+      mission({
+        desired_skill_ids: [SKILL.salle, SKILL.commande, SKILL.hygiene],
+        min_years_experience: 4,
+      }),
+      worker({ skill_ids: [SKILL.salle], years_experience: 1 }),
+    );
+    expect(result.dimensions.length).toBeGreaterThan(0);
+    for (const d of result.dimensions)
+      expect(d.points + d.lost).toBeCloseTo(d.weight, 10);
+  });
+
+  it("n oppose aucun point limitant a un profil ideal", () => {
+    const result = evaluate(
+      mission({
+        desired_skill_ids: [SKILL.salle],
+        min_years_experience: 2,
+      }),
+      worker({ skill_ids: [SKILL.salle], years_experience: 5 }),
+    );
+    expect(result.score).toBe(100);
+    expect(result.dimensions.every((d) => d.tone === "strength")).toBe(true);
+  });
+
+  it("accorde toujours la qualification avec le sens du score", () => {
+    // Le garde-fou contre l explication mensongere : un point fort ne peut pas
+    // sortir d une dimension majoritairement perdue, ni l inverse.
+    const cases = [
+      evaluate(mission(), worker()),
+      evaluate(
+        mission({ desired_skill_ids: [SKILL.salle, SKILL.hygiene] }),
+        worker({ skill_ids: [SKILL.salle] }),
+      ),
+      evaluate(
+        mission({ job: "barman", min_years_experience: 6 }),
+        worker({ years_experience: 1, mobility_radius_km: 400 }),
+      ),
+    ];
+    for (const result of cases)
+      for (const d of result.dimensions) {
+        if (d.tone === "strength") expect(d.points).toBeGreaterThan(d.lost);
+        if (d.tone === "limitation") expect(d.lost).toBeGreaterThan(d.points);
+      }
+  });
+
+  it("qualifie chaque dimension, sans exception", () => {
+    // Une dimension sans qualification laisserait une ligne muette dans
+    // l explication : presente dans le score, absente des raisons.
+    const result = evaluate(
+      mission({ desired_skill_ids: [SKILL.salle], min_years_experience: 3 }),
+      worker({ skill_ids: [SKILL.salle], years_experience: 3 }),
+    );
+    expect(result.dimensions).toHaveLength(4);
+    for (const d of result.dimensions)
+      expect(["strength", "neutral", "limitation"]).toContain(d.tone);
+  });
+});
+
+/**
+ * Rayon nul : le cas qui faisait mentir le score.
+ *
+ * Un rayon de zéro kilomètre n'est pas une absence de contrainte, c'est la
+ * contrainte la plus stricte : seule la mission sur place convient. Le moteur
+ * accordait pourtant la proximité parfaite à tout le monde dès que le rayon
+ * valait zéro, au motif que le filtre avait déjà fait son office — alors que le
+ * filtre n'écarte personne, il pose un bloqueur.
+ */
+describe("rayon nul", () => {
+  const proximity = (result: ReturnType<typeof evaluate>) =>
+    result.dimensions.find((d) => d.key === "proximity");
+
+  it("refuse la proximité à une mission éloignée", () => {
+    // Paris vu de Lyon : environ 390 km, avec un rayon de 0.
+    const result = evaluate(
+      mission({ latitude: 48.85, longitude: 2.35 }),
+      worker({ mobility_radius_km: 0 }),
+    );
+    expect(result.outside_zone).toBe(true);
+    expect(result.blockers).toContain("out_of_range");
+    // Le point décisif : plus de ratio 1, donc plus de point fort, donc plus
+    // de score parfait contredisant son propre bloqueur.
+    expect(proximity(result)!.ratio).toBe(0);
+    expect(proximity(result)!.tone).toBe("limitation");
+    expect(result.score).toBeLessThan(100);
+  });
+
+  it("accorde la proximité à une mission sur place", () => {
+    // Le pendant qu'il ne fallait pas casser : rayon 0 et distance 0, c'est
+    // exactement le cas que ce rayon autorise.
+    const result = evaluate(mission(), worker({ mobility_radius_km: 0 }));
+    expect(result.distance_km).toBe(0);
+    expect(result.outside_zone).toBe(false);
+    expect(result.blockers).not.toContain("out_of_range");
+    expect(proximity(result)!.ratio).toBe(1);
+    expect(proximity(result)!.tone).toBe("strength");
+  });
+
+  it("ne laisse jamais un rayon nul produire un score parfait à distance", () => {
+    // Le scénario exact rapporté : profil autrement idéal, très loin.
+    const result = evaluate(
+      mission({
+        latitude: 48.85,
+        longitude: 2.35,
+        desired_skill_ids: [SKILL.salle],
+        min_years_experience: 2,
+      }),
+      worker({
+        mobility_radius_km: 0,
+        skill_ids: [SKILL.salle],
+        years_experience: 10,
+      }),
+    );
+    expect(result.compatible).toBe(false);
+    expect(result.score).not.toBe(100);
+  });
+
+  it("garde un rayon nul sans coordonnées hors du calcul", () => {
+    // Sans distance, la question n'a pas de réponse : ni bloqueur, ni dimension.
+    const result = evaluate(
+      mission({ latitude: null, longitude: null }),
+      worker({ mobility_radius_km: 0 }),
+    );
+    expect(result.distance_km).toBe(null);
+    expect(result.outside_zone).toBe(null);
+    expect(result.blockers).not.toContain("out_of_range");
+    expect(proximity(result)).toBeUndefined();
+  });
+});
+
+/**
+ * Palier porté par le résultat lui-même.
+ *
+ * Le score public est arrondi ; le palier ne peut donc pas s'en déduire. Il
+ * voyage avec le résultat pour qu'aucune interface n'ait à le reconstituer —
+ * et surtout pour qu'aucune ne le reconstitue différemment.
+ */
+describe("palier porté par le score", () => {
+  it("classe sur la valeur réelle, pas sur l arrondi", () => {
+    // Le cas exact de la review : 69,6 s affiche « 70 % » et n atteint pas 70.
+    expect(Math.round(69.6)).toBe(70);
+    expect(bandOf(69.6)).toEqual({ min: 60, label: "Compatibles" });
+  });
+
+  it("retient chaque palier dès sa frontière exacte", () => {
+    expect(bandOf(70)).toEqual({ min: 70, label: "Très compatibles" });
+    expect(bandOf(60)).toEqual({ min: 60, label: "Compatibles" });
+    expect(bandOf(50)).toEqual({ min: 50, label: "Envisageables" });
+  });
+
+  it("refuse un palier juste sous sa frontière", () => {
+    expect(bandOf(69.999)).toEqual({ min: 60, label: "Compatibles" });
+    expect(bandOf(59.999)).toEqual({ min: 50, label: "Envisageables" });
+    expect(bandOf(49.999)).toBe(null);
+  });
+
+  it("n accorde aucun palier sous 50", () => {
+    expect(bandOf(0)).toBe(null);
+    expect(bandOf(49)).toBe(null);
+  });
+
+  it("pose le palier sur le résultat d une évaluation réelle", () => {
+    const parfait = evaluate(mission(), worker());
+    expect(parfait.score).toBe(100);
+    expect(parfait.band).toBe(70);
+    expect(parfait.band_label).toBe("Très compatibles");
+  });
+
+  it("accorde toujours le palier annoncé avec le score non arrondi", () => {
+    // L invariant qui interdit la contradiction : le palier déclaré est
+    // exactement celui que `raw_score` atteint, jamais celui de l affichage.
+    const cases = [
+      evaluate(mission(), worker()),
+      evaluate(
+        mission({ job: "barman", min_years_experience: 6 }),
+        worker({ years_experience: 1 }),
+      ),
+      evaluate(
+        mission({ desired_skill_ids: [SKILL.salle, SKILL.hygiene] }),
+        worker({ skill_ids: [SKILL.salle] }),
+      ),
+    ];
+    for (const result of cases) {
+      const expected = bandOf(result.raw_score);
+      expect(result.band).toBe(expected?.min ?? null);
+      expect(result.band_label).toBe(expected?.label ?? null);
+    }
+  });
+});
+
+/**
+ * Deux scores que l arrondi confond.
+ *
+ * Le pendant pur du classement worker : ici, aucune base, aucun identifiant,
+ * aucun tri — seulement la démonstration que l affichage perd une information
+ * que le moteur possède. C est cette information qui doit servir à classer.
+ */
+describe("arrondi et score reel", () => {
+  const atDistance = (km: number) => {
+    // Un décalage de latitude vaut environ 111,19 km par degré.
+    const result = evaluate(
+      mission({ latitude: 45.75 + km / 111.19, longitude: 4.85 }),
+      worker({ mobility_radius_km: 100 }),
+    );
+    return result;
+  };
+
+  it("affiche le meme pourcentage pour deux scores reels distincts", () => {
+    const proche = atDistance(1);
+    const loin = atDistance(2);
+    expect(proche.score).toBe(loin.score);
+    expect(proche.raw_score).toBeGreaterThan(loin.raw_score);
+  });
+
+  it("garde le meme palier des deux cotes quand l ecart est mince", () => {
+    // L écart de distance ne doit pas faire changer de palier : ce qu il change,
+    // c est l ordre. Les deux propriétés sont distinctes et doivent le rester.
+    const proche = atDistance(1);
+    const loin = atDistance(2);
+    expect(proche.band).toBe(loin.band);
+  });
+});
+
+/**
+ * Le cas exact de la review, produit par le moteur et non posé à la main.
+ *
+ * `bandOf(69.6)` était testé isolément, et le rendu de la pastille aussi. Ce qui
+ * manquait, c est la démonstration qu evaluate() produit bien les trois valeurs
+ * ENSEMBLE — c est leur coexistence qui créait la contradiction à l écran, pas
+ * chacune prise séparément.
+ *
+ * COMMENT 69,6 EST OBTENU, SANS RIEN FORCER. La mission n a pas de coordonnées :
+ * la proximité sort donc du calcul, et il reste trois dimensions pesant
+ * 45 + 20 + 10 = 75 points.
+ *
+ *   compétences souhaitées  3 sur 5      → 45 × 0,60 = 27,0
+ *   métier principal        exact         → 20 × 1,00 = 20,0
+ *   expérience              13 ans sur 25 → 10 × 0,52 =  5,2
+ *                                            total     = 52,2
+ *
+ *   52,2 / 75 × 100 = 69,6
+ *
+ * Aucune valeur n est injectée : ce sont des données de profil ordinaires, et
+ * le 69,6 tombe du calcul.
+ */
+describe("69,6 % — le cas qui contredisait l ecran", () => {
+  const SKILLS = ["s-1", "s-2", "s-3", "s-4", "s-5"];
+
+  const cas = () =>
+    evaluate(
+      mission({
+        // Sans coordonnées, la proximité n est pas jugeable et sort du calcul.
+        latitude: null,
+        longitude: null,
+        desired_skill_ids: SKILLS,
+        min_years_experience: 25,
+      }),
+      worker({
+        latitude: null,
+        longitude: null,
+        skill_ids: SKILLS.slice(0, 3),
+        years_experience: 13,
+      }),
+    );
+
+  it("produit un score reel de 69,6", () => {
+    expect(cas().raw_score).toBeCloseTo(69.6, 10);
+  });
+
+  it("affiche 70 % apres arrondi", () => {
+    expect(cas().score).toBe(70);
+  });
+
+  it("reste au palier 60, celui que le score reel atteint", () => {
+    const result = cas();
+    expect(result.band).toBe(60);
+    expect(result.band_label).toBe("Compatibles");
+  });
+
+  it("montre les trois valeurs ensemble, puisque c est leur coexistence qui posait probleme", () => {
+    const result = cas();
+    expect({
+      arrondi: result.score,
+      palier: result.band,
+      depasse: result.score >= 70,
+    }).toEqual({ arrondi: 70, palier: 60, depasse: true });
+    // Le score affiché franchit 70 ; le palier, non. Toute interface qui
+    // déduirait l un de l autre se contredirait ici, et nulle part ailleurs de
+    // façon aussi visible.
+  });
+
+  it("n est pas un profil incompatible : la contradiction touche un cas réel", () => {
+    // Le cas ne vaudrait rien s il décrivait un profil écarté : il ne serait
+    // jamais affiché, donc jamais contradictoire.
+    expect(cas().compatible).toBe(true);
   });
 });
