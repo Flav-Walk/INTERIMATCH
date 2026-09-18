@@ -130,6 +130,12 @@ test("un worker postule, l’entreprise accepte et l’état persiste", async ({
     fullPage: true,
   });
   await applications.getByRole("button", { name: "Accepter" }).click();
+  // Une décision passe désormais par une confirmation : elle est irréversible,
+  // et l'écran le dit avant de l'appliquer.
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Accepter la candidature" })
+    .click();
   await expect(
     applications.getByText("Acceptée", { exact: true }),
   ).toBeVisible();
@@ -188,6 +194,10 @@ test("une candidature refusée reste visible et ne redevient pas disponible", as
     name: "Candidatures reçues",
   });
   await applications.getByRole("button", { name: "Refuser" }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Refuser la candidature" })
+    .click();
   await expect(
     applications.getByText("Non retenue", { exact: true }),
   ).toBeVisible();

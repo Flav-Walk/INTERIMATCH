@@ -829,7 +829,11 @@ test("a company drafts, edits and publishes a mission", async ({
     .click();
   await expect(page).toHaveURL(/\/company\/missions\/[0-9a-f-]{36}$/);
   await expect(page.getByText("Modifications enregistrées.")).toBeVisible();
-  await expect(page.locator(".detail-grid")).toContainText("5 postes");
+  // Le détail annonce désormais l'état du recrutement, pas seulement le nombre
+  // de postes ouverts : « 5 postes » est devenu « 0 poste pourvu sur 5 ».
+  await expect(page.locator(".detail-grid")).toContainText(
+    "0 poste pourvu sur 5",
+  );
   // Enregistrer ne publie pas.
   await expect(page.locator(".mission-status")).toHaveText("Brouillon");
 
@@ -1221,6 +1225,12 @@ test("matching connects a published mission to a compatible intérimaire", async
   page.on("pageerror", (e) => errors.push(e.message));
   const suffix = testInfo.project.name;
   const titre = `Renfort brasserie ${suffix}`;
+  // Les deux projets Playwright partagent le serveur d'essai. « Profils
+  // correspondants » n'affiche que le prénom et l'initiale du nom : deux
+  // intérimaires homonymes créés par l'autre projet y seraient indiscernables,
+  // et l'assertion « ce profil a disparu » passerait ou échouerait au hasard.
+  const retenue = suffix === "mobile" ? "Maëlys" : "Almarine";
+  const ecartee = suffix === "mobile" ? "Sixtine" : "Bérangère";
 
   // ---- L'entreprise publie une mission exigeante ----
   await register(page, `match.${suffix}@example.test`);
@@ -1276,7 +1286,7 @@ test("matching connects a published mission to a compatible intérimaire", async
   // ---- Il complète ce que le rapprochement exige ----
   await page.goto("/worker/profile");
   const identite = section(page, "Votre identité");
-  await identite.getByLabel("Prénom", { exact: true }).fill("Camille");
+  await identite.getByLabel("Prénom", { exact: true }).fill(retenue);
   await identite.getByLabel("Nom", { exact: true }).fill("Nguyen");
   await save(page, "Votre identité");
 
@@ -1385,7 +1395,7 @@ test("matching connects a published mission to a compatible intérimaire", async
   await completeTour(page);
   await page.goto("/worker/profile");
   const secondIdentity = section(page, "Votre identité");
-  await secondIdentity.getByLabel("Prénom", { exact: true }).fill("Noémie");
+  await secondIdentity.getByLabel("Prénom", { exact: true }).fill(ecartee);
   await secondIdentity.getByLabel("Nom", { exact: true }).fill("Petit");
   await save(page, "Votre identité");
   await makeEmployable(page, {
@@ -1415,16 +1425,16 @@ test("matching connects a published mission to a compatible intérimaire", async
   const matches = page.getByRole("region", {
     name: "Profils correspondants",
   });
-  await expect(matches).not.toContainText("Camille");
-  await expect(matches).not.toContainText("Noémie");
+  await expect(matches).not.toContainText(retenue);
+  await expect(matches).not.toContainText(ecartee);
   const applications = page.getByRole("region", {
     name: "Candidatures reçues",
   });
   const camille = applications.getByRole("listitem").filter({
-    hasText: "Camille Nguyen",
+    hasText: `${retenue} Nguyen`,
   });
   const noemie = applications.getByRole("listitem").filter({
-    hasText: "Noémie Petit",
+    hasText: `${ecartee} Petit`,
   });
   await expect(camille).toContainText("En attente");
   await expect(noemie).toContainText("En attente");
@@ -1434,7 +1444,7 @@ test("matching connects a published mission to a compatible intérimaire", async
   let decisionDialog = page.getByRole("dialog", {
     name: "Accepter cette candidature ?",
   });
-  await expect(decisionDialog).toContainText("Camille Nguyen");
+  await expect(decisionDialog).toContainText(`${retenue} Nguyen`);
   await expect(decisionDialog).toContainText(titre);
   await decisionDialog.getByRole("button", { name: "Annuler" }).click();
   await expect(decisionDialog).toBeHidden();
@@ -1462,7 +1472,7 @@ test("matching connects a published mission to a compatible intérimaire", async
   decisionDialog = page.getByRole("dialog", {
     name: "Refuser cette candidature ?",
   });
-  await expect(decisionDialog).toContainText("Noémie Petit");
+  await expect(decisionDialog).toContainText(`${ecartee} Petit`);
   await decisionDialog.getByRole("button", { name: "Annuler" }).click();
   await expect(noemie).toContainText("En attente");
   await noemie.getByRole("button", { name: "Refuser" }).click();
