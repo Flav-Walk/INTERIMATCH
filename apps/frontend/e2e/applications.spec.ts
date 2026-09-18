@@ -77,6 +77,36 @@ test("un worker postule, l’entreprise accepte et l’état persiste", async ({
   await signIn(page, companyEmail);
   await expect(page).toHaveURL(/\/company$/);
   await completeTour(page);
+
+  // --- Le coeur du probleme signale en recette ---
+  // L'entreprise arrive sur son accueil. Elle doit y apprendre qu'une
+  // candidature l'attend, sans ouvrir la mission et sans recharger la page.
+  // Cet emplacement affichait un bloc fige annoncant « aucune candidature ».
+  await expect(
+    page.getByRole("heading", { name: "Candidatures récentes" }),
+  ).toBeVisible();
+  const recentes = page.locator(".application-rows");
+  await expect(recentes).toContainText("Camille Recette");
+  await expect(recentes).toContainText("Serveur candidature");
+  await expect(page.getByText(/candidature attend votre réponse/)).toBeVisible();
+
+  // Le badge de navigation porte le meme chiffre, double d'un texte lisible
+  // par un lecteur d'ecran : une pastille coloree seule n'informe personne.
+  const badge = page.locator(".nav-badge");
+  await expect(badge).toHaveText(/^1/);
+  await expect(badge).toContainText("candidature en attente");
+
+  // L'ecran Candidatures liste de vraies candidatures, pas des suggestions.
+  await page.goto("/company/applications");
+  await expect(page.getByRole("heading", { name: "Candidatures" })).toBeVisible();
+  await expect(page.locator(".application-cards")).toContainText(
+    "Camille Recette",
+  );
+  await page.screenshot({
+    path: testInfo.outputPath("company-applications-screen.png"),
+    fullPage: true,
+  });
+
   await page.goto(`/company/missions/${missionId}`);
 
   const applications = page.getByRole("region", {
@@ -95,6 +125,9 @@ test("un worker postule, l’entreprise accepte et l’état persiste", async ({
   await expect(
     applications.getByRole("button", { name: "Accepter" }),
   ).toHaveCount(0);
+  // La decision se propage : plus rien n'attend, le badge disparait de la
+  // navigation sans que personne ait recharge quoi que ce soit.
+  await expect(page.locator(".nav-badge")).toHaveCount(0);
 
   await logout(page);
   await signIn(page, workerEmail);

@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
-import { MapPin, UserRoundCheck, Utensils } from "lucide-react";
+import { CalendarX2, MapPin, UserRoundCheck, Utensils } from "lucide-react";
 import { errorMessage } from "../../services/session";
+import { useAuth } from "../../hooks/useAuth";
+import { useCompanyData } from "../../hooks/CompanyData";
 import {
   applicationCandidateName,
   decideApplication,
@@ -65,24 +67,38 @@ export function MissionApplicationList({
           <div className="application-candidate-decision">
             <ApplicationStatus status={application.status} />
             {application.status === "pending" && (
-              <div className="application-candidate-actions">
-                <button
-                  type="button"
-                  className="secondary-button"
-                  disabled={busyId === application.id}
-                  onClick={() => onDecision(application, "rejected")}
-                >
-                  Refuser
-                </button>
-                <button
-                  type="button"
-                  className="button"
-                  disabled={busyId === application.id}
-                  onClick={() => onDecision(application, "accepted")}
-                >
-                  {busyId === application.id ? "Décision…" : "Accepter"}
-                </button>
-              </div>
+              <>
+                {/* Le conflit n'efface pas la candidature et ne la refuse pas à
+                    la place de l'entreprise : il retire la seule action
+                    devenue impossible, et dit pourquoi. */}
+                {application.conflict && (
+                  <p className="application-conflict">
+                    <CalendarX2 size={14} aria-hidden="true" />
+                    Cette personne a accepté une autre mission sur ce créneau.
+                    Elle ne peut plus être retenue pour celle-ci.
+                  </p>
+                )}
+                <div className="application-candidate-actions">
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    disabled={busyId === application.id}
+                    onClick={() => onDecision(application, "rejected")}
+                  >
+                    Refuser
+                  </button>
+                  {!application.conflict && (
+                    <button
+                      type="button"
+                      className="button"
+                      disabled={busyId === application.id}
+                      onClick={() => onDecision(application, "accepted")}
+                    >
+                      {busyId === application.id ? "Décision…" : "Accepter"}
+                    </button>
+                  )}
+                </div>
+              </>
             )}
           </div>
         </li>
@@ -92,6 +108,8 @@ export function MissionApplicationList({
 }
 
 export function MissionApplications({ missionId }: { missionId: string }) {
+  const { revision, invalidate } = useAuth();
+  const { refresh } = useCompanyData();
   const [applications, setApplications] = useState<MissionApplication[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -113,7 +131,9 @@ export function MissionApplications({ missionId }: { missionId: string }) {
     return () => {
       live = false;
     };
-  }, [missionId]);
+    // `revision` suit les écritures et le retour sur l'onglet : une candidature
+    // déposée pendant qu'on lisait cette page apparaît sans rechargement.
+  }, [missionId, revision]);
 
   async function decide(
     application: MissionApplication,
@@ -130,6 +150,11 @@ export function MissionApplications({ missionId }: { missionId: string }) {
       setApplications((current) =>
         current.map((item) => (item.id === updated.id ? updated : item)),
       );
+      // Une décision change trois choses ailleurs : le compteur du badge, la
+      // liste du tableau de bord, et le conflit des autres candidatures de
+      // cette personne. Les deux relectures couvrent l'ensemble.
+      await refresh();
+      invalidate();
     } catch (cause) {
       setError(errorMessage(cause));
     } finally {

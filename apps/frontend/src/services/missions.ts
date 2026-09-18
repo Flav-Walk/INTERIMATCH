@@ -58,7 +58,12 @@ export interface OpenMission extends Mission {
 
 /** Motifs d'incompatibilité, tels que le serveur les nomme. */
 export type BlockerCode =
-  "paused" | "missing_required_skills" | "unavailable" | "out_of_range";
+  | "paused"
+  | "missing_required_skills"
+  | "unavailable"
+  | "out_of_range"
+  /** Une mission déjà acceptée occupe ce créneau. */
+  | "engaged";
 
 export interface MatchDimension {
   key: "desired_skills" | "proximity" | "job" | "experience";
@@ -170,6 +175,7 @@ export interface EmptyReason {
  * reste, et c'est la seule dont l'intérimaire tient l'interrupteur.
  */
 const blockerOrder: BlockerCode[] = [
+  "engaged",
   "unavailable",
   "out_of_range",
   "missing_required_skills",
@@ -188,6 +194,14 @@ const copy: Record<
     action: {
       label: "Réactiver ma recherche",
       to: "/worker/profile#recherche",
+    },
+  }),
+  engaged: (n) => ({
+    title: "Vos missions acceptées occupent ces créneaux",
+    detail: `${n} mission${plural(n, "s")} ouverte${plural(n, "s")} ${n > 1 ? "tombent" : "tombe"} pendant une mission que vous avez déjà acceptée. Vos disponibilités restent intactes : d’autres créneaux continuent de vous être proposés.`,
+    action: {
+      label: "Voir mes missions acceptées",
+      to: "/worker/applications",
     },
   }),
   unavailable: (n) => ({
@@ -505,3 +519,52 @@ export function validateMission(values: MissionFormValues) {
     errors.headcount = "L’effectif va de 1 à 50 personnes.";
   return errors;
 }
+
+/**
+ * Durée d'un créneau, dite en français.
+ *
+ * Saisir un début et une fin ne dit pas ce qu'on vient de décrire : « 18:00 »
+ * puis « 02:00 » laisse ouverte la question du lendemain. Le rappeler sous les
+ * deux champs évite la faute la plus coûteuse du formulaire — une mission
+ * publiée sur le mauvais jour.
+ */
+export function describeSpan(startLocal: string, endLocal: string) {
+  if (!startLocal || !endLocal) return null;
+  const start = Date.parse(startLocal);
+  const end = Date.parse(endLocal);
+  if (Number.isNaN(start) || Number.isNaN(end)) return null;
+  if (end <= start) return null;
+
+  const minutes = Math.round((end - start) / 60_000);
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  const length =
+    hours === 0
+      ? `${rest} min`
+      : rest === 0
+        ? `${hours} h`
+        : `${hours} h ${String(rest).padStart(2, "0")}`;
+
+  const sameDay =
+    new Date(start).toDateString() === new Date(end).toDateString();
+  return sameDay
+    ? `${length} de service.`
+    : `${length} de service, en passant minuit.`;
+}
+
+/** Libellés lisibles des champs, pour le récapitulatif d'erreurs. */
+export const missionFieldLabels: Record<keyof MissionFormValues, string> = {
+  title: "Intitulé de la mission",
+  description: "Description",
+  job: "Métier recherché",
+  starts_at: "Début",
+  ends_at: "Fin",
+  address: "Adresse",
+  city: "Ville",
+  postal_code: "Code postal",
+  pay_amount: "Rémunération",
+  pay_unit: "Unité de rémunération",
+  headcount: "Nombre de personnes",
+  min_years_experience: "Expérience minimale",
+  skills: "Compétences",
+};

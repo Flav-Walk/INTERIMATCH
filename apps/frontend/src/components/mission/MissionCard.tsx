@@ -75,12 +75,19 @@ export function MissionCard({
   mission,
   basePath = "/company/missions",
   score,
+  pendingApplications = 0,
 }: {
   mission: Mission;
   basePath?: string;
   /** Compatibilité, côté intérimaire uniquement : une entreprise voit ses
    *  propres missions, pour lesquelles un score n'aurait pas de sens. */
   score?: number;
+  /**
+   * Candidatures en attente, côté entreprise. Uniquement de vraies
+   * candidatures : un profil suggéré par le rapprochement n'a rien demandé et
+   * n'a donc rien à compter ici.
+   */
+  pendingApplications?: number;
 }) {
   const seats = Array.from({ length: Math.min(mission.headcount, 3) });
   return (
@@ -90,6 +97,15 @@ export function MissionCard({
         <span className={"mission-status " + statusClass[mission.status]}>
           {statusLabels[mission.status]}
         </span>
+        {pendingApplications > 0 && (
+          <span className="mission-pending">
+            {pendingApplications}
+            <span className="sr-only">
+              {" "}
+              candidature{pendingApplications > 1 ? "s" : ""} en attente
+            </span>
+          </span>
+        )}
       </div>
       <div className="mission-body">
         <h3 className="mission-title">{mission.title}</h3>

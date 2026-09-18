@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { supabase } from "../services/supabase";
+import { getSupabase } from "../services/supabase";
 import { destination, errorMessage, type User } from "../services/session";
 import { useAuth } from "../hooks/useAuth";
 let completed: Promise<User> | null = null;
@@ -11,6 +11,7 @@ function providerToken() {
       const url = new URL(window.location.href);
       if (url.searchParams.has("error"))
         throw new Error("La connexion Google a été annulée ou refusée.");
+      const supabase = await getSupabase();
       if (!supabase) throw new Error("Google non configuré.");
       const code = url.searchParams.get("code");
       if (!code)

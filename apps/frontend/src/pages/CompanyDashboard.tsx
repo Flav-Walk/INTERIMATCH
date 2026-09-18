@@ -1,15 +1,12 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import {
-  ArrowRight,
-  Building2,
-  BriefcaseBusiness,
-  Utensils,
-  Users,
-} from "lucide-react";
+import { ArrowRight, Building2, BriefcaseBusiness, Utensils } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { errorMessage } from "../services/session";
 import { MissionCard } from "../components/mission/MissionCard";
+import { RecentApplications } from "../components/applications/RecentApplications";
+import { useCompanyData } from "../hooks/CompanyData";
+import { pendingByMission } from "../services/applications";
 import { PlanningCard } from "../components/mission/PlanningCard";
 import {
   listMissions,
@@ -28,6 +25,9 @@ import {
  */
 export function CompanyDashboard() {
   const { user, revision } = useAuth();
+  // Les candidatures viennent du fournisseur partagé : la même lecture sert le
+  // badge de navigation, cette page et l'écran Candidatures.
+  const { applications } = useCompanyData();
   const [data, setData] = useState<Mission[]>([]),
     [counts, setCounts] = useState<Partial<Record<MissionTab, number>>>({}),
     [tab, setTab] = useState<MissionTab>("open"),
@@ -56,6 +56,7 @@ export function CompanyDashboard() {
   if (!user) return null;
   const p = user.profile;
   const shown = data.filter((m) => m.status === tab).slice(0, 4);
+  const pending = pendingByMission(applications);
 
   return (
     <>
@@ -122,7 +123,11 @@ export function CompanyDashboard() {
             ) : shown.length > 0 ? (
               <div className="mission-grid">
                 {shown.map((mission) => (
-                  <MissionCard key={mission.id} mission={mission} />
+                  <MissionCard
+                    key={mission.id}
+                    mission={mission}
+                    pendingApplications={pending.get(mission.id) ?? 0}
+                  />
                 ))}
               </div>
             ) : (
@@ -140,22 +145,7 @@ export function CompanyDashboard() {
             )}
           </section>
 
-          <section data-tour="candidates">
-            <div className="section-head">
-              <h2>Candidatures récentes</h2>
-              <Link className="link-more" to="/company/candidates">
-                Voir toutes les candidatures →
-              </Link>
-            </div>
-            <div className="empty is-placeholder">
-              <Users aria-hidden="true" />
-              <h3>Aucune candidature pour le moment</h3>
-              <p>
-                Les profils compatibles apparaîtront ici, classés par score, dès
-                que le rapprochement sera disponible.
-              </p>
-            </div>
-          </section>
+          <RecentApplications />
         </div>
 
         <aside className="layout-rail">

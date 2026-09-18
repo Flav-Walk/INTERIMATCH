@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import {
@@ -10,9 +10,16 @@ import {
 import { useAuth } from "../hooks/useAuth";
 import { SkillPicker } from "../components/mission/SkillPicker";
 import {
+  ErrorSummary,
+  Field,
+  useUnsavedChanges,
+} from "../components/form/Field";
+import {
   createMission,
+  describeSpan,
   emptyMission,
   formToMission,
+  missionFieldLabels,
   getMission,
   missionDiff,
   missionToForm,
@@ -20,49 +27,6 @@ import {
   validateMission,
   type MissionFormValues,
 } from "../services/missions";
-
-/** Champ de saisie : libellé, erreur et liaison ARIA au même endroit. */
-function Field({
-  name,
-  label,
-  error,
-  hint,
-  children,
-}: {
-  name: string;
-  label: string;
-  error?: string;
-  hint?: string;
-  children: (props: {
-    id: string;
-    "aria-invalid"?: true;
-    "aria-describedby"?: string;
-  }) => React.ReactNode;
-}) {
-  const described = [hint && `${name}-hint`, error && `${name}-error`]
-    .filter(Boolean)
-    .join(" ");
-  return (
-    <div className="field">
-      <label htmlFor={name}>{label}</label>
-      {hint && (
-        <p className="quiet field-hint" id={`${name}-hint`}>
-          {hint}
-        </p>
-      )}
-      {children({
-        id: name,
-        ...(error ? { "aria-invalid": true as const } : {}),
-        ...(described ? { "aria-describedby": described } : {}),
-      })}
-      {error && (
-        <p className="field-error" id={`${name}-error`}>
-          {error}
-        </p>
-      )}
-    </div>
-  );
-}
 
 /**
  * Création et modification d'une mission, par le même écran. Les deux gestes
@@ -121,6 +85,16 @@ export function CompanyMissionForm() {
     };
   }, [id]);
 
+  // Comparer à l'état de départ plutôt que suivre un drapeau : revenir soi-même
+  // sur sa saisie redevient ainsi « rien à enregistrer », ce qu'un drapeau ne
+  // saurait pas faire.
+  const dirty = useMemo(
+    () => JSON.stringify(values) !== JSON.stringify(initial ?? emptyMission),
+    [values, initial],
+  );
+  useUnsavedChanges(dirty && !busy);
+  const span = describeSpan(values.starts_at, values.ends_at);
+
   const set = <K extends keyof MissionFormValues>(
     key: K,
     value: MissionFormValues[K],
@@ -146,13 +120,10 @@ export function CompanyMissionForm() {
     setNote("");
     const found = validateMission(values);
     setErrors(found);
-    const first = Object.keys(found)[0];
-    if (first) {
-      formRef.current
-        ?.querySelector<HTMLElement>(`[id="${CSS.escape(first)}"]`)
-        ?.focus();
-      return;
-    }
+    // Le récapitulatif prend le focus de lui-même : il annonce le nombre de
+    // problèmes et mène à chacun, là où un saut direct vers le premier champ
+    // laissait ignorer les suivants.
+    if (Object.keys(found).length) return;
 
     setBusy(true);
     try {
@@ -219,6 +190,14 @@ export function CompanyMissionForm() {
         </p>
       )}
 
+      <ErrorSummary errors={errors} labels={missionFieldLabels} />
+
+      <p className="quiet form-legend">
+        Tous les champs sont nécessaires, sauf ceux marqués « facultatif ».
+        Enregistrer conserve la mission en brouillon : rien n’est visible des
+        intérimaires avant publication.
+      </p>
+
       <form ref={formRef} onSubmit={(e) => void submit(e)} noValidate>
         <fieldset disabled={busy}>
           <legend>Informations générales</legend>
@@ -256,7 +235,8 @@ export function CompanyMissionForm() {
           </Field>
           <Field
             name="description"
-            label="Description (facultatif)"
+            label="Description"
+            optional
             hint="Le déroulé du service, la tenue attendue, le contexte de l’établissement."
           >
             {(props) => (
@@ -301,6 +281,11 @@ export function CompanyMissionForm() {
               )}
             </Field>
           </div>
+          {span && (
+            <p className="quiet field-recap" role="status">
+              {span}
+            </p>
+          )}
         </fieldset>
 
         <fieldset disabled={busy}>
@@ -309,7 +294,7 @@ export function CompanyMissionForm() {
             Indiquez la ville : les coordonnées nécessaires au rapprochement
             sont retrouvées automatiquement.
           </p>
-          <Field name="address" label="Adresse (facultatif)">
+          <Field name="address" label="Adresse" optional>
             {(props) => (
               <input
                 {...props}
@@ -357,6 +342,7 @@ export function CompanyMissionForm() {
             <Field
               name="headcount"
               label="Nombre de personnes"
+              hint="Le nombre de candidatures que vous pourrez accepter : au-delà, la mission est complète."
               error={errors.headcount}
             >
               {(props) => (
@@ -373,7 +359,8 @@ export function CompanyMissionForm() {
             </Field>
             <Field
               name="min_years_experience"
-              label="Expérience minimale en années (facultatif)"
+              label="Expérience minimale en années"
+              optional
             >
               {(props) => (
                 <input

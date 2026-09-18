@@ -19,6 +19,7 @@ import {
 import {
   addAvailability,
   formatSlot,
+  missingIn,
   patchWorker,
   putCertifications,
   putExperiences,
@@ -40,6 +41,7 @@ function Section({
   id,
   title,
   hint,
+  missing = [],
   onSave,
   children,
 }: {
@@ -47,6 +49,8 @@ function Section({
   id?: string;
   title: string;
   hint?: string;
+  /** Exigences de complétion que ce bloc porte et qui ne sont pas remplies. */
+  missing?: (keyof typeof requirementLabels)[];
   onSave: (form: FormData) => Promise<User | void>;
   children: ReactNode;
 }) {
@@ -78,7 +82,23 @@ function Section({
       onInput={() => saved && setSaved(false)}
     >
       <fieldset>
-        <legend>{title}</legend>
+        <legend>
+          {title}
+          {/* Dire ici ce qui manque évite de renvoyer à la liste du haut, puis
+              de laisser chercher le bloc concerné parmi six. */}
+          {missing.length > 0 && (
+            <span className="section-todo">À compléter</span>
+          )}
+        </legend>
+        {missing.length > 0 && (
+          <p className="quiet section-todo-detail">
+            Il reste à renseigner :{" "}
+            {missing
+              .map((rule) => requirementLabels[rule].replace(/^Votre |^Au /, ""))
+              .join(", ")}
+            .
+          </p>
+        )}
         {hint && <p className="quiet">{hint}</p>}
         {children}
         {error && (
@@ -217,6 +237,7 @@ export function WorkerProfile() {
 
       <Section
         title="Votre identité"
+        missing={missingIn(user.missing_requirements, "Votre identité")}
         onSave={(f) =>
           patchWorker({
             ...partial({
@@ -254,6 +275,7 @@ export function WorkerProfile() {
 
       <Section
         title="Votre métier"
+        missing={missingIn(user.missing_requirements, "Votre métier")}
         hint="Le métier principal sert au rapprochement avec les missions."
         onSave={(f) =>
           patchWorker({
@@ -315,6 +337,7 @@ export function WorkerProfile() {
       <Section
         id="competences"
         title="Vos compétences"
+        missing={missingIn(user.missing_requirements, "Vos compétences")}
         hint="Au moins une compétence est nécessaire : c’est le critère le plus important du rapprochement."
         onSave={(f) => putSkills(f.getAll("skill_ids").map(String))}
       >
@@ -515,6 +538,7 @@ export function WorkerProfile() {
       <Section
         id="mobilite"
         title="Votre mobilité"
+        missing={missingIn(user.missing_requirements, "Votre mobilité")}
         hint="Indiquez simplement votre ville : les coordonnées nécessaires au rapprochement sont retrouvées automatiquement."
         onSave={(f) =>
           patchWorker({
@@ -604,7 +628,10 @@ export function WorkerProfile() {
         )}
       </Section>
 
-      <AvailabilitySection slots={slots} />
+      <AvailabilitySection
+        slots={slots}
+        missing={missingIn(user.missing_requirements, "Vos disponibilités")}
+      />
 
       <Section
         id="recherche"
@@ -630,7 +657,13 @@ export function WorkerProfile() {
 }
 
 /** Chaque créneau se gère individuellement, quel que soit son statut. */
-function AvailabilitySection({ slots }: { slots: Availability[] }) {
+function AvailabilitySection({
+  slots,
+  missing,
+}: {
+  slots: Availability[];
+  missing: string[];
+}) {
   const { setUser } = useAuth();
   const formRef = useRef<HTMLFormElement>(null);
   const refresh = async () => setUser(await api<User>("/workers/me"));
@@ -702,7 +735,12 @@ function AvailabilitySection({ slots }: { slots: Availability[] }) {
   return (
     <form id="disponibilites" ref={formRef} onSubmit={(e) => void save(e)}>
       <fieldset disabled={busy}>
-        <legend>Vos disponibilités</legend>
+        <legend>
+          Vos disponibilités
+          {missing.length > 0 && (
+            <span className="section-todo">À compléter</span>
+          )}
+        </legend>
         <p className="quiet">
           Au moins un créneau disponible à venir est nécessaire. Les heures sont
           celles de votre navigateur.

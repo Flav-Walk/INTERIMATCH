@@ -2,7 +2,7 @@ import { useId, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { destination, errorMessage } from "../services/session";
-import { supabase } from "../services/supabase";
+import { getSupabase, supabaseConfigured } from "../services/supabase";
 import { PasswordField } from "../components/PasswordField";
 import { PasswordStrength } from "../components/PasswordStrength";
 import { MIN_PASSWORD_LENGTH } from "../services/password";
@@ -36,6 +36,7 @@ export function Login({ register = false }: { register?: boolean }) {
     setBusy(true);
     setError("");
     try {
+      const supabase = await getSupabase();
       if (!supabase) throw new Error("Google n’est pas configuré.");
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
@@ -74,14 +75,20 @@ export function Login({ register = false }: { register?: boolean }) {
             ? "Quelques informations pour commencer. Vous choisirez ensuite votre espace."
             : "Retrouvez votre profil et préparez vos prochains services."}
         </p>
-        <button
-          className="secondary-button google-button"
-          onClick={() => void google()}
-          disabled={busy}
-        >
-          Continuer avec Google
-        </button>
-        <div className="divider">ou avec votre email</div>
+        {/* Sans configuration Google, ce bouton ne menait qu'à un message
+            d'erreur au clic. Mieux vaut ne pas proposer ce qui n'existe pas. */}
+        {supabaseConfigured && (
+          <>
+            <button
+              className="secondary-button google-button"
+              onClick={() => void google()}
+              disabled={busy}
+            >
+              Continuer avec Google
+            </button>
+            <div className="divider">ou avec votre email</div>
+          </>
+        )}
         <form onSubmit={(e) => void submit(e)}>
           <label>
             Email

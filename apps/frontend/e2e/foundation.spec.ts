@@ -165,7 +165,7 @@ test("a new account becomes an intérimaire, is toured once, and cannot reach th
     await expect(page).toHaveURL(/\/worker$/);
   }
   await expect(
-    page.getByRole("link", { name: "Candidats", exact: true }),
+    page.getByRole("link", { name: "Candidatures", exact: true }),
   ).toHaveCount(0);
 
   // Le profil se complète depuis l'espace, il n'en bloque jamais l'accès.
@@ -260,7 +260,7 @@ test("the allowlisted address gets the company space and its own tour", async ({
   // CAS 5 : rôle entreprise décidé par le serveur, sans aucun choix utilisateur.
   await expect(page).toHaveURL(/\/company$/);
   await expect(
-    page.getByRole("link", { name: "Candidats", exact: true }),
+    page.getByRole("link", { name: "Candidatures", exact: true }),
   ).toBeVisible();
 
   const dialog = tour(page);
@@ -280,10 +280,12 @@ test("the allowlisted address gets the company space and its own tour", async ({
   await expect(tour(page)).toBeHidden();
 
   // L'espace entreprise est bien distinct, et l'espace intérimaire lui est fermé.
-  await page.getByRole("link", { name: "Candidats", exact: true }).click();
+  await page.getByRole("link", { name: "Candidatures", exact: true }).click();
   await expect(
-    page.getByRole("heading", { name: "Candidats compatibles" }),
+    page.getByRole("heading", { name: "Candidatures", level: 1 }),
   ).toBeVisible();
+  // L'ecran ne promet plus un moteur « a venir » : il annonce ce qu'il montre.
+  await expect(page.locator(".page-lead")).toContainText("ont postulé");
   await page.goto("/worker");
   await expect(page).toHaveURL(/\/company$/);
 
@@ -523,7 +525,7 @@ test("the company workspace lists real missions with the maquette layout", async
 
   // En-tête de la maquette : navigation, recherche et bloc compte.
   const header = page.getByRole("banner");
-  for (const label of ["Accueil", "Missions", "Candidats", "Entreprise"])
+  for (const label of ["Accueil", "Missions", "Candidatures", "Entreprise"])
     await expect(
       header.getByRole("link", { name: label, exact: true }),
     ).toBeVisible();
@@ -714,11 +716,25 @@ test("a company drafts, edits and publishes a mission", async ({
   ])
     await expect(page.locator(`[name="${forbidden}"]`)).toHaveCount(0);
 
-  // Un envoi incomplet est retenu côté navigateur, avec un message par champ.
+  // Un envoi incomplet est retenu côté navigateur. Le récapitulatif annonce
+  // combien de points bloquent et mène à chacun — sur un formulaire long, le
+  // seul message posé sous un champ hors écran donnait l'impression que le
+  // bouton n'avait rien fait.
   await page.getByRole("button", { name: "Enregistrer le brouillon" }).click();
-  await expect(
-    page.getByText("Donnez un intitulé à la mission."),
-  ).toBeVisible();
+  const recap = page.locator(".form-summary");
+  await expect(recap).toBeVisible();
+  await expect(recap).toContainText("points à corriger");
+  await expect(recap).toContainText("Donnez un intitulé à la mission.");
+  // Il prend le focus de lui-même, pour être lu à voix haute.
+  await expect(recap).toBeFocused();
+  // Le détail reste aussi au pied du champ concerné.
+  await expect(page.locator(".field-error").first()).toContainText(
+    "Donnez un intitulé à la mission.",
+  );
+  await page.screenshot({
+    path: testInfo.outputPath("mission-form-errors.png"),
+    fullPage: true,
+  });
   await expect(page).toHaveURL(/\/company\/missions\/new$/);
 
   // Dates fixes : le parcours ne dépend pas de l'heure d'exécution.
@@ -726,6 +742,11 @@ test("a company drafts, edits and publishes a mission", async ({
   await page.getByLabel("Métier recherché").selectOption("serveur");
   await page.getByLabel("Début").fill("2027-06-12T18:00");
   await page.getByLabel("Fin").fill("2027-06-13T02:00");
+  // Le passage de minuit est dit explicitement : « 18:00 → 02:00 » ne suffit
+  // pas à faire comprendre qu'il s'agit du lendemain.
+  await expect(page.locator(".field-recap")).toHaveText(
+    "8 h de service, en passant minuit.",
+  );
   await page.getByLabel("Ville").fill("Lyon");
   await page.getByLabel("Code postal").fill("69002");
   await page.getByLabel("Nombre de personnes").fill("3");
@@ -733,15 +754,22 @@ test("a company drafts, edits and publishes a mission", async ({
   // Un montant sans unité est refusé, et le message le dit.
   await page.getByLabel("Montant en euros").fill("15");
   await page.getByRole("button", { name: "Enregistrer le brouillon" }).click();
-  await expect(
-    page.getByText(/Précisez si ce montant est horaire/),
-  ).toBeVisible();
+  // Le message figure au récapitulatif et sous le champ : les deux comptent.
+  await expect(page.locator(".form-summary")).toContainText(
+    /Précisez si ce montant est horaire/,
+  );
+  await expect(page.locator(".field-error")).toContainText(
+    /Précisez si ce montant est horaire/,
+  );
   await page.getByLabel("Unité").selectOption("hour");
   // Le reproche portait sur deux champs : corriger l'unité doit l'effacer,
   // sans attendre un nouvel envoi qui contredirait ce qu'on vient de choisir.
+  // Il disparaît des deux endroits à la fois : aucun des deux ne doit
+  // continuer de reprocher ce qui vient d'être corrigé.
   await expect(
     page.getByText(/Précisez si ce montant est horaire/),
   ).toHaveCount(0);
+  await expect(page.locator(".form-summary")).toHaveCount(0);
 
   // Une compétence ne peut porter qu'un seul niveau : choisir « souhaitée »
   // après « obligatoire » remplace le choix au lieu de s'y ajouter.
@@ -1346,8 +1374,12 @@ test("matching connects a published mission to a compatible intérimaire", async
   await expect(page).toHaveURL(/\/company$/);
   await page.goto(missionUrl);
   await expect(
-    page.getByRole("heading", { name: "Profils compatibles" }),
+    page.getByRole("heading", { name: "Talents recommandés" }),
   ).toBeVisible();
+  const rail = page.locator(".layout-rail");
+  // La frontiere doit etre ecrite noir sur blanc : ces profils ne sont pas des
+  // candidatures, et rien ne se decide a leur sujet.
+  await expect(rail).toContainText("n’ont pas postulé");
   const candidats = page.locator(".candidate-list");
   await expect(candidats).toContainText("Camille N.");
   // Nom complet et adresse électronique n'ont pas à figurer avant candidature.

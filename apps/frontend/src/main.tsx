@@ -1,30 +1,90 @@
-import React from "react";
+import React, { Suspense, lazy } from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter, Routes, Route, Navigate, Link } from "react-router-dom";
 import { AuthProvider } from "./hooks/AuthContext";
+import { CompanyDataProvider } from "./hooks/CompanyData";
 import { AppLayout } from "./layouts/AppLayout";
 import { ProtectedRoute, PublicRoute } from "./components/Guards";
 import { Home } from "./pages/Home";
 import { Login } from "./pages/Login";
-import { Callback } from "./pages/Callback";
-import { Dashboard } from "./pages/Dashboard";
-import { ProfileForm } from "./pages/ProfileForm";
-import { WorkerProfile } from "./pages/WorkerProfile";
-import { Missions } from "./pages/Missions";
-import { WorkerMissionDetail } from "./pages/WorkerMissionDetail";
-import { WorkerApplications } from "./pages/WorkerApplications";
-import { CompanyDashboard } from "./pages/CompanyDashboard";
-import { CompanyMissions } from "./pages/CompanyMissions";
-import { CompanyMissionDetail } from "./pages/CompanyMissionDetail";
-import { CompanyMissionForm } from "./pages/CompanyMissionForm";
-import { Candidates } from "./pages/Candidates";
-import { AdminPage } from "./pages/Admin";
 import "./styles/global.css";
+
+/**
+ * Chaque espace est chargé quand on y entre.
+ *
+ * Tout était jusqu'ici réuni dans un seul fichier de 666 ko : un visiteur de la
+ * page d'accueil téléchargeait l'espace entreprise, l'espace intérimaire et
+ * l'administration avant de voir le premier mot. Les deux espaces ne se
+ * croisent jamais — un compte a un rôle — et l'administration ne concerne
+ * presque personne.
+ */
+const Callback = lazy(() =>
+  import("./pages/Callback").then((m) => ({ default: m.Callback })),
+);
+const Dashboard = lazy(() =>
+  import("./pages/Dashboard").then((m) => ({ default: m.Dashboard })),
+);
+const ProfileForm = lazy(() =>
+  import("./pages/ProfileForm").then((m) => ({ default: m.ProfileForm })),
+);
+const WorkerProfile = lazy(() =>
+  import("./pages/WorkerProfile").then((m) => ({ default: m.WorkerProfile })),
+);
+const Missions = lazy(() =>
+  import("./pages/Missions").then((m) => ({ default: m.Missions })),
+);
+const WorkerMissionDetail = lazy(() =>
+  import("./pages/WorkerMissionDetail").then((m) => ({
+    default: m.WorkerMissionDetail,
+  })),
+);
+const WorkerApplications = lazy(() =>
+  import("./pages/WorkerApplications").then((m) => ({
+    default: m.WorkerApplications,
+  })),
+);
+const CompanyDashboard = lazy(() =>
+  import("./pages/CompanyDashboard").then((m) => ({
+    default: m.CompanyDashboard,
+  })),
+);
+const CompanyMissions = lazy(() =>
+  import("./pages/CompanyMissions").then((m) => ({
+    default: m.CompanyMissions,
+  })),
+);
+const CompanyMissionDetail = lazy(() =>
+  import("./pages/CompanyMissionDetail").then((m) => ({
+    default: m.CompanyMissionDetail,
+  })),
+);
+const CompanyMissionForm = lazy(() =>
+  import("./pages/CompanyMissionForm").then((m) => ({
+    default: m.CompanyMissionForm,
+  })),
+);
+const CompanyApplicationsPage = lazy(() =>
+  import("./pages/CompanyApplications").then((m) => ({
+    default: m.CompanyApplicationsPage,
+  })),
+);
+const AdminPage = lazy(() =>
+  import("./pages/Admin").then((m) => ({ default: m.AdminPage })),
+);
+
+/** Le temps d'aller chercher un espace : une ligne, pas un écran blanc. */
+const Loading = () => (
+  <p className="quiet route-loading" role="status">
+    Chargement…
+  </p>
+);
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <BrowserRouter>
       <AuthProvider>
+        <CompanyDataProvider>
+        <Suspense fallback={<Loading />}>
         <Routes>
           <Route element={<AppLayout />}>
             <Route index element={<Home />} />
@@ -55,7 +115,15 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
                   path="missions/:id/edit"
                   element={<CompanyMissionForm />}
                 />
-                <Route path="candidates" element={<Candidates />} />
+                <Route
+                  path="applications"
+                  element={<CompanyApplicationsPage />}
+                />
+                {/* Ancien libellé : les liens déjà partagés doivent survivre. */}
+                <Route
+                  path="candidates"
+                  element={<Navigate to="/company/applications" replace />}
+                />
               </Route>
             </Route>
 
@@ -86,6 +154,8 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
             />
           </Route>
         </Routes>
+        </Suspense>
+        </CompanyDataProvider>
       </AuthProvider>
     </BrowserRouter>
   </React.StrictMode>,

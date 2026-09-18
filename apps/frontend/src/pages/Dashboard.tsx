@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   CalendarDays,
+  CalendarCheck2,
   MapPin,
   Check,
   BriefcaseBusiness,
@@ -22,6 +23,12 @@ import {
   type Exclusions,
   type OpenMission,
 } from "../services/missions";
+import {
+  awaitingReply,
+  listMyApplications,
+  upcomingEngagements,
+  type WorkerApplication,
+} from "../services/applications";
 
 /**
  * Rappel de complétion. Il n'apparaît que tant qu'il reste quelque chose à
@@ -61,6 +68,7 @@ export function Dashboard() {
   const { user, revision } = useAuth();
   const [open, setOpen] = useState<OpenMission[]>([]);
   const [excluded, setExcluded] = useState<Exclusions>();
+  const [mine, setMine] = useState<WorkerApplication[]>([]);
   const [missionsError, setMissionsError] = useState("");
   const isWorker = user?.role === "worker";
 
@@ -69,11 +77,14 @@ export function Dashboard() {
   useEffect(() => {
     if (!isWorker) return;
     let live = true;
-    void listOpenMissions()
-      .then((r) => {
+    // Les deux lectures partent ensemble : elles ne dépendent pas l'une de
+    // l'autre, et les enchaîner doublerait l'attente pour rien.
+    void Promise.all([listOpenMissions(), listMyApplications()])
+      .then(([r, applications]) => {
         if (!live) return;
         setOpen(r.missions);
         setExcluded(r.excluded);
+        setMine(applications.applications);
       })
       .catch((e) => live && setMissionsError(errorMessage(e)));
     return () => {
@@ -90,6 +101,8 @@ export function Dashboard() {
   // Une seule phrase ici : l'explication complète et son action vivent sur
   // l'écran des missions, que le lien « Tout voir » atteint déjà.
   const reason = worker ? explainEmpty(excluded) : null;
+  const engagements = upcomingEngagements(mine);
+  const waiting = awaitingReply(mine);
 
   return (
     <>
@@ -186,6 +199,51 @@ export function Dashboard() {
         <aside className="secondary">
           {worker ? (
             <>
+              {(engagements.length > 0 || waiting.length > 0) && (
+                <section className="side-panel">
+                  <CalendarCheck2 aria-hidden="true" />
+                  <h2>Vos missions acceptées</h2>
+                  {engagements.length > 0 ? (
+                    <>
+                      <ul className="slot-list plain">
+                        {engagements.slice(0, 3).map((one) => (
+                          <li key={one.id}>
+                            <strong>{one.mission.title}</strong>
+                            <br />
+                            {formatSlot({
+                              id: one.id,
+                              starts_at: one.mission.starts_at,
+                              ends_at: one.mission.ends_at,
+                              status: "available",
+                            })}
+                          </li>
+                        ))}
+                      </ul>
+                      {/* Le lien entre un engagement et les missions qui
+                          disparaissent doit être dit : sinon leur absence reste
+                          inexplicable. */}
+                      <p className="quiet">
+                        Les missions qui tombent sur ces créneaux ne vous sont
+                        plus proposées. Vos disponibilités, elles, restent
+                        inchangées.
+                      </p>
+                    </>
+                  ) : (
+                    <p className="quiet">
+                      Aucune mission acceptée pour l’instant.
+                    </p>
+                  )}
+                  {waiting.length > 0 && (
+                    <p className="quiet">
+                      {waiting.length} candidature
+                      {waiting.length > 1 ? "s" : ""} en attente de réponse.
+                    </p>
+                  )}
+                  <Link className="quiet" to="/worker/applications">
+                    Voir mes candidatures
+                  </Link>
+                </section>
+              )}
               <section className="side-panel" data-tour="availability">
                 <CalendarDays aria-hidden="true" />
                 <h2>Vos disponibilités</h2>

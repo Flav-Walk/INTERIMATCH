@@ -130,6 +130,28 @@ export const requirementLabels: Record<CompletionRule, string> = {
   availability: "Au moins une disponibilité à venir",
 };
 
+/**
+ * Quelle section porte chaque exigence de complétion.
+ *
+ * Le profil annonçait ce qui manquait en haut de page, puis laissait chercher :
+ * six blocs à parcourir pour retrouver lequel est concerné. La correspondance
+ * vit ici, à côté des libellés, pour que les deux ne se contredisent pas.
+ */
+export const requirementSections: Record<CompletionRule, string> = {
+  identity: "Votre identité",
+  location: "Votre mobilité",
+  mobility_radius: "Votre mobilité",
+  main_job: "Votre métier",
+  skills: "Vos compétences",
+  availability: "Vos disponibilités",
+};
+
+/** Exigences non satisfaites portant sur une section donnée. */
+export const missingIn = (
+  missing: CompletionRule[] | undefined,
+  section: string,
+) => (missing ?? []).filter((rule) => requirementSections[rule] === section);
+
 const dateFormat = new Intl.DateTimeFormat("fr-FR", {
   weekday: "short",
   day: "2-digit",
