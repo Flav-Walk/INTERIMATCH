@@ -164,12 +164,24 @@ export type BlockerCode =
   /** Une mission déjà acceptée occupe ce créneau. */
   | "engaged";
 
+/**
+ * Ce qu'une dimension apporte ou coûte, tel que le moteur l'a qualifié.
+ *
+ * Le seuil qui sépare un point fort d'un point limitant vit dans le backend et
+ * nulle part ailleurs. L'interface lit cette qualification ; elle ne la
+ * redécide pas, sous peine de commenter un score en le contredisant.
+ */
+export type DimensionTone = "strength" | "neutral" | "limitation";
+
 export interface MatchDimension {
   key: "desired_skills" | "proximity" | "job" | "experience";
   label: string;
   weight: number;
   ratio: number;
   points: number;
+  tone: DimensionTone;
+  /** Points laissés sur la table, soit `weight - points`. Sert à ordonner. */
+  lost: number;
 }
 
 export interface SkillTally {
@@ -179,12 +191,26 @@ export interface SkillTally {
 
 export interface MatchResult {
   compatible: boolean;
+  /**
+   * Score arrondi, destiné à l'affichage. **Ne sert jamais à déduire un
+   * palier** : 69,6 % s'affiche « 70 % » sans atteindre le palier des 70.
+   */
   score: number;
   blockers: BlockerCode[];
   dimensions: MatchDimension[];
   distance_km: number | null;
   outside_zone?: boolean | null;
   skills?: { required: SkillTally; desired: SkillTally };
+  /**
+   * Palier métier atteint, décidé par le serveur sur le score non arrondi.
+   *
+   * C'est la conclusion qui traverse la frontière, pas la donnée qui
+   * permettrait de la refaire : le score brut reste interne au backend. Toute
+   * qualification affichée ici doit venir de ce champ, jamais d'une
+   * comparaison locale sur `score`.
+   */
+  band?: number | null;
+  band_label?: string | null;
 }
 
 /** Profil volontairement limité avant candidature : aucune coordonnée privée. */
@@ -199,7 +225,16 @@ export interface MissionCandidate {
   match: MatchResult;
 }
 
-export type CandidateSelectionInactive = "draft" | "ended" | "closed" | "full";
+/**
+ * Pourquoi aucun rapprochement n'a été tenté.
+ *
+ * `cancelled` a été ajouté par le backend avec le cycle de vie des missions.
+ * Il manquait ici, et comme la table des messages est exhaustive, une mission
+ * annulée affichait un encart vide. Les motifs restent distincts à dessein :
+ * dire « tous les postes sont pourvus » d'une offre retirée serait faux.
+ */
+export type CandidateSelectionInactive =
+  "draft" | "ended" | "closed" | "cancelled" | "full";
 
 /**
  * Résultat déjà filtré, classé et regroupé par palier par le backend.
