@@ -106,15 +106,44 @@ export interface Dimension {
   points: number;
 }
 
+/** Compétences détenues sur compétences demandées : de quoi écrire « 2/3 ». */
+export interface SkillTally {
+  held: number;
+  total: number;
+}
+
 export interface MatchResult {
   compatible: boolean;
-  /** 0 à 100. Calculé même lorsqu'un bloqueur est présent, pour pouvoir l'expliquer. */
+  /**
+   * 0 à 100, arrondi — c'est la valeur à afficher.
+   *
+   * Les paliers, eux, se calculent sur `raw_score` : un profil à 69,6 %
+   * s'affiche « 70 % » sans pour autant atteindre le palier des 70, faute de
+   * quoi l'arrondi ferait entrer dans une tranche que le score n'atteint pas.
+   */
   score: number;
+  /** Le même score, non arrondi. Sert au classement, jamais à l'affichage. */
+  raw_score: number;
   blockers: BlockerCode[];
   /** Uniquement les dimensions que les données permettent d'évaluer. */
   dimensions: Dimension[];
   /** Distance à vol d'oiseau, arrondie au kilomètre, ou null si incalculable. */
   distance_km: number | null;
+  /**
+   * Au-delà du rayon de déplacement déclaré.
+   *
+   * `null` lorsque la question n'a pas de réponse — coordonnées manquantes d'un
+   * côté ou de l'autre, ou rayon jamais renseigné. Répondre « non » dans ce cas
+   * affirmerait une proximité que rien n'établit.
+   *
+   * Le drapeau ne remplace pas le bloqueur `out_of_range` : pour l'intérimaire,
+   * qui a fixé ce rayon lui-même, la mission reste hors de portée. Il permet à
+   * l'entreprise d'élargir volontairement sa recherche, ce que le cahier
+   * prévoit, sans que le moteur décide à sa place.
+   */
+  outside_zone: boolean | null;
+  /** De quoi dire « 3 compétences obligatoires sur 3 » sans recompter. */
+  skills: { required: SkillTally; desired: SkillTally };
 }
 
 /* ------------------------------------------------------------------ */
@@ -261,6 +290,10 @@ export function evaluate(
 ): MatchResult {
   const held = new Set(worker.skill_ids);
   const blockers: BlockerCode[] = [];
+  const tally = (needed: string[]): SkillTally => ({
+    held: needed.filter((id) => held.has(id)).length,
+    total: needed.length,
+  });
 
   // --- Critères bloquants ---
   if (!worker.open_to_missions) blockers.push("paused");
@@ -289,8 +322,10 @@ export function evaluate(
       )
     : null;
   const radius = worker.mobility_radius_km;
-  if (distance !== null && radius !== null && distance > radius)
-    blockers.push("out_of_range");
+  // Trois états, pas deux : dans la zone, hors de la zone, ou impossible à dire.
+  const outsideZone =
+    distance === null || radius === null ? null : distance > radius;
+  if (outsideZone === true) blockers.push("out_of_range");
 
   // --- Critères gradués ---
   const dimensions: Dimension[] = [];
@@ -343,15 +378,20 @@ export function evaluate(
 
   const totalWeight = dimensions.reduce((sum, d) => sum + d.weight, 0);
   const earned = dimensions.reduce((sum, d) => sum + d.points, 0);
-  const score =
-    totalWeight === 0 ? 0 : Math.round((earned / totalWeight) * 100);
+  const raw = totalWeight === 0 ? 0 : (earned / totalWeight) * 100;
 
   return {
     compatible: blockers.length === 0,
-    score,
+    score: Math.round(raw),
+    raw_score: raw,
     blockers,
     dimensions,
     distance_km: distance === null ? null : Math.round(distance),
+    outside_zone: outsideZone,
+    skills: {
+      required: tally(mission.required_skill_ids),
+      desired: tally(mission.desired_skill_ids),
+    },
   };
 }
 
@@ -383,13 +423,21 @@ export interface BandedSelection<T> {
  *
  * Les bloquants restent bloquants : cette fonction ne voit que des candidats
  * déjà déclarés compatibles, et aucun élargissement ne les réintroduit.
+ *
+ * `score` doit être le score **non arrondi**. Comparer des valeurs arrondies
+ * ferait entrer dans le palier des 70 un profil à 69,6 % qui ne l'atteint pas.
+ *
+ * L'identifiant départage les ex æquo. Sans lui, deux profils au même score
+ * s'ordonnent comme la base les a rendus — c'est-à-dire sans garantie, d'une
+ * requête à l'autre. Un classement qui change tout seul n'est pas un
+ * classement, et aucun test ne pourrait l'affirmer stable.
  */
-export function selectByBands<T extends { score: number; compatible: boolean }>(
-  candidates: T[],
-): BandedSelection<T> {
+export function selectByBands<
+  T extends { score: number; compatible: boolean; id: string },
+>(candidates: T[]): BandedSelection<T> {
   const eligible = candidates
     .filter((c) => c.compatible)
-    .sort((a, b) => b.score - a.score);
+    .sort((a, b) => b.score - a.score || a.id.localeCompare(b.id));
   for (const { min, label } of BANDS) {
     const inBand = eligible.filter((c) => c.score >= min);
     if (inBand.length > 0) return { band: min, label, results: inBand };
