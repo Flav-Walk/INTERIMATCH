@@ -1,6 +1,11 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, Building2, BriefcaseBusiness, Utensils } from "lucide-react";
+import {
+  ArrowRight,
+  Building2,
+  BriefcaseBusiness,
+  Utensils,
+} from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { errorMessage } from "../services/session";
 import { MissionCard } from "../components/mission/MissionCard";
@@ -116,33 +121,34 @@ export function CompanyDashboard() {
                 {error}
               </p>
             )}
-            {loading ? (
-              <p role="status" className="quiet">
-                Chargement de vos missions…
-              </p>
-            ) : shown.length > 0 ? (
-              <div className="mission-grid">
-                {shown.map((mission) => (
-                  <MissionCard
-                    key={mission.id}
-                    mission={mission}
-                    pendingApplications={pending.get(mission.id) ?? 0}
-                  />
-                ))}
-              </div>
-            ) : (
-              <div className="empty">
-                <BriefcaseBusiness aria-hidden="true" />
-                <h3>Aucune mission dans cet onglet</h3>
-                <p>
-                  Créez une mission pour commencer à recevoir des candidats
-                  compatibles.
+            {!error &&
+              (loading ? (
+                <p role="status" className="quiet">
+                  Chargement de vos missions…
                 </p>
-                <Link className="button" to="/company/missions/new">
-                  Créer une mission
-                </Link>
-              </div>
-            )}
+              ) : shown.length > 0 ? (
+                <div className="mission-grid">
+                  {shown.map((mission) => (
+                    <MissionCard
+                      key={mission.id}
+                      mission={mission}
+                      pendingApplications={pending.get(mission.id) ?? 0}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="empty">
+                  <BriefcaseBusiness aria-hidden="true" />
+                  <h3>Aucune mission dans cet onglet</h3>
+                  <p>
+                    Créez une mission pour commencer à recevoir des candidats
+                    compatibles.
+                  </p>
+                  <Link className="button" to="/company/missions/new">
+                    Créer une mission
+                  </Link>
+                </div>
+              ))}
           </section>
 
           <RecentApplications />

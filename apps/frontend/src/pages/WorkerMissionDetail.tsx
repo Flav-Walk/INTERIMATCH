@@ -13,7 +13,11 @@ import {
 import { useAuth } from "../hooks/useAuth";
 import { errorMessage, type ReferenceValue } from "../services/session";
 import { api } from "../services/session";
-import { getOpenMission, type OpenMission } from "../services/missions";
+import {
+  getOpenMission,
+  missionStatePresentation,
+  type OpenMission,
+} from "../services/missions";
 import { missionSchedule } from "../components/mission/MissionCard";
 import { MatchExplanation } from "../components/mission/MatchExplanation";
 import { MatchBadge } from "../components/mission/MatchBadge";
@@ -37,17 +41,21 @@ export function WorkerMissionDetail() {
   useEffect(() => {
     let live = true;
     setLoading(true);
-    void Promise.all([
+    void Promise.allSettled([
       getOpenMission(id),
       api<{ sectors: ReferenceValue[] }>("/reference"),
     ])
-      .then(([m, reference]) => {
+      .then(([missionResult, referenceResult]) => {
         if (!live) return;
-        setMission(m);
-        setSectors(reference.sectors);
-        setError("");
+        if (missionResult.status === "fulfilled") {
+          setMission(missionResult.value);
+          setError("");
+        } else {
+          setError(errorMessage(missionResult.reason));
+        }
+        if (referenceResult.status === "fulfilled")
+          setSectors(referenceResult.value.sectors);
       })
-      .catch((e) => live && setError(errorMessage(e)))
       .finally(() => live && setLoading(false));
     return () => {
       live = false;
@@ -81,6 +89,7 @@ export function WorkerMissionDetail() {
   const sector =
     sectors.find((s) => s.value === mission.company.sector)?.label ??
     mission.company.sector;
+  const presentation = missionStatePresentation(mission);
 
   return (
     <section className="page-wide">
@@ -91,7 +100,12 @@ export function WorkerMissionDetail() {
 
       <div className="section-head">
         <h1>{mission.title}</h1>
-        <span className="mission-status is-inline is-open">À pourvoir</span>
+        <span className={`mission-status is-inline ${presentation.className}`}>
+          {presentation.label}
+        </span>
+        {presentation.temporal === "upcoming" && (
+          <span className="mission-timing is-inline">À venir</span>
+        )}
         {mission.match?.compatible && (
           <MatchBadge score={mission.match.score} size="large" />
         )}
@@ -212,6 +226,7 @@ export function WorkerMissionDetail() {
               city: mission.city,
               postal_code: mission.postal_code,
               establishment_name: mission.company.establishment_name,
+              status: mission.status,
             }}
           />
         </aside>

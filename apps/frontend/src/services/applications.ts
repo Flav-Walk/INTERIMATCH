@@ -1,5 +1,9 @@
 import { api } from "./session";
-import type { MissionCapacity } from "./missions";
+import {
+  missionTemporalState,
+  type MissionCapacity,
+  type MissionStatus,
+} from "./missions";
 
 export type ApplicationStatus = "pending" | "accepted" | "rejected";
 export type ApplicationDecision = Exclude<ApplicationStatus, "pending">;
@@ -21,7 +25,7 @@ export interface WorkerApplication extends Omit<Application, "worker_id"> {
     ends_at: string;
     city: string;
     postal_code: string;
-    status: string;
+    status: MissionStatus;
   };
   company: { establishment_name: string | null };
 }
@@ -44,6 +48,27 @@ export interface MissionApplication extends Omit<Application, "worker_id"> {
   conflict: boolean;
 }
 
+export type WorkerMissionContext =
+  "pending" | "rejected" | "confirmed" | "running" | "completed" | "cancelled";
+
+export function workerMissionContext(
+  application: WorkerApplication,
+  now = Date.now(),
+): { key: WorkerMissionContext; label: string } {
+  const temporal = missionTemporalState(application.mission, now);
+  if (temporal === "cancelled")
+    return { key: "cancelled", label: "Mission annulée" };
+  if (temporal === "completed")
+    return { key: "completed", label: "Mission terminée" };
+  if (application.status === "accepted")
+    return temporal === "running"
+      ? { key: "running", label: "Mission en cours" }
+      : { key: "confirmed", label: "Mission confirmée" };
+  if (application.status === "pending")
+    return { key: "pending", label: "Candidature en attente" };
+  return { key: "rejected", label: "Candidature non retenue" };
+}
+
 /** Une candidature vue depuis l'entreprise, avec la mission qu'elle vise. */
 export interface CompanyApplication extends MissionApplication {
   mission: {
@@ -53,7 +78,7 @@ export interface CompanyApplication extends MissionApplication {
     starts_at: string;
     ends_at: string;
     city: string;
-    status: string;
+    status: MissionStatus;
     headcount: number;
   };
 }
@@ -148,6 +173,7 @@ export function upcomingEngagements(applications: WorkerApplication[]) {
       (one) =>
         one.status === "accepted" &&
         one.mission.status !== "cancelled" &&
+        one.mission.status !== "completed" &&
         Date.parse(one.mission.ends_at) > now,
     )
     .sort(

@@ -1,7 +1,15 @@
-import { ArrowRight, CalendarDays, MapPin } from "lucide-react";
+import {
+  Activity,
+  ArrowRight,
+  CalendarDays,
+  CheckCircle2,
+  MapPin,
+} from "lucide-react";
 import { Link } from "react-router-dom";
-import type { WorkerApplication } from "../../services/applications";
-import { ApplicationStatus } from "./ApplicationStatus";
+import {
+  workerMissionContext,
+  type WorkerApplication,
+} from "../../services/applications";
 
 const schedule = new Intl.DateTimeFormat("fr-FR", {
   dateStyle: "medium",
@@ -21,6 +29,8 @@ export function ConfirmedMissions({
   return (
     <ul className="confirmed-mission-list">
       {applications.map((application) => {
+        const context = workerMissionContext(application);
+        const ContextIcon = context.key === "running" ? Activity : CheckCircle2;
         const location = [
           application.mission.postal_code,
           application.mission.city,
@@ -32,7 +42,10 @@ export function ConfirmedMissions({
           <li key={application.id}>
             <div className="confirmed-mission-copy">
               <div className="confirmed-mission-heading">
-                <ApplicationStatus status="accepted" />
+                <span className={`mission-context-status is-${context.key}`}>
+                  <ContextIcon size={14} aria-hidden="true" />
+                  {context.label}
+                </span>
                 <span className="quiet">
                   {application.company.establishment_name ?? "Établissement"}
                 </span>

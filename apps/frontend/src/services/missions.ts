@@ -3,6 +3,16 @@ import { api } from "./session";
 export type MissionStatus =
   "draft" | "open" | "filled" | "completed" | "cancelled";
 
+export type MissionTemporalState =
+  "upcoming" | "running" | "completed" | "cancelled";
+
+export interface MissionStatePresentation {
+  key: MissionStatus | "running";
+  label: string;
+  className: "is-open" | "is-running" | "is-done" | "is-draft";
+  temporal: MissionTemporalState;
+}
+
 export interface MissionSkill {
   id: string;
   name: string;
@@ -15,6 +25,11 @@ export interface MissionCapacity {
   remaining: number;
   full: boolean;
 }
+
+export type MissionPhase =
+  "draft" | "cancelled" | "completed" | "in_progress" | "upcoming" | "open";
+
+export type NotOpenReason = "draft" | "ended" | "closed" | "cancelled" | "full";
 
 export interface Mission {
   id: string;
@@ -32,6 +47,9 @@ export interface Mission {
   pay_unit: string | null;
   headcount: number;
   capacity?: MissionCapacity;
+  phase?: MissionPhase;
+  recruiting?: boolean;
+  recruiting_blocked?: NotOpenReason | null;
   min_years_experience: string | null;
   status: MissionStatus;
   published_at: string | null;
@@ -48,6 +66,79 @@ export const listMissions = (status?: MissionStatus) =>
   api<MissionList>("/missions" + (status ? "?status=" + status : ""));
 
 export const getMission = (id: string) => api<Mission>("/missions/" + id);
+
+/**
+ * Lecture temporelle, sans transition métier locale.
+ *
+ * Le serveur reste propriétaire de `status`. Les dates servent uniquement à
+ * expliquer si le créneau est à venir, en cours ou passé lorsque la base n'a
+ * pas encore matérialisé cette information dans un statut distinct.
+ */
+export function missionTemporalState(
+  mission: Pick<Mission, "status" | "starts_at" | "ends_at">,
+  now = Date.now(),
+): MissionTemporalState {
+  if (mission.status === "cancelled") return "cancelled";
+  if (mission.status === "completed" || Date.parse(mission.ends_at) <= now)
+    return "completed";
+  if (Date.parse(mission.starts_at) <= now) return "running";
+  return "upcoming";
+}
+
+export function missionStatePresentation(
+  mission: Pick<Mission, "status" | "starts_at" | "ends_at">,
+  now = Date.now(),
+): MissionStatePresentation {
+  const temporal = missionTemporalState(mission, now);
+  if (temporal === "cancelled")
+    return {
+      key: "cancelled",
+      label: "Annulée",
+      className: "is-done",
+      temporal,
+    };
+  if (mission.status === "draft")
+    return temporal === "upcoming"
+      ? {
+          key: "draft",
+          label: "Brouillon",
+          className: "is-draft",
+          temporal,
+        }
+      : {
+          key: "draft",
+          label: "Brouillon expiré",
+          className: "is-done",
+          temporal,
+        };
+  if (temporal === "completed")
+    return {
+      key: "completed",
+      label: "Terminée",
+      className: "is-done",
+      temporal,
+    };
+  if (temporal === "running")
+    return {
+      key: "running",
+      label: "En cours",
+      className: "is-running",
+      temporal,
+    };
+  if (mission.status === "filled")
+    return {
+      key: "filled",
+      label: "Pourvue",
+      className: "is-running",
+      temporal,
+    };
+  return {
+    key: "open",
+    label: "À pourvoir",
+    className: "is-open",
+    temporal,
+  };
+}
 
 /**
  * Une mission telle qu'un intérimaire la voit : la mission elle-même, plus ce
@@ -298,30 +389,46 @@ export const updateMission = (id: string, patch: MissionPatch) =>
 export const publishMission = (id: string) =>
   api<Mission>(`/missions/${id}/publish`, { method: "POST" });
 
+/** Annulation : l’entreprise retire son offre sans corps de requête. */
+export const cancelMission = (id: string) =>
+  api<Mission>(`/missions/${id}/cancel`, { method: "POST" });
+
 /**
  * Seul un brouillon se publie. Le frontend n'en déduit rien d'autre : il
  * n'existe pas ici de seconde machine à états, le serveur reste l'autorité et
  * ses refus sont affichés tels quels.
  */
-export const canPublish = (mission: Mission) => mission.status === "draft";
+export const canPublish = (mission: Mission, now = Date.now()) =>
+  mission.status === "draft" && Date.parse(mission.starts_at) > now;
+
+/**
+ * Seule une mission publiée dont le créneau n'a pas commencé peut être annulée.
+ * Une fois le créneau débuté, le travail a commencé et le serveur refuse
+ * l'annulation (409 MISSION_ALREADY_STARTED). Une mission déjà passée ne
+ * s'annule pas non plus (409 MISSION_ENDED).
+ */
+export const canCancel = (mission: Mission, now = Date.now()) =>
+  mission.status === "open" && Date.parse(mission.starts_at) > now;
 
 /**
  * Une mission terminée ou annulée n'a plus à être retouchée. Le serveur, lui,
  * accepterait la modification : ce n'est donc pas une règle, seulement une
  * action qu'on cesse de proposer quand elle n'a plus de sens.
  */
-export const canEdit = (mission: Mission) =>
-  mission.status === "draft" || mission.status === "open";
+export const canEdit = (mission: Mission, now = Date.now()) =>
+  (mission.status === "draft" || mission.status === "open") &&
+  Date.parse(mission.ends_at) > now;
 
 /**
  * Onglets de la maquette. « En cours » regroupe les missions pourvues en cours,
  * « À venir » les missions publiées qui n'ont pas commencé.
  */
 export const missionTabs = [
-  { key: "open", label: "À pourvoir" },
-  { key: "filled", label: "En cours" },
+  { key: "open", label: "Publiées" },
+  { key: "filled", label: "Pourvues" },
   { key: "completed", label: "Terminées" },
   { key: "draft", label: "Brouillons" },
+  { key: "cancelled", label: "Annulées" },
 ] as const;
 
 export type MissionTab = (typeof missionTabs)[number]["key"];
@@ -342,7 +449,11 @@ export function searchMissions(missions: Mission[], query: string) {
 export function upcomingMissions(missions: Mission[], limit = 3) {
   const now = Date.now();
   return missions
-    .filter((m) => Date.parse(m.ends_at) > now && m.status !== "cancelled")
+    .filter(
+      (m) =>
+        Date.parse(m.ends_at) > now &&
+        (m.status === "open" || m.status === "filled"),
+    )
     .sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at))
     .slice(0, limit);
 }

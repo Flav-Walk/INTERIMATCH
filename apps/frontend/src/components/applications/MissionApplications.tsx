@@ -104,11 +104,13 @@ export function MissionApplicationList({
   applications,
   busyId,
   missionFull,
+  decisionsClosed,
   onDecision,
 }: {
   applications: MissionApplication[];
   busyId: string | null;
   missionFull: boolean;
+  decisionsClosed?: string;
   onDecision: (
     application: MissionApplication,
     status: ApplicationDecision,
@@ -126,7 +128,9 @@ export function MissionApplicationList({
     );
 
   return (
-    <ul className="application-candidate-list">
+    <ul
+      className={`application-candidate-list ${decisionsClosed ? "is-inactive" : ""}`}
+    >
       {applications.map((application) => (
         <li key={application.id}>
           <div className="application-candidate-main">
@@ -153,39 +157,42 @@ export function MissionApplicationList({
             <ApplicationStatus status={application.status} />
             {application.status === "pending" && (
               <>
-                {application.conflict && (
+                {decisionsClosed ? (
+                  <p className="application-capacity-note">{decisionsClosed}</p>
+                ) : application.conflict ? (
                   <p className="application-conflict">
                     <CalendarX2 size={14} aria-hidden="true" />
                     Cette personne a accepté une autre mission sur ce créneau.
                     Elle ne peut plus être retenue pour celle-ci.
                   </p>
-                )}
-                {missionFull && !application.conflict && (
+                ) : missionFull ? (
                   <p className="application-capacity-note">
                     Tous les postes sont pourvus. Cette candidature ne peut plus
                     être acceptée.
                   </p>
-                )}
-                <div className="application-candidate-actions">
-                  <button
-                    type="button"
-                    className="secondary-button"
-                    disabled={busyId !== null}
-                    onClick={() => onDecision(application, "rejected")}
-                  >
-                    Refuser
-                  </button>
-                  {!application.conflict && !missionFull && (
+                ) : null}
+                {!decisionsClosed && (
+                  <div className="application-candidate-actions">
                     <button
                       type="button"
-                      className="button"
+                      className="secondary-button"
                       disabled={busyId !== null}
-                      onClick={() => onDecision(application, "accepted")}
+                      onClick={() => onDecision(application, "rejected")}
                     >
-                      Accepter
+                      Refuser
                     </button>
-                  )}
-                </div>
+                    {!application.conflict && !missionFull && (
+                      <button
+                        type="button"
+                        className="button"
+                        disabled={busyId !== null}
+                        onClick={() => onDecision(application, "accepted")}
+                      >
+                        Accepter
+                      </button>
+                    )}
+                  </div>
+                )}
               </>
             )}
           </div>
@@ -203,11 +210,13 @@ export function MissionApplications({
   missionId,
   missionTitle,
   headcount,
+  decisionsClosed,
   onCapacityChange,
 }: {
   missionId: string;
   missionTitle: string;
   headcount: number;
+  decisionsClosed?: string;
   onCapacityChange: (capacity: MissionCapacity | null) => void;
 }) {
   const { revision, invalidate } = useAuth();
@@ -319,6 +328,7 @@ export function MissionApplications({
           applications={applications}
           busyId={busyId}
           missionFull={missionFull}
+          decisionsClosed={decisionsClosed}
           onDecision={requestDecision}
         />
       )}

@@ -9,7 +9,11 @@ import {
   Users,
   Utensils,
 } from "lucide-react";
-import type { Mission, MissionStatus } from "../../services/missions";
+import {
+  missionStatePresentation,
+  type Mission,
+  type MissionStatus,
+} from "../../services/missions";
 import { MatchBadge } from "./MatchBadge";
 
 /**
@@ -23,14 +27,6 @@ const statusLabels: Record<MissionStatus, string> = {
   filled: "En cours",
   completed: "Terminée",
   cancelled: "Annulée",
-};
-
-const statusClass: Record<MissionStatus, string> = {
-  draft: "is-draft",
-  open: "is-open",
-  filled: "is-running",
-  completed: "is-done",
-  cancelled: "is-done",
 };
 
 /**
@@ -91,17 +87,16 @@ export function MissionCard({
 }) {
   const seats = Array.from({ length: Math.min(mission.headcount, 3) });
   const full = score === undefined && mission.capacity?.full === true;
+  const presentation = missionStatePresentation(mission);
+  const status = full
+    ? { ...presentation, label: "Pourvue", className: "is-running" }
+    : presentation;
   return (
     <Link className="mission-card" to={`${basePath}/${mission.id}`}>
       <div className="mission-media">
         <JobGlyph job={mission.job} />
-        <span
-          className={
-            "mission-status " +
-            (full ? "is-running" : statusClass[mission.status])
-          }
-        >
-          {full ? "Pourvue" : statusLabels[mission.status]}
+        <span className={`mission-status ${status.className}`}>
+          {status.label}
         </span>
         {pendingApplications > 0 && (
           <span className="mission-pending">
@@ -114,7 +109,12 @@ export function MissionCard({
         )}
       </div>
       <div className="mission-body">
-        <h3 className="mission-title">{mission.title}</h3>
+        <div className="mission-title-line">
+          <h3 className="mission-title">{mission.title}</h3>
+          {status.temporal === "upcoming" && mission.status !== "draft" && (
+            <span className="mission-timing">À venir</span>
+          )}
+        </div>
         <p className="mission-meta">
           <MapPin size={14} aria-hidden="true" />
           {mission.city}

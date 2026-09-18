@@ -71,64 +71,70 @@ export function Missions() {
         </p>
       )}
 
-      {loading ? (
-        <p role="status" className="quiet">
-          Chargement des missions…
-        </p>
-      ) : missions.length > 0 ? (
-        <>
-          <p className="quiet" role="status">
-            {missions.length} mission{missions.length > 1 ? "s" : ""} compatible
-            {missions.length > 1 ? "s" : ""} avec votre profil
+      {!error &&
+        (loading ? (
+          <p role="status" className="quiet">
+            Chargement des missions…
           </p>
-          <div className="mission-grid is-wide">
-            {missions.map((mission) => (
-              <MissionCard
-                key={mission.id}
-                mission={mission}
-                basePath="/worker/missions"
-                score={mission.match.score}
-              />
-            ))}
-          </div>
-        </>
-      ) : (
-        <>
-          <div className="empty">
-            <BriefcaseBusiness aria-hidden="true" />
-            <h2>{reason ? reason.title : "Aucune mission disponible pour le moment"}</h2>
-            <p>
-              {reason
-                ? reason.detail
-                : "Aucune mission n’est publiée pour l’instant. Dès qu’un établissement en publie une qui vous correspond, elle apparaît ici."}
+        ) : missions.length > 0 ? (
+          <>
+            <p className="quiet" role="status">
+              {missions.length} mission{missions.length > 1 ? "s" : ""}{" "}
+              compatible
+              {missions.length > 1 ? "s" : ""} avec votre profil
             </p>
-            {reason ? (
-              <Link className="button" to={reason.action.to}>
-                {reason.action.label}
-                <ArrowRight size={16} aria-hidden="true" />
-              </Link>
-            ) : (
-              !user.onboarding_completed && (
-                <Link className="button" to="/worker/profile">
-                  Compléter mon profil
-                </Link>
-              )
-            )}
-          </div>
-
-          <section className="section">
-            <h2>Comment cela fonctionnera</h2>
-            <ol className="steps-list">
-              {steps.map((label) => (
-                <li key={label}>
-                  <Check size={16} aria-hidden="true" />
-                  {label}
-                </li>
+            <div className="mission-grid is-wide">
+              {missions.map((mission) => (
+                <MissionCard
+                  key={mission.id}
+                  mission={mission}
+                  basePath="/worker/missions"
+                  score={mission.match.score}
+                />
               ))}
-            </ol>
-          </section>
-        </>
-      )}
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="empty">
+              <BriefcaseBusiness aria-hidden="true" />
+              <h2>
+                {reason
+                  ? reason.title
+                  : "Aucune mission disponible pour le moment"}
+              </h2>
+              <p>
+                {reason
+                  ? reason.detail
+                  : "Aucune mission n’est publiée pour l’instant. Dès qu’un établissement en publie une qui vous correspond, elle apparaît ici."}
+              </p>
+              {reason ? (
+                <Link className="button" to={reason.action.to}>
+                  {reason.action.label}
+                  <ArrowRight size={16} aria-hidden="true" />
+                </Link>
+              ) : (
+                !user.onboarding_completed && (
+                  <Link className="button" to="/worker/profile">
+                    Compléter mon profil
+                  </Link>
+                )
+              )}
+            </div>
+
+            <section className="section">
+              <h2>Comment cela fonctionnera</h2>
+              <ol className="steps-list">
+                {steps.map((label) => (
+                  <li key={label}>
+                    <Check size={16} aria-hidden="true" />
+                    {label}
+                  </li>
+                ))}
+              </ol>
+            </section>
+          </>
+        ))}
     </section>
   );
 }

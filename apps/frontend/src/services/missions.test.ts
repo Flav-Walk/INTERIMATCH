@@ -1,6 +1,12 @@
-import { describe, it, expect } from "vitest";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { MemoryRouter } from "react-router-dom";
+import { describe, it, expect, vi } from "vitest";
+import { MissionCard } from "../components/mission/MissionCard";
 import {
+  canCancel,
   canEdit,
+  cancelMission,
   describeSpan,
   canPublish,
   emptyMission,
@@ -8,7 +14,9 @@ import {
   formToMission,
   missionDaysOfMonth,
   missionDiff,
+  missionStatePresentation,
   missionTabs,
+  missionTemporalState,
   missionToForm,
   searchMissions,
   upcomingMissions,
@@ -110,6 +118,100 @@ describe("prochaines missions", () => {
   it("supporte une liste vide", () => {
     expect(upcomingMissions([])).toEqual([]);
   });
+
+  it("écarte les brouillons et les missions déjà terminées", () => {
+    expect(
+      upcomingMissions([
+        mission({ id: "draft", status: "draft" }),
+        mission({ id: "done", status: "completed" }),
+        mission({ id: "open", status: "open" }),
+        mission({ id: "filled", status: "filled" }),
+      ]).map((item) => item.id),
+    ).toEqual(["open", "filled"]);
+  });
+});
+
+describe("cycle de vie affiché", () => {
+  const now = Date.parse("2027-06-12T12:00:00.000Z");
+  const at = (status: MissionStatus, starts_at: string, ends_at: string) =>
+    mission({ status, starts_at, ends_at });
+
+  it("distingue à venir, en cours, terminée et annulée", () => {
+    expect(
+      missionTemporalState(
+        at("open", "2027-06-13T10:00:00Z", "2027-06-13T18:00:00Z"),
+        now,
+      ),
+    ).toBe("upcoming");
+    expect(
+      missionTemporalState(
+        at("filled", "2027-06-12T10:00:00Z", "2027-06-12T18:00:00Z"),
+        now,
+      ),
+    ).toBe("running");
+    expect(
+      missionTemporalState(
+        at("open", "2027-06-11T10:00:00Z", "2027-06-11T18:00:00Z"),
+        now,
+      ),
+    ).toBe("completed");
+    expect(
+      missionTemporalState(
+        at("cancelled", "2027-06-13T10:00:00Z", "2027-06-13T18:00:00Z"),
+        now,
+      ),
+    ).toBe("cancelled");
+  });
+
+  it("présente recrutement et temporalité sans remplacer le statut serveur", () => {
+    expect(
+      missionStatePresentation(
+        at("open", "2027-06-13T10:00:00Z", "2027-06-13T18:00:00Z"),
+        now,
+      ).label,
+    ).toBe("À pourvoir");
+    expect(
+      missionStatePresentation(
+        at("filled", "2027-06-13T10:00:00Z", "2027-06-13T18:00:00Z"),
+        now,
+      ).label,
+    ).toBe("Pourvue");
+    expect(
+      missionStatePresentation(
+        at("open", "2027-06-12T10:00:00Z", "2027-06-12T18:00:00Z"),
+        now,
+      ).label,
+    ).toBe("En cours");
+    expect(
+      missionStatePresentation(
+        at("draft", "2027-06-11T10:00:00Z", "2027-06-11T18:00:00Z"),
+        now,
+      ).label,
+    ).toBe("Brouillon expiré");
+  });
+
+  it("rend les états en toutes lettres sur les cartes", () => {
+    const render = (item: Mission) =>
+      renderToStaticMarkup(
+        createElement(
+          MemoryRouter,
+          null,
+          createElement(MissionCard, { mission: item }),
+        ),
+      );
+    expect(
+      render(at("filled", "2097-06-13T10:00:00Z", "2097-06-13T18:00:00Z")),
+    ).toContain("Pourvue");
+    expect(
+      render(at("filled", "2097-06-13T10:00:00Z", "2097-06-13T18:00:00Z")),
+    ).toContain("À venir");
+    expect(
+      render(at("cancelled", "2097-06-13T10:00:00Z", "2097-06-13T18:00:00Z")),
+    ).toContain("Annulée");
+    expect(
+      render(at("open", "2020-06-11T10:00:00Z", "2020-06-11T18:00:00Z")),
+    ).toContain("Terminée");
+  });
 });
 
 describe("jours marqués du calendrier", () => {
@@ -135,8 +237,82 @@ describe("jours marqués du calendrier", () => {
 describe("onglets de la maquette", () => {
   it("couvre les statuts affichables", () => {
     const keys = missionTabs.map((t) => t.key) as MissionStatus[];
-    expect(keys).toEqual(["open", "filled", "completed", "draft"]);
+    expect(keys).toEqual(["open", "filled", "completed", "draft", "cancelled"]);
     for (const tab of missionTabs) expect(tab.label.length).toBeGreaterThan(0);
+  });
+});
+
+describe("actions de cycle de vie de l'entreprise", () => {
+  const now = Date.parse("2027-06-12T12:00:00.000Z");
+  const future = "2027-06-15T10:00:00.000Z";
+  const past = "2027-06-10T10:00:00.000Z";
+
+  it("canPublish autorise uniquement les brouillons non commencés", () => {
+    expect(
+      canPublish(mission({ status: "draft", starts_at: future }), now),
+    ).toBe(true);
+    expect(canPublish(mission({ status: "draft", starts_at: past }), now)).toBe(
+      false,
+    );
+    expect(
+      canPublish(mission({ status: "open", starts_at: future }), now),
+    ).toBe(false);
+  });
+
+  it("canEdit autorise les brouillons et missions publiées non terminées", () => {
+    expect(canEdit(mission({ status: "draft", ends_at: future }), now)).toBe(
+      true,
+    );
+    expect(canEdit(mission({ status: "open", ends_at: future }), now)).toBe(
+      true,
+    );
+    expect(canEdit(mission({ status: "open", ends_at: past }), now)).toBe(
+      false,
+    );
+    expect(
+      canEdit(mission({ status: "cancelled", ends_at: future }), now),
+    ).toBe(false);
+    expect(
+      canEdit(mission({ status: "completed", ends_at: future }), now),
+    ).toBe(false);
+  });
+
+  it("canCancel autorise uniquement les missions publiées non commencées", () => {
+    expect(canCancel(mission({ status: "open", starts_at: future }), now)).toBe(
+      true,
+    );
+    expect(canCancel(mission({ status: "open", starts_at: past }), now)).toBe(
+      false,
+    );
+    expect(
+      canCancel(mission({ status: "draft", starts_at: future }), now),
+    ).toBe(false);
+    expect(
+      canCancel(mission({ status: "cancelled", starts_at: future }), now),
+    ).toBe(false);
+    expect(
+      canCancel(mission({ status: "completed", starts_at: future }), now),
+    ).toBe(false);
+  });
+
+  it("cancelMission déclenche un appel POST sans corps sur /missions/:id/cancel", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ id: "m123", status: "cancelled" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    try {
+      const result = await cancelMission("m123");
+      expect(result.status).toBe("cancelled");
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      const [url, init] = fetchMock.mock.calls[0];
+      expect(String(url)).toContain("/missions/m123/cancel");
+      expect(init?.method).toBe("POST");
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });
 
@@ -462,7 +638,9 @@ describe("explication d'un écran vide", () => {
     ]) {
       const reason = explainEmpty({ total: 2, reasons });
       expect(reason).not.toBeNull();
-      expect(reason!.detail).not.toMatch(/garanti|assur|vous recevrez|obtiendrez/i);
+      expect(reason!.detail).not.toMatch(
+        /garanti|assur|vous recevrez|obtiendrez/i,
+      );
     }
   });
 });
