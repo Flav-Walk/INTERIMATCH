@@ -48,6 +48,7 @@ const worker = (over: Partial<WorkerCriteria> = {}): WorkerCriteria => ({
   availabilities: [
     { starts_at: T(12, 8), ends_at: T(13, 2), status: "available" },
   ],
+  engagements: [],
   ...over,
 });
 
@@ -429,5 +430,117 @@ describe("paliers 70 / 60 / 50", () => {
 
   it("supporte une liste vide", () => {
     expect(selectByBands([])).toEqual({ band: null, label: null, results: [] });
+  });
+});
+
+/**
+ * Engagements déjà acceptés.
+ *
+ * Une candidature acceptée réserve un intervalle, et rien d'autre. Elle ne
+ * retire aucune disponibilité déclarée : l'intérimaire reste proposable avant
+ * et après, ce qui est tout l'intérêt de séparer « je suis libre » de « je me
+ * suis engagé ».
+ *
+ * Convention : intervalles semi-ouverts [début, fin), comme en base. Deux
+ * missions qui se touchent bout à bout ne se chevauchent donc pas — un service
+ * du midi et un service du soir se cumulent, ce qui est le quotidien du métier.
+ */
+describe("engagements acceptés", () => {
+  // La mission de référence court du 12 à 16 h au 12 à 22 h.
+  const engagement = (from: string, to: string) => ({
+    starts_at: from,
+    ends_at: to,
+  });
+  const blocked = (engagements: { starts_at: string; ends_at: string }[]) =>
+    evaluate(mission(), worker({ engagements })).blockers;
+
+  it("laisse passer un intérimaire sans aucun engagement", () => {
+    expect(blocked([])).toEqual([]);
+  });
+
+  it("exclut un engagement aux mêmes horaires", () => {
+    expect(blocked([engagement(T(12, 16), T(12, 22))])).toEqual(["engaged"]);
+  });
+
+  it("exclut un chevauchement partiel par la gauche", () => {
+    // L'engagement finit après le début de la mission.
+    expect(blocked([engagement(T(12, 12), T(12, 18))])).toEqual(["engaged"]);
+  });
+
+  it("exclut un chevauchement partiel par la droite", () => {
+    expect(blocked([engagement(T(12, 20), T(13, 2))])).toEqual(["engaged"]);
+  });
+
+  it("exclut une mission entièrement contenue dans l'engagement", () => {
+    expect(blocked([engagement(T(12, 8), T(13, 2))])).toEqual(["engaged"]);
+  });
+
+  it("exclut un engagement entièrement contenu dans la mission", () => {
+    expect(blocked([engagement(T(12, 18), T(12, 19))])).toEqual(["engaged"]);
+  });
+
+  it("exclut un engagement de plusieurs jours recouvrant la mission", () => {
+    expect(blocked([engagement(T(10, 6), T(15, 6))])).toEqual(["engaged"]);
+  });
+
+  it("accepte un engagement finissant exactement au début de la mission", () => {
+    // [8h, 16h) puis [16h, 22h) : aucune minute n'est réclamée deux fois.
+    expect(blocked([engagement(T(12, 8), T(12, 16))])).toEqual([]);
+  });
+
+  it("accepte un engagement commençant exactement à la fin de la mission", () => {
+    expect(blocked([engagement(T(12, 22), T(13, 2))])).toEqual([]);
+  });
+
+  it("accepte un engagement qui ne croise pas la mission", () => {
+    expect(blocked([engagement(T(10, 16), T(10, 22))])).toEqual([]);
+  });
+
+  it("n'exclut que si l'un des engagements chevauche réellement", () => {
+    const veille = engagement(T(11, 16), T(11, 22));
+    const lendemain = engagement(T(13, 16), T(13, 22));
+    expect(blocked([veille, lendemain])).toEqual([]);
+    expect(blocked([veille, engagement(T(12, 17), T(12, 18)), lendemain])).toEqual(
+      ["engaged"],
+    );
+  });
+
+  it("laisse les disponibilités déclarées intactes autour de l'engagement", () => {
+    // Le scénario validé : une longue disponibilité, un engagement au milieu.
+    // Les missions situées avant et après restent proposables ; seule celle qui
+    // croise l'engagement disparaît.
+    const large = worker({
+      availabilities: [
+        { starts_at: T(1, 0), ends_at: T(28, 0), status: "available" },
+      ],
+      engagements: [engagement(T(20, 0), T(22, 0))],
+    });
+    const before = mission({ starts_at: T(18, 8), ends_at: T(18, 16) });
+    const during = mission({ starts_at: T(21, 8), ends_at: T(21, 16) });
+    const after = mission({ starts_at: T(23, 8), ends_at: T(23, 16) });
+
+    expect(evaluate(before, large).compatible).toBe(true);
+    expect(evaluate(during, large).blockers).toEqual(["engaged"]);
+    expect(evaluate(after, large).compatible).toBe(true);
+  });
+
+  it("cumule le motif avec les autres sans les remplacer", () => {
+    const result = evaluate(
+      mission({ required_skill_ids: [SKILL.salle] }),
+      worker({
+        open_to_missions: false,
+        engagements: [engagement(T(12, 16), T(12, 22))],
+      }),
+    );
+    expect(result.compatible).toBe(false);
+    expect(new Set(result.blockers)).toEqual(
+      new Set(["paused", "missing_required_skills", "engaged"]),
+    );
+  });
+
+  it("ignore un engagement aux bornes illisibles plutôt que d'exclure à tort", () => {
+    // Une date invalide ne doit pas devenir un refus silencieux : on ne peut
+    // pas affirmer un chevauchement qu'on est incapable de situer.
+    expect(blocked([engagement("pas-une-date", T(12, 22))])).toEqual([]);
   });
 });

@@ -35,6 +35,17 @@ export function applicationRouter(applications: ApplicationService) {
     res.status(201).json(await applications.create(me(res), mission_id));
   });
 
+  /**
+   * Vue d'ensemble : toutes les candidatures adressées à cette entreprise.
+   *
+   * Un seul appel sert le badge de navigation, le tableau de bord et l'écran
+   * Candidatures. Trois écrans, une question, une requête : c'est ce qui permet
+   * de ne jamais afficher « aucune candidature » alors qu'il y en a.
+   */
+  router.get("/company/me/applications", company, async (_req, res) =>
+    res.json(await applications.listForCompany(me(res))),
+  );
+
   router.get("/missions/:missionId/applications", company, async (req, res) =>
     res.json({
       applications: await applications.listForMission(

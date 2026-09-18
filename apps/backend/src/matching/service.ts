@@ -9,10 +9,32 @@ import {
   evaluate,
   selectByBands,
   type BlockerCode,
+  type Engagement,
   type MatchResult,
   type MissionCriteria,
   type WorkerCriteria,
 } from "./score.js";
+
+/**
+ * Un engagement, augmenté de la mission dont il provient.
+ *
+ * `score.ts` n'a que faire de cette origine — il ne connaît que des bornes.
+ * Elle sert ici à une seule chose : ne pas opposer à un intérimaire l'engagement
+ * qu'il a pris sur la mission même qu'on est en train d'évaluer. Sans cela, un
+ * candidat retenu deviendrait « déjà engagé » pour le poste qu'il vient
+ * d'obtenir, ce qui serait vrai mais absurde.
+ */
+interface LoadedEngagement extends Engagement {
+  mission_id: string;
+}
+
+/** Écarte l'engagement né de cette mission, et lui seul. */
+const elsewhere = (criteria: WorkerCriteria, missionId: string) => ({
+  ...criteria,
+  engagements: (criteria.engagements as LoadedEngagement[]).filter(
+    (taken) => taken.mission_id !== missionId,
+  ),
+});
 
 /**
  * Rapprochement appliqué aux données réelles.
@@ -151,12 +173,38 @@ export class MatchingService {
       "SELECT profile_id, starts_at, ends_at, status FROM availabilities WHERE profile_id = ANY($1::uuid[])",
       [ids],
     );
+    // Les missions déjà obtenues. Une mission annulée ne réserve plus rien :
+    // l'entreprise a retiré son offre, l'intérimaire récupère son créneau.
+    const { rows: taken } = await this.db.query<{
+      profile_id: string;
+      mission_id: string;
+      starts_at: string | Date;
+      ends_at: string | Date;
+    }>(
+      `SELECT a.worker_id AS profile_id, m.id AS mission_id, m.starts_at, m.ends_at
+         FROM applications a
+         JOIN missions m ON m.id = a.mission_id
+        WHERE a.worker_id = ANY($1::uuid[])
+          AND a.status = 'accepted'
+          AND m.status <> 'cancelled'`,
+      [ids],
+    );
 
     const bySkill = new Map<string, string[]>();
     for (const row of skills)
       bySkill.set(row.profile_id, [
         ...(bySkill.get(row.profile_id) ?? []),
         row.skill_id,
+      ]);
+    const byEngagement = new Map<string, LoadedEngagement[]>();
+    for (const row of taken)
+      byEngagement.set(row.profile_id, [
+        ...(byEngagement.get(row.profile_id) ?? []),
+        {
+          mission_id: row.mission_id,
+          starts_at: new Date(row.starts_at).toISOString(),
+          ends_at: new Date(row.ends_at).toISOString(),
+        },
       ]);
     const bySlot = new Map<string, WorkerCriteria["availabilities"]>();
     for (const row of slots)
@@ -182,9 +230,19 @@ export class MatchingService {
           open_to_missions: row.open_to_missions,
           skill_ids: bySkill.get(row.id) ?? [],
           availabilities: bySlot.get(row.id) ?? [],
+          engagements: byEngagement.get(row.id) ?? [],
         } satisfies WorkerCriteria,
       ]),
     );
+  }
+
+  /** Missions auxquelles cet intérimaire a déjà répondu, quel que soit le sort. */
+  private async answeredMissions(workerId: string) {
+    const { rows } = await this.db.query<{ mission_id: string }>(
+      "SELECT mission_id FROM applications WHERE worker_id = $1",
+      [workerId],
+    );
+    return new Set(rows.map((row) => row.mission_id));
   }
 
   private async workerCriteria(workerId: string) {
@@ -210,8 +268,16 @@ export class MatchingService {
     workerId: string,
     demo: boolean,
   ): Promise<WorkerMissions> {
-    const open = await this.missions.listOpen(demo);
-    const criteria = await this.workerCriteria(workerId);
+    const [all, criteria, answered] = await Promise.all([
+      this.missions.listOpen(demo),
+      this.workerCriteria(workerId),
+      this.answeredMissions(workerId),
+    ]);
+    // Une mission à laquelle on a déjà répondu n'est plus une proposition : elle
+    // a rejoint « Mes candidatures », avec son statut. La laisser ici afficherait
+    // un bouton « Postuler » que le serveur refuserait, et ferait passer pour une
+    // offre ce qui est devenu un dossier en cours.
+    const open = all.filter((mission) => !answered.has(mission.id));
     // Profil intérimaire absent : rien n'est évaluable, donc rien n'est
     // proposé — et rien n'est écarté non plus, car aucun motif ne serait
     // fondé. L'écran a déjà de quoi dire quoi faire : compléter le profil.
@@ -219,7 +285,7 @@ export class MatchingService {
 
     const evaluated = open.map((mission) => ({
       mission,
-      match: evaluate(criteriaOf(mission), criteria),
+      match: evaluate(criteriaOf(mission), elsewhere(criteria, mission.id)),
     }));
 
     const excluded: Exclusions = { total: 0, reasons: {} };
@@ -250,7 +316,9 @@ export class MatchingService {
     const criteria = await this.workerCriteria(workerId);
     return {
       mission,
-      match: criteria ? evaluate(criteriaOf(mission), criteria) : null,
+      match: criteria
+        ? evaluate(criteriaOf(mission), elsewhere(criteria, mission.id))
+        : null,
     };
   }
 
@@ -283,11 +351,17 @@ export class MatchingService {
 
     const criteria = criteriaOf(mission);
 
+    // Une personne qui a postulé n'est plus une suggestion : elle est une
+    // candidature, et se traite comme telle. La laisser figurer ici aussi lui
+    // donnerait deux sens différents sur le même écran — et laisserait croire
+    // à l'entreprise qu'elle a deux dossiers là où il n'y en a qu'un.
     const { rows } = await this.db.query<WorkerRow>(
       `SELECT ${WORKER_COLUMNS} FROM profiles p
          JOIN worker_profiles w ON w.profile_id = p.id
-        WHERE p.role = 'worker' AND p.active = true AND p.demo = $1`,
-      [demo],
+        WHERE p.role = 'worker' AND p.active = true AND p.demo = $1
+          AND NOT EXISTS (SELECT 1 FROM applications a
+                           WHERE a.worker_id = p.id AND a.mission_id = $2)`,
+      [demo, missionId],
     );
     const loaded = await this.loadWorkers(rows);
 
@@ -295,7 +369,7 @@ export class MatchingService {
     // reste à côté, pour n'exposer ensuite que les champs prévus par `Candidate`.
     const evaluated = rows.map((row) => {
       const worker = loaded.get(row.id)!;
-      const match = evaluate(criteria, worker);
+      const match = evaluate(criteria, elsewhere(worker, missionId));
       const held = new Set(worker.skill_ids);
       const candidate: Candidate = {
         id: row.id,
