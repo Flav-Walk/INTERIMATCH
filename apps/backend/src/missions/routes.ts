@@ -135,9 +135,9 @@ export function missionRouter(missions: MissionService) {
   });
 
   /**
-   * Le détail reste accessible pour toute mission offerte, compatible ou non :
-   * arriver par un lien et n'y trouver qu'une erreur n'apprend rien, alors que
-   * le motif de l'incompatibilité, lui, est utile.
+   * Le détail reste accessible pour toute mission offerte, compatible ou non,
+   * ainsi que depuis l'historique d'une candidature du worker. Une mission
+   * pleine ou terminée ne revient pas dans les propositions pour autant.
    */
   router.get("/workers/me/missions/:id", worker, async (req, res) => {
     const { mission, match } = await matching.evaluateForWorker(

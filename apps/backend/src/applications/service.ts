@@ -95,11 +95,12 @@ export class ApplicationService {
     return this.db.transaction(async (db) => {
       const mission = await db.query<{
         id: string;
+        headcount: number;
         mission_demo: boolean;
         worker_demo: boolean;
         candidatable: boolean;
       }>(
-        `SELECT m.id,m.demo AS mission_demo,p.demo AS worker_demo,
+        `SELECT m.id,m.headcount,m.demo AS mission_demo,p.demo AS worker_demo,
                 (m.status='open' AND m.ends_at > now()) AS candidatable
            FROM missions m
            JOIN profiles p ON p.id=$2
@@ -115,6 +116,27 @@ export class ApplicationService {
           409,
           "APPLICATION_CLOSED",
           "Cette mission n’accepte plus de candidatures.",
+        );
+
+      // Le verrou partagé sur la mission est acquis avant le décompte. Une
+      // acceptation concurrente verrouille la même ligne en écriture : après
+      // son commit, cette lecture voit donc la capacité réellement restante.
+      const accepted = Number(
+        (
+          await db.query<{ n: string }>(
+            `SELECT count(*)::text AS n FROM applications
+              WHERE mission_id=$1 AND status='accepted'`,
+            [missionId],
+          )
+        ).rows[0].n,
+      );
+      if (accepted >= target.headcount)
+        throw new HttpError(
+          409,
+          "MISSION_FULL",
+          target.headcount > 1
+            ? `Les ${target.headcount} postes de cette mission sont déjà pourvus.`
+            : "Le poste de cette mission est déjà pourvu.",
         );
 
       try {

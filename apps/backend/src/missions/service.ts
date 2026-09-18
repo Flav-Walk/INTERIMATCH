@@ -76,7 +76,9 @@ const OPEN_COLUMNS = `m.id, m.title, m.description, m.job,
  * précisément ce à quoi il sert.
  */
 const openToWorkers = (demoParam: string) =>
-  `m.status = 'open' AND m.ends_at > now() AND m.demo = ${demoParam}`;
+  `m.status = 'open' AND m.ends_at > now() AND m.demo = ${demoParam}
+   AND (SELECT count(*) FROM applications a
+         WHERE a.mission_id = m.id AND a.status = 'accepted') < m.headcount`;
 
 /** Pourquoi une mission n'est pas offerte aux intérimaires. */
 export type NotOpenReason = "draft" | "ended" | "closed";
@@ -227,6 +229,42 @@ export class MissionService {
     if (!rows[0])
       throw new HttpError(404, "MISSION_NOT_FOUND", "Mission introuvable.");
     return (await this.attachSkills([this.toOpenMission(rows[0])]))[0];
+  }
+
+  /**
+   * Détail worker : une offre encore disponible, ou une mission déjà présente
+   * dans son historique de candidatures. Cette seconde voie ne la remet jamais
+   * dans la liste des propositions et ne permet pas de candidater à nouveau.
+   */
+  async getForWorker(missionId: string, demo: boolean, workerId: string) {
+    const { rows } = await this.db.query<Record<string, unknown>>(
+      `SELECT ${OPEN_COLUMNS}
+         FROM missions m
+         LEFT JOIN company_profiles c ON c.profile_id = m.company_id
+        WHERE m.id = $1
+          AND (${openToWorkers("$2")}
+               OR (m.demo = $2 AND EXISTS (
+                    SELECT 1 FROM applications a
+                     WHERE a.mission_id = m.id AND a.worker_id = $3)))`,
+      [missionId, demo, workerId],
+    );
+    if (!rows[0])
+      throw new HttpError(404, "MISSION_NOT_FOUND", "Mission introuvable.");
+    return (await this.attachSkills([this.toOpenMission(rows[0])]))[0];
+  }
+
+  /** Une mission pleine reste dans l'historique entreprise, mais sort du matching. */
+  async hasCapacity(missionId: string) {
+    const { rows } = await this.db.query<{ available: boolean }>(
+      `SELECT count(a.id) < m.headcount AS available
+         FROM missions m
+         LEFT JOIN applications a
+           ON a.mission_id = m.id AND a.status = 'accepted'
+        WHERE m.id = $1
+        GROUP BY m.id, m.headcount`,
+      [missionId],
+    );
+    return rows[0]?.available === true;
   }
 
   /**
