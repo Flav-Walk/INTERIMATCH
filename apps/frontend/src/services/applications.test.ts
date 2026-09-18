@@ -18,7 +18,11 @@ import {
   type MissionApplication,
   type WorkerApplication,
 } from "./applications";
-import { ApplicationAction } from "../components/applications/ApplyToMission";
+import {
+  ApplicationAction,
+  workerApplicationError,
+} from "../components/applications/ApplyToMission";
+import { ConfirmedMissions } from "../components/applications/ConfirmedMissions";
 import {
   DecisionConfirmation,
   MissionApplicationList,
@@ -26,7 +30,10 @@ import {
   missionCapacityLabel,
   replaceApplication,
 } from "../components/applications/MissionApplications";
-import { WorkerApplicationList } from "../pages/WorkerApplications";
+import {
+  WorkerApplicationList,
+  workerApplicationContext,
+} from "../pages/WorkerApplications";
 
 const missionId = "00000000-0000-4000-8000-000000000001";
 const application: Application = {
@@ -336,6 +343,51 @@ describe("interface candidatures", () => {
     expect(empty).toContain("Vous n’avez pas encore postulé");
   });
 
+  it("distingue une mission confirmée à venir d’une mission passée", () => {
+    expect(workerApplicationContext(workerApplication)).toBe(
+      "Mission confirmée",
+    );
+    expect(
+      workerApplicationContext({
+        ...workerApplication,
+        mission: {
+          ...workerApplication.mission,
+          starts_at: "2020-10-18T16:00:00.000Z",
+          ends_at: "2020-10-18T22:00:00.000Z",
+        },
+      }),
+    ).toBe("Mission passée");
+  });
+
+  it("présente une ou plusieurs missions confirmées avec les données utiles", () => {
+    const second = {
+      ...workerApplication,
+      id: "second",
+      mission_id: "second-mission",
+      mission: {
+        ...workerApplication.mission,
+        title: "Accueil petit-déjeuner",
+        city: "",
+        postal_code: "",
+      },
+      company: { establishment_name: null },
+    };
+    const confirmed = render(
+      createElement(ConfirmedMissions, {
+        applications: [workerApplication, second],
+      }),
+    );
+    expect(confirmed).toContain("Service du soir");
+    expect(confirmed).toContain("Accueil petit-déjeuner");
+    expect(confirmed).toContain("Le Central");
+    expect(confirmed).toContain("Établissement");
+    expect(confirmed).toContain("Lieu à confirmer");
+    expect(confirmed.match(/Acceptée/g) ?? []).toHaveLength(2);
+    expect(render(createElement(ConfirmedMissions, { applications: [] }))).toBe(
+      "",
+    );
+  });
+
   it("explique immédiatement la décision sur la fiche worker", () => {
     const accepted = render(
       createElement(ApplicationAction, {
@@ -344,9 +396,17 @@ describe("interface candidatures", () => {
         applying: false,
         error: "",
         onApply: vi.fn(),
+        mission: {
+          ...workerApplication.mission,
+          establishment_name: "Le Central",
+        },
       }),
     );
+    expect(accepted).toContain("Mission confirmée");
     expect(accepted).toContain("Votre candidature a été acceptée");
+    expect(accepted).toContain("Service du soir");
+    expect(accepted).toContain("Le Central");
+    expect(accepted).toContain("69002 Lyon");
     expect(accepted).not.toContain(">Postuler<");
 
     const rejected = render(
@@ -360,6 +420,18 @@ describe("interface candidatures", () => {
     );
     expect(rejected).toContain("n’a pas retenu cette candidature");
     expect(rejected).not.toContain(">Postuler<");
+  });
+
+  it("traduit WORKER_ENGAGED sans calculer de conflit côté client", () => {
+    expect(
+      workerApplicationError(new ApiError("Brut", 409, "WORKER_ENGAGED")),
+    ).toContain("déjà engagé sur une autre mission");
+    expect(
+      workerApplicationError(new ApiError("Brut", 409, "MISSION_FULL")),
+    ).toContain("postes");
+    expect(
+      workerApplicationError(new ApiError("Brut", 409, "APPLICATION_CLOSED")),
+    ).toContain("n’accepte plus");
   });
 });
 

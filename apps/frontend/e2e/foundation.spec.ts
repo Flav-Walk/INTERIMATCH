@@ -1492,14 +1492,32 @@ test("matching connects a published mission to a compatible intérimaire", async
   await page.getByRole("button", { name: "Se déconnecter" }).click();
   await signIn(page, email);
   await expect(page).toHaveURL(/\/worker$/);
+  const confirmedMissions = page.getByRole("region", {
+    name: "Vos prochaines missions",
+  });
+  await expect(confirmedMissions).toContainText(titre);
+  await expect(confirmedMissions).toContainText("Acceptée");
+  await expect(confirmedMissions).toContainText("15 oct. 2027");
+  await expect(confirmedMissions).toContainText("69002 Lyon");
+  await expect(page.getByRole("heading", { name: titre })).toHaveCount(1);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
   await page.goto("/worker/applications");
-  await expect(
-    page.getByRole("listitem").filter({ hasText: titre }),
-  ).toContainText("Acceptée");
+  const acceptedApplication = page
+    .getByRole("listitem")
+    .filter({ hasText: titre });
+  await expect(acceptedApplication).toContainText("Acceptée");
+  await expect(acceptedApplication).toContainText("Mission confirmée");
   await page.goto(workerMissionUrl);
   await expect(
-    page.getByRole("region", { name: "Votre candidature" }),
+    page.getByRole("region", { name: "Mission confirmée" }),
   ).toContainText("Votre candidature a été acceptée");
+  await expect(
+    page.getByRole("region", { name: "Mission confirmée" }),
+  ).toContainText("69002 Lyon");
 
   await openAccount(page);
   await page.getByRole("button", { name: "Se déconnecter" }).click();

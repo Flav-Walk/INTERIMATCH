@@ -39,6 +39,82 @@
 .application-action .form-error {
   margin: 0;
 }
+.confirmed-mission-summary {
+  display: grid;
+  gap: 7px;
+  padding: 14px;
+  border-left: 3px solid var(--forest);
+  background: var(--tint);
+}
+.confirmed-mission-summary > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.confirmed-missions {
+  padding: 24px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.confirmed-missions .eyeline {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--forest);
+  font-weight: 700;
+}
+.confirmed-missions-note {
+  max-width: 68ch;
+  margin: 16px 0 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+.confirmed-mission-list {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.confirmed-mission-list > li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 18px 0;
+  border-top: 1px solid var(--border);
+}
+.confirmed-mission-list > li:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+.confirmed-mission-list > li:last-child {
+  padding-bottom: 0;
+}
+.confirmed-mission-copy,
+.confirmed-mission-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.confirmed-mission-copy {
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.confirmed-mission-copy h3 {
+  margin: 0;
+}
+.confirmed-mission-list .link-more {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: none;
+}
 
 .mission-applications {
   display: grid;
@@ -144,6 +220,16 @@
   border-radius: var(--radius);
   background: var(--surface);
 }
+.worker-application-list > li.is-confirmed {
+  margin-inline: -12px;
+  padding-inline: 12px;
+  border-radius: 8px;
+  background: var(--tint);
+}
+.application-context {
+  color: var(--forest);
+  font-size: 0.85rem;
+}
 .worker-application-main h2 {
   font-size: 1.05rem;
 }
@@ -156,16 +242,32 @@
   display: inline-flex;
   text-decoration: none;
 }
+.application-load-error {
+  display: grid;
+  justify-items: start;
+  gap: 12px;
+}
+.application-load-error .form-error {
+  margin: 0;
+}
 
 @media (max-width: 680px) {
   .application-candidate-list > li,
-  .worker-application-list > li {
+  .worker-application-list > li,
+  .confirmed-mission-list > li {
     align-items: stretch;
     flex-direction: column;
   }
   .application-candidate-decision,
   .worker-application-side {
     justify-items: start;
+  }
+  .confirmed-mission-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .confirmed-mission-list .link-more {
+    min-height: 44px;
   }
   .application-capacity-note {
     text-align: left;

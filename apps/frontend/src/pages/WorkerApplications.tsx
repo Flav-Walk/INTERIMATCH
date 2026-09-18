@@ -12,13 +12,14 @@ import {
   type WorkerApplication,
 } from "../services/applications";
 import { ApplicationStatus } from "../components/applications/ApplicationStatus";
+import { workerApplicationSchedule } from "../components/applications/ConfirmedMissions";
 
-const schedule = new Intl.DateTimeFormat("fr-FR", {
-  dateStyle: "medium",
-  timeStyle: "short",
-});
-const applicationSchedule = (application: WorkerApplication) =>
-  `${schedule.format(new Date(application.mission.starts_at))} – ${schedule.format(new Date(application.mission.ends_at))}`;
+export function workerApplicationContext(application: WorkerApplication) {
+  if (application.status !== "accepted") return null;
+  return Date.parse(application.mission.ends_at) <= Date.now()
+    ? "Mission passée"
+    : "Mission confirmée";
+}
 
 export function WorkerApplicationList({
   applications,
@@ -41,36 +42,53 @@ export function WorkerApplicationList({
 
   return (
     <ul className="worker-application-list">
-      {applications.map((application) => (
-        <li key={application.id}>
-          <div className="worker-application-main">
-            <span className="quiet">
-              {application.company.establishment_name ?? "Établissement"}
-            </span>
-            <h2>{application.mission.title}</h2>
-            <div className="application-meta">
-              <span>
-                <MapPin size={14} aria-hidden="true" />
-                {application.mission.postal_code} {application.mission.city}
+      {applications.map((application) => {
+        const context = workerApplicationContext(application);
+        const location = [
+          application.mission.postal_code,
+          application.mission.city,
+        ]
+          .filter(Boolean)
+          .join(" ");
+        return (
+          <li
+            key={application.id}
+            className={
+              context === "Mission confirmée" ? "is-confirmed" : undefined
+            }
+          >
+            <div className="worker-application-main">
+              <span className="quiet">
+                {application.company.establishment_name ?? "Établissement"}
               </span>
-              <span>
-                <CalendarDays size={14} aria-hidden="true" />
-                {applicationSchedule(application)}
-              </span>
+              <h2>{application.mission.title}</h2>
+              {context && (
+                <strong className="application-context">{context}</strong>
+              )}
+              <div className="application-meta">
+                <span>
+                  <MapPin size={14} aria-hidden="true" />
+                  {location || "Lieu à confirmer"}
+                </span>
+                <span>
+                  <CalendarDays size={14} aria-hidden="true" />
+                  {workerApplicationSchedule(application)}
+                </span>
+              </div>
             </div>
-          </div>
-          <div className="worker-application-side">
-            <ApplicationStatus status={application.status} />
-            <Link
-              className="link-more"
-              to={`/worker/missions/${application.mission_id}`}
-            >
-              Voir la mission
-              <ArrowRight size={14} aria-hidden="true" />
-            </Link>
-          </div>
-        </li>
-      ))}
+            <div className="worker-application-side">
+              <ApplicationStatus status={application.status} />
+              <Link
+                className="link-more"
+                to={`/worker/missions/${application.mission_id}`}
+              >
+                Voir la mission
+                <ArrowRight size={14} aria-hidden="true" />
+              </Link>
+            </div>
+          </li>
+        );
+      })}
     </ul>
   );
 }
@@ -79,9 +97,12 @@ export function WorkerApplications() {
   const [applications, setApplications] = useState<WorkerApplication[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let live = true;
+    setLoading(true);
+    setError("");
     void listMyApplications()
       .then((result) => {
         if (live) setApplications(result.applications);
@@ -95,7 +116,7 @@ export function WorkerApplications() {
     return () => {
       live = false;
     };
-  }, []);
+  }, [attempt]);
 
   return (
     <section className="page-wide applications-page">
@@ -105,12 +126,20 @@ export function WorkerApplications() {
           <p className="quiet">Suivez ici les réponses des entreprises.</p>
         </div>
       </div>
-      {error && (
-        <p className="form-error" role="alert">
-          {error}
-        </p>
-      )}
-      {loading ? (
+      {error ? (
+        <div className="application-load-error">
+          <p className="form-error" role="alert">
+            {error}
+          </p>
+          <button
+            className="secondary-button"
+            type="button"
+            onClick={() => setAttempt((value) => value + 1)}
+          >
+            Réessayer
+          </button>
+        </div>
+      ) : loading ? (
         <p className="quiet" role="status">
           Chargement de vos candidatures…
         </p>
