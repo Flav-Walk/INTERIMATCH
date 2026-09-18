@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Users } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { errorMessage, type ReferenceValue } from "../../services/session";
 import { api } from "../../services/session";
 import {
@@ -75,9 +75,13 @@ export function CandidateList({
   return (
     <section className="rail-card">
       <div className="rail-head">
-        <Users size={18} aria-hidden="true" />
-        <h2>Profils compatibles</h2>
+        <Sparkles size={18} aria-hidden="true" />
+        <h2>Talents recommandés</h2>
       </div>
+      <p className="quiet">
+        Suggestions du rapprochement. Ces personnes n’ont pas postulé : elles ne
+        comptent pas parmi vos candidatures et il n’y a rien à décider ici.
+      </p>
 
       {error && (
         <p className="form-error" role="alert">
@@ -94,8 +98,8 @@ export function CandidateList({
       ) : !data || data.candidates.length === 0 ? (
         <p className="quiet">
           Aucun profil ne correspond encore à cette mission. Les compétences
-          exigées, le créneau et la zone de déplacement sont les trois critères
-          qui écartent le plus de candidats.
+          exigées, le créneau, les missions déjà acceptées et la zone de
+          déplacement sont les critères qui écartent le plus de profils.
         </p>
       ) : (
         <>
@@ -142,8 +146,8 @@ export function CandidateList({
             ))}
           </ul>
           <p className="quiet">
-            Ces profils sont suggérés par le rapprochement. Ils n’ont pas
-            postulé.
+            Les candidatures reçues, elles, se traitent dans « Candidatures
+            reçues », plus haut sur cette page.
           </p>
         </>
       )}

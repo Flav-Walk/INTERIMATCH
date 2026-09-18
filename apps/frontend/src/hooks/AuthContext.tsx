@@ -8,7 +8,7 @@ import {
 } from "react";
 import { api, refreshSession, setAccess, type User } from "../services/session";
 import { ApiError } from "../services/api";
-import { supabase } from "../services/supabase";
+import { getSupabase } from "../services/supabase";
 interface Auth {
   user: User | null;
   loading: boolean;
@@ -76,7 +76,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await api("/auth/logout", { method: "POST" });
     setAccess(null);
     setUser(null);
-    await supabase?.auth.signOut({ scope: "local" });
+    // Fermer la session Google n'a de sens que si elle a été ouverte ; le
+    // client n'est donc chargé que dans ce cas.
+    await (await getSupabase())?.auth.signOut({ scope: "local" });
   };
   // Un onglet laissé ouvert pendant qu'on agit ailleurs — autre onglet, autre
   // appareil — affiche sinon un état figé au moment où on l'a quitté. Le

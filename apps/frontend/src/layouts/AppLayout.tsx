@@ -8,6 +8,7 @@ import {
 import { Sprout, Search, LifeBuoy, LogOut, ChevronDown } from "lucide-react";
 import { useRef, useState, type FormEvent } from "react";
 import { useAuth } from "../hooks/useAuth";
+import { useCompanyData } from "../hooks/CompanyData";
 import {
   destination,
   errorMessage,
@@ -33,7 +34,7 @@ const links: Record<Role, { to: string; label: string }[]> = {
   company: [
     { to: "/company", label: "Accueil" },
     { to: "/company/missions", label: "Missions" },
-    { to: "/company/candidates", label: "Candidats" },
+    { to: "/company/applications", label: "Candidatures" },
     { to: "/company/profile", label: "Entreprise" },
   ],
   admin: [{ to: "/admin", label: "Administration" }],
@@ -51,6 +52,8 @@ const initials = (user: User) => {
 
 export function AppLayout() {
   const auth = useAuth(),
+    // Candidatures en attente : le seul chiffre qui appelle une action.
+    { counts } = useCompanyData(),
     navigate = useNavigate(),
     location = useLocation(),
     [params] = useSearchParams();
@@ -58,6 +61,7 @@ export function AppLayout() {
     [replay, setReplay] = useState(false);
   const account = useRef<HTMLDetailsElement>(null);
   const user = auth.user;
+  const pending = user?.role === "company" ? counts.pending : 0;
 
   async function logout() {
     account.current?.removeAttribute("open");
@@ -138,6 +142,19 @@ export function AppLayout() {
                   end={link.to === destination(user)}
                 >
                   {link.label}
+                  {/* Le badge ne compte que de vraies candidatures en attente.
+                      Il porte son propre texte : une pastille colorée seule ne
+                      dit rien à qui ne distingue pas les couleurs, ni à un
+                      lecteur d'écran. */}
+                  {link.to === "/company/applications" && pending > 0 && (
+                    <span className="nav-badge">
+                      {pending}
+                      <span className="sr-only">
+                        {" "}
+                        candidature{pending > 1 ? "s" : ""} en attente
+                      </span>
+                    </span>
+                  )}
                 </NavLink>
               ))}
             </nav>

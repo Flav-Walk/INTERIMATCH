@@ -17,6 +17,8 @@ const blockerText: Record<BlockerCode, string> = {
   unavailable:
     "Vous n’êtes pas disponible sur toute la durée de cette mission.",
   out_of_range: "Cette mission est au-delà de votre rayon de déplacement.",
+  engaged:
+    "Vous avez déjà accepté une mission sur ce créneau. Vos disponibilités restent inchangées.",
 };
 
 /** Formulation d'une dimension, du point de vue de celui qui la lit. */

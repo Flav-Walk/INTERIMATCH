@@ -7,6 +7,9 @@ import { setAccess } from "./session";
 import {
   applicationCandidateName,
   applyToMission,
+  awaitingReply,
+  pendingByMission,
+  upcomingEngagements,
   decideApplication,
   getMyApplication,
   listMissionApplications,
@@ -30,6 +33,7 @@ const application: Application = {
 };
 const candidate: MissionApplication = {
   ...application,
+  conflict: false,
   worker: {
     id: application.worker_id,
     first_name: "Camille",
@@ -204,5 +208,82 @@ describe("interface candidatures", () => {
       createElement(WorkerApplicationList, { applications: [] }),
     );
     expect(empty).toContain("Vous n’avez pas encore postulé");
+  });
+});
+
+/**
+ * Engagements et attentes, cotes interimaire et entreprise.
+ *
+ * Ces trois fonctions decident ce qui s'affiche : un engagement oublie, et une
+ * mission disparait des propositions sans que personne puisse l'expliquer.
+ */
+describe("lecture des candidatures", () => {
+  const withMission = (
+    status: "pending" | "accepted" | "rejected",
+    starts: string,
+    ends: string,
+    missionStatus = "open",
+  ) => ({
+    id: `${status}-${starts}`,
+    mission_id: "m-" + starts,
+    status,
+    created_at: "2026-01-01T00:00:00.000Z",
+    updated_at: "2026-01-01T00:00:00.000Z",
+    mission: {
+      title: "Mission",
+      job: "serveur",
+      starts_at: starts,
+      ends_at: ends,
+      city: "Lyon",
+      postal_code: "69002",
+      status: missionStatus,
+    },
+    company: { establishment_name: null },
+  });
+
+  const future = (days: number) =>
+    new Date(Date.now() + days * 86_400_000).toISOString();
+  const past = (days: number) =>
+    new Date(Date.now() - days * 86_400_000).toISOString();
+
+  it("ne retient comme engagement que l acceptee, a venir, non annulee", () => {
+    const list = [
+      withMission("accepted", future(2), future(3)),
+      withMission("pending", future(4), future(5)),
+      withMission("rejected", future(6), future(7)),
+      withMission("accepted", past(5), past(4)),
+      withMission("accepted", future(8), future(9), "cancelled"),
+    ];
+    const kept = upcomingEngagements(list);
+    expect(kept).toHaveLength(1);
+    expect(kept[0].mission.starts_at).toBe(list[0].mission.starts_at);
+  });
+
+  it("classe les engagements du plus proche au plus lointain", () => {
+    const loin = withMission("accepted", future(20), future(21));
+    const proche = withMission("accepted", future(2), future(3));
+    expect(upcomingEngagements([loin, proche])[0]).toBe(proche);
+  });
+
+  it("ne compte comme en attente que les candidatures sans reponse", () => {
+    const list = [
+      withMission("pending", future(2), future(3)),
+      withMission("accepted", future(4), future(5)),
+    ];
+    expect(awaitingReply(list)).toHaveLength(1);
+  });
+
+  it("ne pastille une mission que sur de vraies candidatures en attente", () => {
+    // Un profil suggere par le rapprochement n'apparait pas dans cette liste :
+    // le compteur ne peut donc pas l'inclure par construction.
+    const counts = pendingByMission([
+      { ...application, id: "1", mission_id: "m1", status: "pending" },
+      { ...application, id: "2", mission_id: "m1", status: "pending" },
+      { ...application, id: "3", mission_id: "m1", status: "accepted" },
+      { ...application, id: "4", mission_id: "m2", status: "pending" },
+    ] as never);
+    expect(counts.get("m1")).toBe(2);
+    expect(counts.get("m2")).toBe(1);
+    expect(counts.get("m3")).toBeUndefined();
   });
 });

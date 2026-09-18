@@ -1,7 +1,10 @@
 import { describe, it, expect } from "vitest";
+import type { CompletionRule } from "./session";
 import {
   availableFrom,
   humaniseError,
+  missingIn,
+  requirementSections,
   partial,
   formatSlot,
   isUpcoming,
@@ -178,5 +181,30 @@ describe("messages d'erreur", () => {
   it("laisse intact un message déjà lisible", () => {
     const message = "Un véhicule nécessite le permis.";
     expect(humaniseError(message)).toBe(message);
+  });
+});
+
+/**
+ * Chaque exigence de completion doit designer une section reelle du profil,
+ * sinon la mention « A completer » n apparait nulle part et l utilisateur
+ * cherche dans six blocs ce qui lui manque.
+ */
+describe("sections du profil", () => {
+  it("rattache chaque exigence a une section", () => {
+    for (const rule of Object.keys(requirementLabels) as CompletionRule[])
+      expect(requirementSections[rule]).toBeTruthy();
+  });
+
+  it("ne renvoie que les exigences de la section demandee", () => {
+    const missing: CompletionRule[] = ["identity", "skills", "mobility_radius"];
+    expect(missingIn(missing, "Votre identité")).toEqual(["identity"]);
+    expect(missingIn(missing, "Vos compétences")).toEqual(["skills"]);
+    expect(missingIn(missing, "Votre mobilité")).toEqual(["mobility_radius"]);
+    expect(missingIn(missing, "Votre métier")).toEqual([]);
+  });
+
+  it("supporte un profil complet ou inconnu", () => {
+    expect(missingIn([], "Votre identité")).toEqual([]);
+    expect(missingIn(undefined, "Votre identité")).toEqual([]);
   });
 });

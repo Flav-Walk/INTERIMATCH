@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   canEdit,
+  describeSpan,
   canPublish,
   emptyMission,
   explainEmpty,
@@ -463,5 +464,48 @@ describe("explication d'un écran vide", () => {
       expect(reason).not.toBeNull();
       expect(reason!.detail).not.toMatch(/garanti|assur|vous recevrez|obtiendrez/i);
     }
+  });
+});
+
+/**
+ * Rappel du créneau saisi.
+ *
+ * C'est le garde-fou contre la faute la plus coûteuse du formulaire : publier
+ * une mission sur le mauvais jour parce que « 18:00 → 02:00 » ne dit pas de
+ * lui-même qu'il s'agit du lendemain.
+ */
+describe("description d un creneau", () => {
+  it("dit la duree d un service dans la journee", () => {
+    expect(describeSpan("2027-10-15T10:00", "2027-10-15T18:00")).toBe(
+      "8 h de service.",
+    );
+  });
+
+  it("signale le passage de minuit", () => {
+    expect(describeSpan("2027-10-15T18:00", "2027-10-16T02:00")).toBe(
+      "8 h de service, en passant minuit.",
+    );
+  });
+
+  it("garde les minutes quand il y en a", () => {
+    expect(describeSpan("2027-10-15T10:00", "2027-10-15T18:30")).toBe(
+      "8 h 30 de service.",
+    );
+  });
+
+  it("gere un service de moins d une heure", () => {
+    expect(describeSpan("2027-10-15T10:00", "2027-10-15T10:45")).toBe(
+      "45 min de service.",
+    );
+  });
+
+  it("ne dit rien tant que la saisie est incomplete ou incoherente", () => {
+    // Mieux vaut se taire que d affirmer une duree negative : l erreur de
+    // validation, elle, dira quoi corriger.
+    expect(describeSpan("", "2027-10-15T18:00")).toBeNull();
+    expect(describeSpan("2027-10-15T18:00", "")).toBeNull();
+    expect(describeSpan("pas-une-date", "2027-10-15T18:00")).toBeNull();
+    expect(describeSpan("2027-10-15T18:00", "2027-10-15T10:00")).toBeNull();
+    expect(describeSpan("2027-10-15T18:00", "2027-10-15T18:00")).toBeNull();
   });
 });
