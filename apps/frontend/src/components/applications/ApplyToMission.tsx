@@ -1,9 +1,20 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { CalendarDays, CheckCircle2, MapPin, Send } from "lucide-react";
+import {
+  Ban,
+  CalendarDays,
+  CheckCircle2,
+  Clock,
+  MapPin,
+  Send,
+} from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
 import { ApiError } from "../../services/api";
 import { errorMessage } from "../../services/session";
+import {
+  missionTemporalState,
+  type MissionStatus,
+} from "../../services/missions";
 import {
   applyToMission,
   getMyApplication,
@@ -24,6 +35,7 @@ export interface ApplicationMissionContext {
   city: string;
   postal_code: string;
   establishment_name: string | null;
+  status: MissionStatus;
 }
 
 const schedule = new Intl.DateTimeFormat("fr-FR", {
@@ -47,6 +59,35 @@ export function workerApplicationError(cause: unknown) {
   }
 }
 
+export function applicationMissionHeading(
+  application: Application | null,
+  mission: ApplicationMissionContext | undefined,
+  now = Date.now(),
+) {
+  if (!mission) return "Votre candidature";
+  const temporal = missionTemporalState(mission, now);
+  if (temporal === "cancelled") return "Mission annulée";
+  if (temporal === "completed") return "Mission terminée";
+  if (application?.status === "accepted")
+    return temporal === "running" ? "Mission en cours" : "Mission confirmée";
+  return "Votre candidature";
+}
+
+function inactiveMissionMessage(
+  mission: ApplicationMissionContext | undefined,
+  now = Date.now(),
+) {
+  if (!mission) return null;
+  const temporal = missionTemporalState(mission, now);
+  if (temporal === "cancelled")
+    return "Cette mission a été annulée. Aucune nouvelle candidature n’est possible.";
+  if (temporal === "completed")
+    return "Cette mission est terminée. Elle reste consultable dans votre historique.";
+  if (mission.status === "filled")
+    return "Tous les postes de cette mission sont pourvus.";
+  return null;
+}
+
 export function ApplicationAction({
   application,
   loading,
@@ -63,20 +104,31 @@ export function ApplicationAction({
   mission?: ApplicationMissionContext;
 }) {
   const accepted = application?.status === "accepted";
-  const Icon = accepted ? CheckCircle2 : Send;
+  const heading = applicationMissionHeading(application, mission);
+  const inactive = inactiveMissionMessage(mission);
+  const isInactive =
+    heading === "Mission annulée" || heading === "Mission terminée";
+  const Icon =
+    heading === "Mission annulée"
+      ? Ban
+      : heading === "Mission terminée"
+        ? Clock
+        : accepted ||
+            heading === "Mission confirmée" ||
+            heading === "Mission en cours"
+          ? CheckCircle2
+          : Send;
   const location = mission
     ? [mission.postal_code, mission.city].filter(Boolean).join(" ")
     : "";
   return (
     <section
-      className="rail-card application-action"
+      className={`rail-card application-action ${isInactive ? "is-inactive" : ""}`}
       aria-labelledby="apply-title"
     >
       <div className="rail-head">
         <Icon size={18} aria-hidden="true" />
-        <h2 id="apply-title">
-          {accepted ? "Mission confirmée" : "Votre candidature"}
-        </h2>
+        <h2 id="apply-title">{heading}</h2>
       </div>
       {loading ? (
         <p className="quiet" role="status">
@@ -85,7 +137,15 @@ export function ApplicationAction({
       ) : error && !application ? null : application ? (
         <>
           <ApplicationStatus status={application.status} />
-          <p>{stateMessages[application.status]}</p>
+          <p>
+            {heading === "Mission annulée"
+              ? "Cette mission a été annulée. Votre candidature reste visible dans votre historique."
+              : heading === "Mission terminée"
+                ? "Cette mission est terminée et reste accessible dans votre historique."
+                : heading === "Mission en cours"
+                  ? "La mission est actuellement en cours."
+                  : stateMessages[application.status]}
+          </p>
           {accepted && mission && (
             <div className="confirmed-mission-summary">
               <strong>{mission.title}</strong>
@@ -105,6 +165,8 @@ export function ApplicationAction({
             Voir mes candidatures
           </Link>
         </>
+      ) : inactive ? (
+        <p className="quiet">{inactive}</p>
       ) : (
         <>
           <p className="quiet">

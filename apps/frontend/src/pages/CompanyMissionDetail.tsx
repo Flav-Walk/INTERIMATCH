@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
 import {
   ArrowLeft,
+  Ban,
   CalendarDays,
   Coins,
   MapPin,
@@ -11,20 +12,21 @@ import {
   Wrench,
 } from "lucide-react";
 import { errorMessage } from "../services/session";
+import { ApiError } from "../services/api";
 import { useAuth } from "../hooks/useAuth";
 import {
+  canCancel,
   canEdit,
   canPublish,
+  cancelMission,
   getMission,
+  missionStatePresentation,
   publishMission,
   type Mission,
   type MissionCapacity,
 } from "../services/missions";
 import { ConfirmDialog } from "../components/ConfirmDialog";
-import {
-  statusLabels,
-  missionSchedule,
-} from "../components/mission/MissionCard";
+import { missionSchedule } from "../components/mission/MissionCard";
 import {
   MissionApplications,
   missionCapacityLabel,
@@ -35,14 +37,6 @@ const payLabels: Record<string, string> = {
   hour: "de l’heure",
   day: "par jour",
   mission: "pour la mission",
-};
-
-const statusClass: Record<Mission["status"], string> = {
-  draft: "is-draft",
-  open: "is-open",
-  filled: "is-running",
-  completed: "is-done",
-  cancelled: "is-done",
 };
 
 /**
@@ -65,6 +59,8 @@ export function CompanyMissionDetail() {
   );
   const [confirming, setConfirming] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const [confirmingCancel, setConfirmingCancel] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
   const [actionError, setActionError] = useState("");
   const [capacity, setCapacity] = useState<MissionCapacity | null>(null);
 
@@ -98,8 +94,53 @@ export function CompanyMissionDetail() {
     } catch (e) {
       setActionError(errorMessage(e));
       setConfirming(false);
+      if (
+        e instanceof ApiError &&
+        (e.status === 403 || e.status === 404 || e.status === 409)
+      ) {
+        try {
+          const current = await getMission(id);
+          setMission(current);
+          setCapacity(current.capacity ?? null);
+        } catch {
+          // Le refus initial décrit l'action. Une relecture impossible ne doit
+          // pas le masquer par une seconde erreur moins précise.
+        }
+        invalidate();
+      }
     } finally {
       setPublishing(false);
+    }
+  }
+
+  async function cancel() {
+    setCancelling(true);
+    setActionError("");
+    try {
+      setMission(await cancelMission(id));
+      invalidate();
+      setConfirmingCancel(false);
+      setFlash(
+        "Mission annulée. Les intérimaires retenus ont été libérés de ce créneau.",
+      );
+    } catch (e) {
+      setActionError(errorMessage(e));
+      setConfirmingCancel(false);
+      if (
+        e instanceof ApiError &&
+        (e.status === 403 || e.status === 404 || e.status === 409)
+      ) {
+        try {
+          const current = await getMission(id);
+          setMission(current);
+          setCapacity(current.capacity ?? null);
+        } catch {
+          // Relecture silencieuse
+        }
+        invalidate();
+      }
+    } finally {
+      setCancelling(false);
     }
   }
 
@@ -127,6 +168,16 @@ export function CompanyMissionDetail() {
   const required = mission.skills.filter((s) => s.required);
   const desired = mission.skills.filter((s) => !s.required);
   const missionFull = capacity?.full === true;
+  const presentation = missionStatePresentation(mission);
+  const shownStatus = missionFull
+    ? { ...presentation, label: "Pourvue", className: "is-running" }
+    : presentation;
+  const decisionsClosed =
+    presentation.temporal === "cancelled"
+      ? "Mission annulée : aucune décision n’est encore possible."
+      : presentation.temporal === "completed"
+        ? "Mission terminée : les candidatures restent consultables dans l’historique."
+        : undefined;
 
   return (
     <section className="page-wide">
@@ -137,14 +188,12 @@ export function CompanyMissionDetail() {
 
       <div className="section-head">
         <h1>{mission.title}</h1>
-        <span
-          className={
-            "mission-status is-inline " +
-            (missionFull ? "is-running" : statusClass[mission.status])
-          }
-        >
-          {missionFull ? "Pourvue" : statusLabels[mission.status]}
+        <span className={`mission-status is-inline ${shownStatus.className}`}>
+          {shownStatus.label}
         </span>
+        {shownStatus.temporal === "upcoming" && mission.status !== "draft" && (
+          <span className="mission-timing is-inline">À venir</span>
+        )}
         <div className="head-actions">
           {canEdit(mission) && (
             <Link
@@ -154,6 +203,16 @@ export function CompanyMissionDetail() {
               <Pencil size={15} aria-hidden="true" />
               Modifier
             </Link>
+          )}
+          {canCancel(mission) && (
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={() => setConfirmingCancel(true)}
+            >
+              <Ban size={15} aria-hidden="true" />
+              Annuler la mission
+            </button>
           )}
           {canPublish(mission) && (
             <button
@@ -195,6 +254,22 @@ export function CompanyMissionDetail() {
         </p>
       </ConfirmDialog>
 
+      <ConfirmDialog
+        open={confirmingCancel}
+        title="Annuler cette mission ?"
+        confirmLabel="Confirmer l’annulation"
+        busyLabel="Annulation…"
+        busy={cancelling}
+        onConfirm={() => void cancel()}
+        onCancel={() => setConfirmingCancel(false)}
+      >
+        <p>
+          « {mission.title} » sera retirée du recrutement et marquée comme
+          annulée. Les intérimaires éventuellement retenus seront libérés de ce
+          créneau. Cette action est irréversible.
+        </p>
+      </ConfirmDialog>
+
       <div className="layout layout-single">
         <div className="layout-main">
           <section className="rail-card">
@@ -210,7 +285,7 @@ export function CompanyMissionDetail() {
               </p>
               <p className="mission-meta">
                 <Users size={15} aria-hidden="true" />
-                {capacity === null
+                {!capacity
                   ? mission.headcount > 1
                     ? `${mission.headcount} postes à pourvoir`
                     : "1 poste à pourvoir"
@@ -279,6 +354,7 @@ export function CompanyMissionDetail() {
             missionId={mission.id}
             missionTitle={mission.title}
             headcount={mission.headcount}
+            decisionsClosed={decisionsClosed}
             onCapacityChange={setCapacity}
           />
         </div>

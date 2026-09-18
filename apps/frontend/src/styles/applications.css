@@ -43,7 +43,8 @@
   display: grid;
   gap: 7px;
   padding: 14px;
-  border-left: 3px solid var(--forest);
+  border: 1px solid var(--border);
+  border-radius: 8px;
   background: var(--tint);
 }
 .confirmed-mission-summary > span {
@@ -114,6 +115,22 @@
   align-items: center;
   gap: 5px;
   flex: none;
+}
+.mission-context-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  padding: 5px 10px;
+  border-radius: 99px;
+  background: var(--tint);
+  color: var(--forest);
+  font-size: 0.82rem;
+  font-weight: 650;
+}
+.mission-context-status.is-running {
+  background: oklch(0.9 0.05 235);
+  color: oklch(0.36 0.09 245);
 }
 
 .mission-applications {
@@ -226,9 +243,35 @@
   border-radius: 8px;
   background: var(--tint);
 }
+.worker-application-list > li.is-inactive,
+.application-candidate-list.is-inactive > li,
+.application-action.is-inactive {
+  color: var(--muted);
+}
+.worker-application-list > li.is-inactive .application-status.is-accepted,
+.application-candidate-list.is-inactive .application-status.is-accepted,
+.application-action.is-inactive .application-status.is-accepted {
+  background: oklch(0.93 0.004 160);
+  color: var(--muted);
+}
+.application-action.is-inactive .rail-head {
+  color: var(--muted);
+}
+.application-action.is-inactive .confirmed-mission-summary {
+  background: var(--surface);
+  border-color: var(--border);
+}
 .application-context {
   color: var(--forest);
   font-size: 0.85rem;
+}
+.application-context.is-pending {
+  color: oklch(0.38 0.1 70);
+}
+.application-context.is-rejected,
+.application-context.is-cancelled,
+.application-context.is-completed {
+  color: var(--muted);
 }
 .worker-application-main h2 {
   font-size: 1.05rem;

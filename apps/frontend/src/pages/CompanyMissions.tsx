@@ -102,39 +102,42 @@ export function CompanyMissions() {
         </p>
       )}
 
-      {loading ? (
-        <p role="status" className="quiet">
-          Chargement de vos missions…
-        </p>
-      ) : filtered.length > 0 ? (
-        <div className="mission-grid is-wide">
-          {filtered.map((mission) => (
-            <MissionCard key={mission.id} mission={mission} />
-          ))}
-        </div>
-      ) : query ? (
-        <div className="empty">
-          <SearchX aria-hidden="true" />
-          <h2>Aucune mission ne correspond</h2>
-          <p>Essayez un autre intitulé, une autre ville ou un autre métier.</p>
-        </div>
-      ) : (
-        <div className="empty">
-          <BriefcaseBusiness aria-hidden="true" />
-          <h2>
-            {tab === "all"
-              ? "Votre première mission commence ici"
-              : "Aucune mission dans cet onglet"}
-          </h2>
-          <p>
-            Décrivez le poste, les horaires et les compétences attendues : les
-            candidats compatibles vous seront ensuite proposés.
+      {!error &&
+        (loading ? (
+          <p role="status" className="quiet">
+            Chargement de vos missions…
           </p>
-          <Link className="button" to="/company/missions/new">
-            Créer une mission
-          </Link>
-        </div>
-      )}
+        ) : filtered.length > 0 ? (
+          <div className="mission-grid is-wide">
+            {filtered.map((mission) => (
+              <MissionCard key={mission.id} mission={mission} />
+            ))}
+          </div>
+        ) : query ? (
+          <div className="empty">
+            <SearchX aria-hidden="true" />
+            <h2>Aucune mission ne correspond</h2>
+            <p>
+              Essayez un autre intitulé, une autre ville ou un autre métier.
+            </p>
+          </div>
+        ) : (
+          <div className="empty">
+            <BriefcaseBusiness aria-hidden="true" />
+            <h2>
+              {tab === "all"
+                ? "Votre première mission commence ici"
+                : "Aucune mission dans cet onglet"}
+            </h2>
+            <p>
+              Décrivez le poste, les horaires et les compétences attendues : les
+              candidats compatibles vous seront ensuite proposés.
+            </p>
+            <Link className="button" to="/company/missions/new">
+              Créer une mission
+            </Link>
+          </div>
+        ))}
     </section>
   );
 }

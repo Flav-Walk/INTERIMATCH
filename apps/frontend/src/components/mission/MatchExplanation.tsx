@@ -54,7 +54,7 @@ function dimensionText(
 }
 
 export function MatchExplanation({ match }: { match: MatchResult }) {
-  const lines = match.dimensions
+  const lines = (match.dimensions ?? [])
     .map((d) => ({
       key: d.key,
       positive: d.ratio >= 0.5,

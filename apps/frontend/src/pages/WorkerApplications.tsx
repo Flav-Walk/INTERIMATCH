@@ -9,16 +9,14 @@ import {
 import { errorMessage } from "../services/session";
 import {
   listMyApplications,
+  workerMissionContext,
   type WorkerApplication,
 } from "../services/applications";
 import { ApplicationStatus } from "../components/applications/ApplicationStatus";
 import { workerApplicationSchedule } from "../components/applications/ConfirmedMissions";
 
 export function workerApplicationContext(application: WorkerApplication) {
-  if (application.status !== "accepted") return null;
-  return Date.parse(application.mission.ends_at) <= Date.now()
-    ? "Mission passée"
-    : "Mission confirmée";
+  return workerMissionContext(application).label;
 }
 
 export function WorkerApplicationList({
@@ -43,7 +41,7 @@ export function WorkerApplicationList({
   return (
     <ul className="worker-application-list">
       {applications.map((application) => {
-        const context = workerApplicationContext(application);
+        const context = workerMissionContext(application);
         const location = [
           application.mission.postal_code,
           application.mission.city,
@@ -54,7 +52,11 @@ export function WorkerApplicationList({
           <li
             key={application.id}
             className={
-              context === "Mission confirmée" ? "is-confirmed" : undefined
+              ["confirmed", "running"].includes(context.key)
+                ? "is-confirmed"
+                : context.key === "cancelled" || context.key === "completed"
+                  ? "is-inactive"
+                  : undefined
             }
           >
             <div className="worker-application-main">
@@ -62,9 +64,9 @@ export function WorkerApplicationList({
                 {application.company.establishment_name ?? "Établissement"}
               </span>
               <h2>{application.mission.title}</h2>
-              {context && (
-                <strong className="application-context">{context}</strong>
-              )}
+              <strong className={`application-context is-${context.key}`}>
+                {context.label}
+              </strong>
               <div className="application-meta">
                 <span>
                   <MapPin size={14} aria-hidden="true" />

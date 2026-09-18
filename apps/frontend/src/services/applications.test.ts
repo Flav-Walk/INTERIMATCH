@@ -3,12 +3,14 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "./api";
+import type { MissionStatus } from "./missions";
 import { setAccess } from "./session";
 import {
   applicationCandidateName,
   applyToMission,
   awaitingReply,
   pendingByMission,
+  workerMissionContext,
   upcomingEngagements,
   decideApplication,
   getMyApplication,
@@ -20,6 +22,7 @@ import {
 } from "./applications";
 import {
   ApplicationAction,
+  applicationMissionHeading,
   workerApplicationError,
 } from "../components/applications/ApplyToMission";
 import { ConfirmedMissions } from "../components/applications/ConfirmedMissions";
@@ -302,6 +305,22 @@ describe("interface candidatures", () => {
     expect(full).not.toContain(">Accepter<");
   });
 
+  it("conserve l’historique sans décision sur une mission inactive", () => {
+    const closed = render(
+      createElement(MissionApplicationList, {
+        applications: [candidate],
+        busyId: null,
+        missionFull: false,
+        decisionsClosed: "Mission annulée : aucune décision n’est possible.",
+        onDecision: vi.fn(),
+      }),
+    );
+    expect(closed).toContain("Mission annulée");
+    expect(closed).toContain("Camille Martin");
+    expect(closed).not.toContain(">Accepter<");
+    expect(closed).not.toContain(">Refuser<");
+  });
+
   it("applique seulement la réponse serveur et explique les conflits", () => {
     const accepted = { ...candidate, status: "accepted" as const };
     const rejected = { ...candidate, status: "rejected" as const };
@@ -356,7 +375,7 @@ describe("interface candidatures", () => {
           ends_at: "2020-10-18T22:00:00.000Z",
         },
       }),
-    ).toBe("Mission passée");
+    ).toBe("Mission terminée");
   });
 
   it("présente une ou plusieurs missions confirmées avec les données utiles", () => {
@@ -382,7 +401,7 @@ describe("interface candidatures", () => {
     expect(confirmed).toContain("Le Central");
     expect(confirmed).toContain("Établissement");
     expect(confirmed).toContain("Lieu à confirmer");
-    expect(confirmed.match(/Acceptée/g) ?? []).toHaveLength(2);
+    expect(confirmed.match(/Mission confirmée/g) ?? []).toHaveLength(2);
     expect(render(createElement(ConfirmedMissions, { applications: [] }))).toBe(
       "",
     );
@@ -433,6 +452,44 @@ describe("interface candidatures", () => {
       workerApplicationError(new ApiError("Brut", 409, "APPLICATION_CLOSED")),
     ).toContain("n’accepte plus");
   });
+
+  it("adapte la fiche worker aux états temporels et à l’annulation", () => {
+    const accepted = { ...application, status: "accepted" as const };
+    const base = {
+      ...workerApplication.mission,
+      establishment_name: "Le Central",
+    };
+    const now = Date.parse("2027-06-12T12:00:00Z");
+    expect(
+      applicationMissionHeading(
+        accepted,
+        {
+          ...base,
+          starts_at: "2027-06-12T10:00:00Z",
+          ends_at: "2027-06-12T18:00:00Z",
+        },
+        now,
+      ),
+    ).toBe("Mission en cours");
+    expect(
+      applicationMissionHeading(
+        accepted,
+        {
+          ...base,
+          starts_at: "2027-06-11T10:00:00Z",
+          ends_at: "2027-06-11T18:00:00Z",
+        },
+        now,
+      ),
+    ).toBe("Mission terminée");
+    expect(
+      applicationMissionHeading(
+        accepted,
+        { ...base, status: "cancelled" },
+        now,
+      ),
+    ).toBe("Mission annulée");
+  });
 });
 
 /**
@@ -446,7 +503,7 @@ describe("lecture des candidatures", () => {
     status: "pending" | "accepted" | "rejected",
     starts: string,
     ends: string,
-    missionStatus = "open",
+    missionStatus: MissionStatus = "open",
   ) => ({
     id: `${status}-${starts}`,
     mission_id: "m-" + starts,
@@ -495,6 +552,33 @@ describe("lecture des candidatures", () => {
       withMission("accepted", future(4), future(5)),
     ];
     expect(awaitingReply(list)).toHaveLength(1);
+  });
+
+  it("explique les états worker en cours, terminée et annulée", () => {
+    const now = Date.parse("2027-06-12T12:00:00Z");
+    expect(
+      workerMissionContext(
+        withMission("accepted", "2027-06-12T10:00:00Z", "2027-06-12T18:00:00Z"),
+        now,
+      ).label,
+    ).toBe("Mission en cours");
+    expect(
+      workerMissionContext(
+        withMission("accepted", "2027-06-11T10:00:00Z", "2027-06-11T18:00:00Z"),
+        now,
+      ).label,
+    ).toBe("Mission terminée");
+    expect(
+      workerMissionContext(
+        withMission(
+          "accepted",
+          "2027-06-13T10:00:00Z",
+          "2027-06-13T18:00:00Z",
+          "cancelled",
+        ),
+        now,
+      ).label,
+    ).toBe("Mission annulée");
   });
 
   it("ne pastille une mission que sur de vraies candidatures en attente", () => {

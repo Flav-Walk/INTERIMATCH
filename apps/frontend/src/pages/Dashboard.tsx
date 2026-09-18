@@ -19,6 +19,7 @@ import { MissionCard } from "../components/mission/MissionCard";
 import {
   explainEmpty,
   listOpenMissions,
+  missionTemporalState,
   type Exclusions,
   type OpenMission,
 } from "../services/missions";
@@ -121,6 +122,9 @@ export function Dashboard() {
   // l'écran des missions, que le lien « Tout voir » atteint déjà.
   const reason = worker ? explainEmpty(excluded) : null;
   const engagements = upcomingEngagements(mine);
+  const hasRunningEngagement = engagements.some(
+    (application) => missionTemporalState(application.mission) === "running",
+  );
   const waiting = awaitingReply(mine);
 
   return (
@@ -184,7 +188,9 @@ export function Dashboard() {
                   <div>
                     <span className="eyeline">Votre planning</span>
                     <h2 id="confirmed-missions-title">
-                      Vos prochaines missions
+                      {hasRunningEngagement
+                        ? "En cours et à venir"
+                        : "Vos prochaines missions"}
                     </h2>
                   </div>
                   <Link className="quiet" to="/worker/applications">
