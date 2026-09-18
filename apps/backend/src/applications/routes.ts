@@ -47,12 +47,14 @@ export function applicationRouter(applications: ApplicationService) {
   );
 
   router.get("/missions/:missionId/applications", company, async (req, res) =>
-    res.json({
-      applications: await applications.listForMission(
+    // La réponse porte `applications` et `capacity` : décider sans savoir s'il
+    // reste une place, c'est cliquer « Accepter » pour découvrir un refus.
+    res.json(
+      await applications.listForMission(
         me(res),
         identifier.parse(req.params.missionId),
       ),
-    }),
+    ),
   );
 
   router.patch(

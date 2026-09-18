@@ -138,6 +138,22 @@ export const missionListSchema = z
 export type MissionInput = z.infer<typeof missionCreateSchema>;
 export type MissionPatch = z.infer<typeof missionUpdateSchema>;
 
+/**
+ * Capacité de recrutement d'une mission.
+ *
+ * Distincte du statut : une mission dont tous les postes sont pourvus reste
+ * publiée et active. « Complète » décrit son recrutement, pas son cycle de vie.
+ */
+export interface MissionCapacity {
+  /** Postes ouverts au total. */
+  headcount: number;
+  /** Candidatures acceptées. Un refus n'en consomme aucun. */
+  filled: number;
+  /** Jamais négatif : un état hérité incohérent ne doit pas s'afficher. */
+  remaining: number;
+  full: boolean;
+}
+
 export interface MissionSkill {
   id: string;
   name: string;
@@ -181,6 +197,14 @@ export interface Mission {
   pay_amount: string | null;
   pay_unit: string | null;
   headcount: number;
+  /**
+   * Postes pourvus et restants, calculés à la lecture.
+   *
+   * `headcount` seul ne disait rien de l'état du recrutement : pour savoir s'il
+   * restait une place, il fallait recompter les candidatures — donc les avoir
+   * toutes. C'est une question que le serveur sait trancher, et lui seul.
+   */
+  capacity?: MissionCapacity;
   min_years_experience: string | null;
   status: MissionStatus;
   published_at: string | null;

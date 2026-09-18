@@ -9,6 +9,7 @@ import {
   type MissionInput,
   type MissionPatch,
   type MissionSkill,
+  type MissionCapacity,
   type MissionStatus,
   type OpenMission,
 } from "./schemas.js";
@@ -82,8 +83,14 @@ const openToWorkers = (demoParam: string) =>
    AND (SELECT count(*) FROM applications a
          WHERE a.mission_id = m.id AND a.status = 'accepted') < m.headcount`;
 
-/** Pourquoi une mission n'est pas offerte aux intérimaires. */
-export type NotOpenReason = "draft" | "ended" | "closed";
+/**
+ * Pourquoi une mission n'est pas offerte aux intérimaires.
+ *
+ * `full` est à part : la mission est toujours publiée, toujours active, elle
+ * n'a simplement plus de place. La confondre avec `closed` ferait annoncer
+ * « cette mission n'est plus ouverte » d'une mission qui l'est encore.
+ */
+export type NotOpenReason = "draft" | "ended" | "closed" | "full";
 
 /**
  * Pendant TypeScript de `openToWorkers`, pour les décisions qui ne passent pas
@@ -111,6 +118,37 @@ export function notOpenToWorkers(
   if (mission.status === "draft") return "draft";
   if (mission.status !== "open") return "closed";
   return null;
+}
+
+/**
+ * Capacité d'une mission, lue à la demande.
+ *
+ * Fonction libre plutôt que méthode : le service des candidatures en a besoin
+ * et n'a aucune dépendance vers `MissionService`. Lui en donner une pour un
+ * décompte serait cher payé ; dupliquer la règle le serait davantage.
+ */
+export async function capacityOf(
+  db: Db,
+  missionId: string,
+): Promise<MissionCapacity | null> {
+  const { rows } = await db.query<{ headcount: number; filled: string }>(
+    `SELECT m.headcount,
+            count(a.id) FILTER (WHERE a.status = 'accepted')::text AS filled
+       FROM missions m
+       LEFT JOIN applications a ON a.mission_id = m.id
+      WHERE m.id = $1
+      GROUP BY m.id, m.headcount`,
+    [missionId],
+  );
+  if (!rows[0]) return null;
+  const filled = Number(rows[0].filled);
+  return {
+    headcount: rows[0].headcount,
+    filled,
+    // Borné à zéro, comme dans `attachCapacity` : une seule et même promesse.
+    remaining: Math.max(0, rows[0].headcount - filled),
+    full: filled >= rows[0].headcount,
+  };
 }
 
 /**
@@ -156,6 +194,40 @@ export class MissionService {
     return missions;
   }
 
+  /**
+   * Attache la capacité à plusieurs missions en une requête.
+   *
+   * Même forme qu'`attachSkills` : une seule lecture pour toute la liste. La
+   * jointure est externe, car une mission sans aucune candidature acceptée doit
+   * répondre « zéro poste pourvu », pas disparaître du décompte.
+   */
+  private async attachCapacity<
+    T extends { id: string; headcount: number; capacity?: MissionCapacity },
+  >(missions: T[]) {
+    if (!missions.length) return missions;
+    const { rows } = await this.db.query<{ mission_id: string; n: string }>(
+      `SELECT mission_id, count(*)::text AS n FROM applications
+        WHERE mission_id = ANY($1::uuid[]) AND status = 'accepted'
+        GROUP BY mission_id`,
+      [missions.map((m) => m.id)],
+    );
+    const filledBy = new Map(
+      rows.map((row) => [row.mission_id, Number(row.n)]),
+    );
+    for (const mission of missions) {
+      const filled = filledBy.get(mission.id) ?? 0;
+      mission.capacity = {
+        headcount: mission.headcount,
+        filled,
+        // Borné à zéro : si une donnée héritée dépassait la capacité, annoncer
+        // « -1 poste restant » n'aiderait personne.
+        remaining: Math.max(0, mission.headcount - filled),
+        full: filled >= mission.headcount,
+      };
+    }
+    return missions;
+  }
+
   async list(companyId: string, status?: MissionStatus) {
     const { rows } = await this.db.query<Mission>(
       `SELECT ${COLUMNS} FROM missions m
@@ -163,7 +235,7 @@ export class MissionService {
         ORDER BY m.starts_at DESC`,
       [companyId, status ?? null],
     );
-    return this.attachSkills(rows);
+    return this.attachCapacity(await this.attachSkills(rows));
   }
 
   /** Répartition par statut, pour les compteurs des filtres. */
@@ -184,7 +256,7 @@ export class MissionService {
     );
     if (!rows[0])
       throw new HttpError(404, "MISSION_NOT_FOUND", "Mission introuvable.");
-    return (await this.attachSkills(rows))[0];
+    return (await this.attachCapacity(await this.attachSkills(rows)))[0];
   }
 
   /** Assemble une ligne de la vue intérimaire : la mission, puis son établissement. */
@@ -257,6 +329,11 @@ export class MissionService {
   }
 
   /** Une mission pleine reste dans l'historique entreprise, mais sort du matching. */
+  /** Capacité d'une mission isolée. Voir `capacityOf`. */
+  capacity(missionId: string) {
+    return capacityOf(this.db, missionId);
+  }
+
   async hasCapacity(missionId: string) {
     const { rows } = await this.db.query<{ available: boolean }>(
       `SELECT count(a.id) < m.headcount AS available

@@ -1,5 +1,6 @@
 import type { Db } from "../db.js";
 import { HttpError } from "../errors.js";
+import { capacityOf } from "../missions/service.js";
 import type { BusinessEventPublisher } from "../events/dispatcher.js";
 import { loadApplicationEventData } from "../events/payloads.js";
 import type { ApplicationStatus } from "./schemas.js";
@@ -282,6 +283,14 @@ export class ApplicationService {
     };
   }
 
+  /**
+   * Candidatures d'une mission, avec l'état de son recrutement.
+   *
+   * Les deux vont ensemble : décider d'une candidature sans savoir s'il reste
+   * une place, c'est cliquer « Accepter » pour découvrir un refus. La capacité
+   * est donc servie par le même appel, et non par un second aller-retour qui
+   * pourrait déjà être périmé.
+   */
   async listForMission(companyId: string, missionId: string) {
     await this.assertOwnedMission(this.db, companyId, missionId);
     const conflict = engagedElsewhere({
@@ -301,7 +310,10 @@ export class ApplicationService {
         ORDER BY a.created_at DESC,a.id`,
       [missionId],
     );
-    return rows.map((row) => this.toCompanyApplication(row));
+    return {
+      applications: rows.map((row) => this.toCompanyApplication(row)),
+      capacity: await capacityOf(this.db, missionId),
+    };
   }
 
   /**
@@ -400,15 +412,12 @@ export class ApplicationService {
           end: "$3::timestamptz",
         });
         const engaged = (
-          await db.query<{ engaged: boolean }>(
-            `SELECT ${clash} AS engaged`,
-            [
-              application.worker_id,
-              new Date(mission.starts_at).toISOString(),
-              new Date(mission.ends_at).toISOString(),
-              missionId,
-            ],
-          )
+          await db.query<{ engaged: boolean }>(`SELECT ${clash} AS engaged`, [
+            application.worker_id,
+            new Date(mission.starts_at).toISOString(),
+            new Date(mission.ends_at).toISOString(),
+            missionId,
+          ])
         ).rows[0].engaged;
         if (engaged)
           throw new HttpError(

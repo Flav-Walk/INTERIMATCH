@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PGlite } from "@electric-sql/pglite";
 import { readFile, readdir } from "node:fs/promises";
 import request from "supertest";
@@ -9,6 +9,7 @@ import { AccountService } from "../auth/service.js";
 import { MissionService } from "../missions/service.js";
 import { missionCreateSchema } from "../missions/schemas.js";
 import { ApplicationService } from "./service.js";
+import { createBusinessEvent } from "../events/business-event.js";
 
 const pg = new PGlite();
 const db: Db = {
@@ -84,6 +85,33 @@ const slotAt = (dayOffset: number, hour: number, hours: number) => {
 };
 
 /** Un compte interimaire neuf, pret a postuler. */
+/**
+ * Un interimaire que le rapprochement peut reellement retenir : metier,
+ * position, rayon large, toutes les competences et une disponibilite couvrante.
+ * `newWorker` suffit pour postuler ; il ne suffit pas pour etre propose.
+ */
+async function matchableWorker(email: string) {
+  const { token, id } = await newWorker(email);
+  await db.query(
+    `UPDATE worker_profiles
+        SET latitude=45.75, longitude=4.85, mobility_radius_km=250,
+            open_to_missions=true
+      WHERE profile_id=$1`,
+    [id],
+  );
+  await db.query(
+    `INSERT INTO worker_skills(profile_id, skill_id)
+     SELECT $1, id FROM skills ON CONFLICT DO NOTHING`,
+    [id],
+  );
+  await db.query(
+    `INSERT INTO availabilities(profile_id, starts_at, ends_at, status)
+     VALUES($1, now() - interval '1 day', now() + interval '400 days', 'available')`,
+    [id],
+  );
+  return { token, id };
+}
+
 async function newWorker(email: string) {
   const token = (await accounts.register(email, password)).access_token;
   const id = (await accounts.authenticate(token)).id;
@@ -523,8 +551,10 @@ describe("candidatures - capacite de la mission", () => {
       request(app).get(`/api/v1/missions/${mission}/candidates`),
       ownerToken,
     );
+    // « full » et non « closed » : la mission reste publiee et active, elle a
+    // seulement trouve tout son monde. Voir le test dedie plus bas.
     expect(candidates.body).toMatchObject({
-      inactive: "closed",
+      inactive: "full",
       candidates: [],
     });
   });
@@ -782,5 +812,402 @@ describe("candidatures - vue d ensemble entreprise", () => {
       (x: { id: string }) => x.id === ib,
     );
     expect(found).toMatchObject({ status: "pending", conflict: true });
+  });
+});
+
+/**
+ * Capacite exposee.
+ *
+ * `headcount` circulait deja dans les reponses, mais rien ne disait combien de
+ * postes etaient pris. Le frontend ne pouvait afficher « 2 postes sur 3 » qu en
+ * recomptant lui-meme les candidatures — donc en supposant qu il les a toutes.
+ */
+describe("candidatures - capacite exposee", () => {
+  const missionOf = async (missionId: string) =>
+    (
+      await authenticated(
+        request(app).get(`/api/v1/missions/${missionId}`),
+        ownerToken,
+      )
+    ).body;
+
+  const applicationsOf = async (missionId: string) =>
+    (
+      await authenticated(
+        request(app).get(`/api/v1/missions/${missionId}/applications`),
+        ownerToken,
+      )
+    ).body;
+
+  const applyTo = async (missionId: string, token: string) =>
+    (
+      await authenticated(
+        request(app).post("/api/v1/workers/me/applications"),
+        token,
+      ).send({ mission_id: missionId })
+    ).body.id as string;
+
+  const decide = (
+    missionId: string,
+    applicationId: string,
+    status: "accepted" | "rejected",
+  ) =>
+    authenticated(
+      request(app).patch(
+        `/api/v1/missions/${missionId}/applications/${applicationId}`,
+      ),
+      ownerToken,
+    ).send({ status });
+
+  it("annonce une mission neuve entierement a pourvoir", async () => {
+    const mission = await publishedMission("Capacite neuve", {
+      headcount: 3,
+      ...slotAt(100, 8, 4),
+    });
+    expect((await missionOf(mission)).capacity).toEqual({
+      headcount: 3,
+      filled: 0,
+      remaining: 3,
+      full: false,
+    });
+  });
+
+  it("ne compte que les candidatures acceptees", async () => {
+    const mission = await publishedMission("Capacite en cours", {
+      headcount: 3,
+      ...slotAt(101, 8, 4),
+    });
+    const a = await newWorker("cap.expose.a@example.test");
+    const b = await newWorker("cap.expose.b@example.test");
+    const c = await newWorker("cap.expose.c@example.test");
+    const ia = await applyTo(mission, a.token);
+    const ib = await applyTo(mission, b.token);
+    await applyTo(mission, c.token);
+
+    // Trois candidatures recues, aucune decision : rien n est pourvu.
+    expect((await missionOf(mission)).capacity.filled).toBe(0);
+
+    await decide(mission, ia, "accepted");
+    await decide(mission, ib, "rejected");
+
+    const capacity = (await missionOf(mission)).capacity;
+    // Un refus ne consomme aucun poste, une acceptation en consomme un.
+    expect(capacity).toEqual({
+      headcount: 3,
+      filled: 1,
+      remaining: 2,
+      full: false,
+    });
+  });
+
+  it("declare la mission complete au dernier poste pourvu", async () => {
+    const mission = await publishedMission("Capacite pleine", {
+      headcount: 1,
+      ...slotAt(102, 8, 4),
+    });
+    const seul = await newWorker("cap.expose.seul@example.test");
+    const application = await applyTo(mission, seul.token);
+    await decide(mission, application, "accepted");
+
+    expect((await missionOf(mission)).capacity).toEqual({
+      headcount: 1,
+      filled: 1,
+      remaining: 0,
+      full: true,
+    });
+  });
+
+  it("ne descend jamais sous zero poste restant", async () => {
+    // Defense contre un etat herite : si la base portait deja plus
+    // d acceptations que de postes, « -1 poste restant » n aiderait personne.
+    const mission = await publishedMission("Capacite negative", {
+      headcount: 1,
+      ...slotAt(103, 8, 4),
+    });
+    const un = await newWorker("cap.neg.un@example.test");
+    const deux = await newWorker("cap.neg.deux@example.test");
+    const ia = await applyTo(mission, un.token);
+    const ib = await applyTo(mission, deux.token);
+    await decide(mission, ia, "accepted");
+    // Le declencheur SQL protege la capacite : on desactive la contrainte le
+    // temps de fabriquer l etat incoherent que l on veut savoir afficher.
+    await db.query(
+      "ALTER TABLE applications DISABLE TRIGGER applications_capacity",
+    );
+    await db.query("UPDATE applications SET status='accepted' WHERE id=$1", [
+      ib,
+    ]);
+    await db.query(
+      "ALTER TABLE applications ENABLE TRIGGER applications_capacity",
+    );
+
+    const capacity = (await missionOf(mission)).capacity;
+    expect(capacity.filled).toBe(2);
+    expect(capacity.remaining).toBe(0);
+    expect(capacity.full).toBe(true);
+  });
+
+  it("porte la capacite sur l ecran de decision", async () => {
+    const mission = await publishedMission("Capacite decision", {
+      headcount: 2,
+      ...slotAt(104, 8, 4),
+    });
+    const un = await newWorker("cap.dec.un@example.test");
+    const application = await applyTo(mission, un.token);
+    await decide(mission, application, "accepted");
+
+    const body = await applicationsOf(mission);
+    expect(Array.isArray(body.applications)).toBe(true);
+    expect(body.capacity).toEqual({
+      headcount: 2,
+      filled: 1,
+      remaining: 1,
+      full: false,
+    });
+  });
+
+  it("porte la capacite sur chaque mission de la liste entreprise", async () => {
+    const r = await authenticated(
+      request(app).get("/api/v1/missions"),
+      ownerToken,
+    );
+    expect(r.status).toBe(200);
+    for (const mission of r.body.missions) {
+      expect(mission.capacity.headcount).toBe(mission.headcount);
+      expect(mission.capacity.remaining).toBeGreaterThanOrEqual(0);
+      expect(mission.capacity.full).toBe(mission.capacity.remaining === 0);
+    }
+  });
+
+  it("n expose la capacite d une mission qu a son proprietaire", async () => {
+    const mission = await publishedMission("Capacite privee", {
+      ...slotAt(105, 8, 4),
+    });
+    expect(
+      (
+        await authenticated(
+          request(app).get(`/api/v1/missions/${mission}`),
+          otherCompanyToken,
+        )
+      ).status,
+    ).toBe(404);
+  });
+});
+
+/**
+ * Une mission complete reste une mission ouverte.
+ *
+ * Le cahier demande de distinguer « mission publiee/active » de « capacite
+ * atteinte ». Le rapprochement les confondait : une mission dont tous les
+ * postes etaient pourvus etait annoncee « closed », ce que l interface traduit
+ * par « cette mission n est plus ouverte » — alors qu elle l est toujours.
+ */
+describe("candidatures - mission complete vs mission fermee", () => {
+  const applyTo = async (missionId: string, token: string) =>
+    (
+      await authenticated(
+        request(app).post("/api/v1/workers/me/applications"),
+        token,
+      ).send({ mission_id: missionId })
+    ).body.id as string;
+
+  it("distingue une mission pleine d une mission fermee", async () => {
+    const mission = await publishedMission("Pleine mais ouverte", {
+      headcount: 1,
+      ...slotAt(110, 8, 4),
+    });
+    const un = await newWorker("pleine.un@example.test");
+    const application = await applyTo(mission, un.token);
+    await authenticated(
+      request(app).patch(
+        `/api/v1/missions/${mission}/applications/${application}`,
+      ),
+      ownerToken,
+    ).send({ status: "accepted" });
+
+    const r = await authenticated(
+      request(app).get(`/api/v1/missions/${mission}/candidates`),
+      ownerToken,
+    );
+    expect(r.status).toBe(200);
+    expect(r.body.inactive).toBe("full");
+    expect(r.body.candidates).toEqual([]);
+
+    // Le statut stocke n a pas bouge : la mission reste publiee.
+    const { rows } = await db.query<{ status: string }>(
+      "SELECT status FROM missions WHERE id=$1",
+      [mission],
+    );
+    expect(rows[0].status).toBe("open");
+    expect(
+      (
+        await authenticated(
+          request(app).get(`/api/v1/missions/${mission}`),
+          ownerToken,
+        )
+      ).body.status,
+    ).toBe("open");
+  });
+});
+
+/**
+ * Le candidat refuse ne revient pas dans les profils correspondants.
+ *
+ * Sans cette regle, un refus reafficherait aussitot le profil comme
+ * « correspondant », l entreprise pourrait le solliciter a nouveau et
+ * l interimaire recandidater : une boucle sans etat d arrivee. Le modele
+ * retenu est donc l historique — une candidature repondue reste repondue.
+ */
+describe("candidatures - rapprochement apres decision", () => {
+  const applyTo = async (missionId: string, token: string) =>
+    (
+      await authenticated(
+        request(app).post("/api/v1/workers/me/applications"),
+        token,
+      ).send({ mission_id: missionId })
+    ).body.id as string;
+
+  const candidateIds = async (missionId: string) =>
+    (
+      (
+        await authenticated(
+          request(app).get(`/api/v1/missions/${missionId}/candidates`),
+          ownerToken,
+        )
+      ).body.candidates as { id: string }[]
+    ).map((c) => c.id);
+
+  it("retire le candidat des profils correspondants, refus compris", async () => {
+    const mission = await publishedMission("Apres refus", {
+      headcount: 2,
+      ...slotAt(120, 8, 4),
+    });
+    const postulant = await matchableWorker("refus.profil@example.test");
+
+    expect(await candidateIds(mission)).toContain(postulant.id);
+
+    const application = await applyTo(mission, postulant.token);
+    expect(await candidateIds(mission)).not.toContain(postulant.id);
+
+    await authenticated(
+      request(app).patch(
+        `/api/v1/missions/${mission}/applications/${application}`,
+      ),
+      ownerToken,
+    ).send({ status: "rejected" });
+
+    // Toujours absent : le refus ne rouvre pas la boucle.
+    expect(await candidateIds(mission)).not.toContain(postulant.id);
+  });
+
+  it("empeche de recandidater apres un refus", async () => {
+    const mission = await publishedMission("Recandidature", {
+      headcount: 2,
+      ...slotAt(121, 8, 4),
+    });
+    const postulant = await newWorker("refus.retour@example.test");
+    const application = await applyTo(mission, postulant.token);
+    await authenticated(
+      request(app).patch(
+        `/api/v1/missions/${mission}/applications/${application}`,
+      ),
+      ownerToken,
+    ).send({ status: "rejected" });
+
+    const retour = await authenticated(
+      request(app).post("/api/v1/workers/me/applications"),
+      postulant.token,
+    ).send({ mission_id: mission });
+    expect(retour.status).toBe(409);
+    expect(retour.body.error.code).toBe("APPLICATION_ALREADY_EXISTS");
+  });
+
+  it("refuse une seconde decision sur une candidature deja refusee", async () => {
+    const mission = await publishedMission("Deja refusee", {
+      headcount: 2,
+      ...slotAt(122, 8, 4),
+    });
+    const postulant = await newWorker("refus.double@example.test");
+    const application = await applyTo(mission, postulant.token);
+    const url = `/api/v1/missions/${mission}/applications/${application}`;
+    await authenticated(request(app).patch(url), ownerToken).send({
+      status: "rejected",
+    });
+
+    for (const status of ["accepted", "rejected"] as const) {
+      const again = await authenticated(
+        request(app).patch(url),
+        ownerToken,
+      ).send({ status });
+      expect(again.status).toBe(409);
+      expect(again.body.error.code).toBe("APPLICATION_ALREADY_DECIDED");
+    }
+  });
+});
+
+/**
+ * Silence sur une decision refusee.
+ *
+ * Les emissions ont lieu apres le COMMIT, jamais pendant : un refus metier doit
+ * laisser n8n — et donc les mails — strictement silencieux. La suite des
+ * evenements couvre la capacite ; ce cas-ci est le conflit d engagement, qui
+ * refuse l acceptation pour une tout autre raison.
+ */
+describe("candidatures - aucun evenement sur decision refusee", () => {
+  const publish = vi.fn(
+    (
+      type: Parameters<typeof createBusinessEvent>[0],
+      data: Record<string, unknown>,
+    ) => createBusinessEvent(type, data),
+  );
+  const watched = new ApplicationService(db, { publish });
+
+  const applyTo = async (missionId: string, token: string) =>
+    (
+      await authenticated(
+        request(app).post("/api/v1/workers/me/applications"),
+        token,
+      ).send({ mission_id: missionId })
+    ).body.id as string;
+
+  it("reste muet quand le candidat est deja engage ailleurs", async () => {
+    const premiere = await publishedMission("Silence A", slotAt(130, 8, 6));
+    const seconde = await publishedMission("Silence B", slotAt(130, 10, 6));
+    const worker = await newWorker("silence.engage@example.test");
+    const ia = await applyTo(premiere, worker.token);
+    const ib = await applyTo(seconde, worker.token);
+
+    // La premiere acceptation aboutit : elle, doit parler.
+    publish.mockClear();
+    await watched.decide(ownerId, premiere, ia, "accepted");
+    expect(publish).toHaveBeenCalledTimes(1);
+    expect(publish.mock.calls[0][0]).toBe("application.accepted");
+
+    // La seconde est refusee : rien ne doit partir.
+    publish.mockClear();
+    await expect(
+      watched.decide(ownerId, seconde, ib, "accepted"),
+    ).rejects.toMatchObject({ code: "WORKER_ENGAGED" });
+    expect(publish).not.toHaveBeenCalled();
+
+    // Et la candidature reste intacte, en attente.
+    const { rows } = await db.query<{ status: string }>(
+      "SELECT status FROM applications WHERE id=$1",
+      [ib],
+    );
+    expect(rows[0].status).toBe("pending");
+  });
+
+  it("reste muet quand la candidature a deja recu une decision", async () => {
+    const mission = await publishedMission("Silence C", slotAt(131, 8, 6));
+    const worker = await newWorker("silence.double@example.test");
+    const application = await applyTo(mission, worker.token);
+    await watched.decide(ownerId, mission, application, "rejected");
+
+    publish.mockClear();
+    await expect(
+      watched.decide(ownerId, mission, application, "accepted"),
+    ).rejects.toMatchObject({ code: "APPLICATION_ALREADY_DECIDED" });
+    expect(publish).not.toHaveBeenCalled();
   });
 });
