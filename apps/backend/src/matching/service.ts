@@ -48,6 +48,29 @@ const elsewhere = (criteria: WorkerCriteria, missionId: string) => ({
  * côté de la cloison démo — restent définies à un seul endroit.
  */
 
+/**
+ * Le rapprochement tel qu'il franchit la frontière de l'API.
+ *
+ * Une liste explicite, et non un `Omit<>` : ce qui s'ajoutera un jour à
+ * `MatchResult` pour les besoins du moteur ne partira pas au client par
+ * inadvertance. Il faudra l'inscrire ici, donc le vouloir.
+ *
+ * `raw_score` en est absent. Il sert au classement — les paliers se calculent
+ * dessus — mais un « 81,33 % » affiché donnerait à une estimation une précision
+ * qu'elle n'a pas.
+ */
+export type PublicMatch = Omit<MatchResult, "raw_score">;
+
+const publicMatch = (match: MatchResult): PublicMatch => ({
+  compatible: match.compatible,
+  score: match.score,
+  blockers: match.blockers,
+  dimensions: match.dimensions,
+  distance_km: match.distance_km,
+  outside_zone: match.outside_zone,
+  skills: match.skills,
+});
+
 /** Ce qu'une entreprise apprend d'un candidat avant toute mise en relation. */
 export interface Candidate {
   id: string;
@@ -63,12 +86,12 @@ export interface Candidate {
   years_experience: number | null;
   /** Compétences de la mission que ce candidat possède réellement. */
   matched_skills: { id: string; name: string; required: boolean }[];
-  match: MatchResult;
+  match: PublicMatch;
 }
 
 export interface MissionMatch {
   mission: OpenMission;
-  match: MatchResult;
+  match: PublicMatch;
 }
 
 /**
@@ -97,10 +120,40 @@ export interface WorkerMissions {
 export interface CandidateSelection {
   band: number | null;
   band_label: string | null;
+  /** Profils retenus : compatibles, dans la zone, au palier annoncé. */
   candidates: Candidate[];
+  /**
+   * Profils que seule la distance écarte.
+   *
+   * Le cahier (D04) veut qu'un profil hors rayon reste consultable et que
+   * l'élargissement soit un geste de l'entreprise, pas une décision du moteur.
+   * Ils vivent donc à part : ni mêlés aux profils retenus, ni supprimés.
+   *
+   * Seule la distance les sépare du reste. Un profil à qui il manque en plus
+   * une compétence exigée n'y figure pas : élargir la zone ne la lui rendrait
+   * pas, et l'afficher laisserait croire le contraire.
+   */
+  outside_zone: Candidate[];
   /** `null` quand le rapprochement a bien tourné. */
   inactive: NotOpenReason | null;
 }
+
+/**
+ * Combien de profils hors zone sont proposés à la consultation.
+ *
+ * Une borne, parce qu'élargir la zone n'est pas ouvrir les vannes : au-delà de
+ * quelques profils, une entreprise ne lit plus, elle survole.
+ *
+ * Aucun plancher de score en revanche, et c'est délibéré. Un profil hors zone
+ * est déjà pénalisé par la distance : la proximité pèse 25 points et lui en
+ * rapporte zéro, ce que le cahier prévoit explicitement. Lui opposer ensuite un
+ * seuil de 50 % reviendrait à le sanctionner deux fois pour le même motif, et à
+ * vider la liste de son contenu — un serveur parfaitement qualifié à 400 km
+ * plafonne mécaniquement autour de 45 %. Le plancher des 50 % du cahier porte
+ * sur les propositions **automatiques** ; ici, c'est l'entreprise qui demande à
+ * regarder plus loin.
+ */
+const OUTSIDE_ZONE_LIMIT = 10;
 
 interface WorkerRow {
   id: string;
@@ -285,7 +338,9 @@ export class MatchingService {
 
     const evaluated = open.map((mission) => ({
       mission,
-      match: evaluate(criteriaOf(mission), elsewhere(criteria, mission.id)),
+      match: publicMatch(
+        evaluate(criteriaOf(mission), elsewhere(criteria, mission.id)),
+      ),
     }));
 
     const excluded: Exclusions = { total: 0, reasons: {} };
@@ -317,7 +372,9 @@ export class MatchingService {
     return {
       mission,
       match: criteria
-        ? evaluate(criteriaOf(mission), elsewhere(criteria, mission.id))
+        ? publicMatch(
+            evaluate(criteriaOf(mission), elsewhere(criteria, mission.id)),
+          )
         : null,
     };
   }
@@ -347,12 +404,19 @@ export class MatchingService {
     const mission = await this.missions.get(companyId, missionId);
     const inactive = notOpenToWorkers(mission);
     if (inactive)
-      return { band: null, band_label: null, candidates: [], inactive };
+      return {
+        band: null,
+        band_label: null,
+        candidates: [],
+        outside_zone: [],
+        inactive,
+      };
     if (!(await this.missions.hasCapacity(mission.id)))
       return {
         band: null,
         band_label: null,
         candidates: [],
+        outside_zone: [],
         inactive: "closed",
       };
 
@@ -372,8 +436,10 @@ export class MatchingService {
     );
     const loaded = await this.loadWorkers(rows);
 
-    // `selectByBands` trie sur `score` et `compatible` ; le candidat lui-même
-    // reste à côté, pour n'exposer ensuite que les champs prévus par `Candidate`.
+    // `selectByBands` trie sur `score`, `compatible` et `id` ; le candidat
+    // lui-même reste à côté, pour n'exposer ensuite que les champs de
+    // `Candidate`. Le score transmis est le score **non arrondi** : comparer des
+    // valeurs arrondies ferait entrer dans le palier des 70 un profil à 69,6 %.
     const evaluated = rows.map((row) => {
       const worker = loaded.get(row.id)!;
       const match = evaluate(criteria, elsewhere(worker, missionId));
@@ -386,9 +452,15 @@ export class MatchingService {
         city: row.city,
         years_experience: toNumber(row.years_experience),
         matched_skills: mission.skills.filter((s) => held.has(s.id)),
-        match,
+        match: publicMatch(match),
       };
-      return { score: match.score, compatible: match.compatible, candidate };
+      return {
+        id: row.id,
+        score: match.raw_score,
+        compatible: match.compatible,
+        blockers: match.blockers,
+        candidate,
+      };
     });
 
     const selection = selectByBands(evaluated);
@@ -396,6 +468,15 @@ export class MatchingService {
       band: selection.band,
       band_label: selection.label,
       candidates: selection.results.map((entry) => entry.candidate),
+      outside_zone: evaluated
+        // Seule la distance les écarte : un unique bloqueur, et c'est celui-là.
+        .filter(
+          (entry) =>
+            entry.blockers.length === 1 && entry.blockers[0] === "out_of_range",
+        )
+        .sort((a, b) => b.score - a.score || a.id.localeCompare(b.id))
+        .slice(0, OUTSIDE_ZONE_LIMIT)
+        .map((entry) => entry.candidate),
       inactive: null,
     };
   }

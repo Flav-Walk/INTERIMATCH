@@ -500,9 +500,9 @@ describe("engagements acceptés", () => {
     const veille = engagement(T(11, 16), T(11, 22));
     const lendemain = engagement(T(13, 16), T(13, 22));
     expect(blocked([veille, lendemain])).toEqual([]);
-    expect(blocked([veille, engagement(T(12, 17), T(12, 18)), lendemain])).toEqual(
-      ["engaged"],
-    );
+    expect(
+      blocked([veille, engagement(T(12, 17), T(12, 18)), lendemain]),
+    ).toEqual(["engaged"]);
   });
 
   it("laisse les disponibilités déclarées intactes autour de l'engagement", () => {
@@ -542,5 +542,139 @@ describe("engagements acceptés", () => {
     // Une date invalide ne doit pas devenir un refus silencieux : on ne peut
     // pas affirmer un chevauchement qu'on est incapable de situer.
     expect(blocked([engagement("pas-une-date", T(12, 22))])).toEqual([]);
+  });
+});
+
+/**
+ * Hors zone : le profil reste consultable.
+ *
+ * D04 le dit explicitement — « Hors rayon : outside_zone=true, score
+ * localisation 0, profil toujours consultable » — et l entreprise doit pouvoir
+ * elargir volontairement. Le drapeau porte cette information sans changer la
+ * nature eliminatoire du critere pour l interimaire, qui a fixe son rayon
+ * lui-meme et n a pas a recevoir des missions a 300 km.
+ */
+describe("indicateur hors zone", () => {
+  const lyon = { latitude: 45.75, longitude: 4.85 };
+  const paris = { latitude: 48.857, longitude: 2.352 };
+
+  it("ne signale rien quand le profil est dans son rayon", () => {
+    const result = evaluate(mission(), worker({ mobility_radius_km: 20 }));
+    expect(result.outside_zone).toBe(false);
+    expect(result.blockers).toEqual([]);
+  });
+
+  it("signale le hors zone et le garde bloquant pour l interimaire", () => {
+    const result = evaluate(
+      mission(lyon),
+      worker({ ...paris, mobility_radius_km: 20 }),
+    );
+    expect(result.outside_zone).toBe(true);
+    expect(result.blockers).toEqual(["out_of_range"]);
+    // D04 : le sous-score localisation tombe a zero, il ne devient pas negatif.
+    const proximity = result.dimensions.find((d) => d.key === "proximity");
+    expect(proximity?.ratio).toBe(0);
+    expect(proximity?.points).toBe(0);
+  });
+
+  it("laisse le hors zone indetermine faute de coordonnees", () => {
+    // D04 : « Geolocalisation inconnue : distance et outside_zone inconnus ».
+    // Affirmer « dans la zone » serait aussi faux qu affirmer l inverse.
+    expect(
+      evaluate(mission({ latitude: null, longitude: null }), worker())
+        .outside_zone,
+    ).toBeNull();
+    expect(
+      evaluate(mission(), worker({ latitude: null, longitude: null }))
+        .outside_zone,
+    ).toBeNull();
+  });
+
+  it("laisse le hors zone indetermine faute de rayon declare", () => {
+    expect(
+      evaluate(mission(), worker({ mobility_radius_km: null })).outside_zone,
+    ).toBeNull();
+  });
+});
+
+/**
+ * Decompte des competences.
+ *
+ * Le moteur savait deja si les competences obligatoires etaient toutes
+ * detenues ; il ne savait pas le dire. « 2/3 » se raconte, « false » non.
+ */
+describe("decompte des competences", () => {
+  it("compte les obligatoires detenues sur le total exige", () => {
+    const result = evaluate(
+      mission({
+        required_skill_ids: [SKILL.salle, SKILL.commande, SKILL.hygiene],
+      }),
+      worker({ skill_ids: [SKILL.salle, SKILL.commande] }),
+    );
+    expect(result.skills.required).toEqual({ held: 2, total: 3 });
+    expect(result.blockers).toContain("missing_required_skills");
+  });
+
+  it("compte les souhaitees de la meme facon", () => {
+    const result = evaluate(
+      mission({ desired_skill_ids: [SKILL.salle, SKILL.hygiene] }),
+      worker({ skill_ids: [SKILL.salle] }),
+    );
+    expect(result.skills.desired).toEqual({ held: 1, total: 2 });
+  });
+
+  it("renvoie zero sur zero quand rien n est demande", () => {
+    const result = evaluate(mission(), worker());
+    expect(result.skills).toEqual({
+      required: { held: 0, total: 0 },
+      desired: { held: 0, total: 0 },
+    });
+  });
+
+  it("ne compte pas une competence detenue hors du besoin de la mission", () => {
+    const result = evaluate(
+      mission({ required_skill_ids: [SKILL.salle] }),
+      worker({ skill_ids: [SKILL.salle, SKILL.hygiene, SKILL.commande] }),
+    );
+    expect(result.skills.required).toEqual({ held: 1, total: 1 });
+  });
+});
+
+/**
+ * Paliers : score non arrondi et tri deterministe.
+ *
+ * D04 : « Tri deterministe par score puis identifiant ; paliers calcules sur le
+ * score non arrondi. Affichage arrondi uniquement. » Sans cela, un profil a
+ * 69,6 % entre dans le palier « 70 et plus » par la seule grace de l arrondi,
+ * et deux profils a egalite se rangent dans l ordre ou la base les a rendus.
+ */
+describe("paliers : precision et determinisme", () => {
+  const at = (id: string, score: number) => ({ id, score, compatible: true });
+
+  it("classe sur le score reel, pas sur son arrondi", () => {
+    // 69,6 s affiche « 70 % » mais n atteint pas le palier.
+    const selection = selectByBands([at("a", 69.6), at("b", 64)]);
+    expect(selection.band).toBe(60);
+    expect(selection.results.map((r) => r.id)).toEqual(["a", "b"]);
+  });
+
+  it("retient le palier superieur des qu il est reellement atteint", () => {
+    const selection = selectByBands([at("a", 70), at("b", 64)]);
+    expect(selection.band).toBe(70);
+    expect(selection.results.map((r) => r.id)).toEqual(["a"]);
+  });
+
+  it("departage deux scores egaux par identifiant", () => {
+    const selection = selectByBands([at("c", 80), at("a", 80), at("b", 80)]);
+    expect(selection.results.map((r) => r.id)).toEqual(["a", "b", "c"]);
+  });
+
+  it("garde le meme ordre quel que soit l ordre d arrivee", () => {
+    const ids = ["x", "y", "z"];
+    const forward = selectByBands(ids.map((id) => at(id, 75)));
+    const backward = selectByBands([...ids].reverse().map((id) => at(id, 75)));
+    expect(backward.results.map((r) => r.id)).toEqual(
+      forward.results.map((r) => r.id),
+    );
   });
 });

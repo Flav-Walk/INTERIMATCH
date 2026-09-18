@@ -1181,9 +1181,9 @@ describe("rapprochement — espace intérimaire", () => {
       tardifId,
     ]);
     const mission = await publish({ title: "Couverte après coup" });
-    expect((await proposed(tardif)).map((m: { id: string }) => m.id)).not.toContain(
-      mission,
-    );
+    expect(
+      (await proposed(tardif)).map((m: { id: string }) => m.id),
+    ).not.toContain(mission);
 
     // Le créneau est posé autour des dates réelles de la mission : c'est la
     // seule chose qui change entre les deux appels.
@@ -1265,6 +1265,17 @@ describe("rapprochement — candidats côté entreprise", () => {
 
   it("traite comme introuvable la mission d'une autre entreprise", async () => {
     expect((await candidates(missionId, rival)).status).toBe(404);
+  });
+
+  it("repond 404 pour une mission qui n'existe pas", async () => {
+    const inexistante = "00000000-0000-4000-8000-000000000000";
+    const r = await candidates(inexistante);
+    expect(r.status).toBe(404);
+    expect(r.body.error.code).toBe("MISSION_NOT_FOUND");
+  });
+
+  it("refuse un identifiant qui n'est pas un UUID", async () => {
+    expect((await candidates("pas-un-uuid")).status).toBe(400);
   });
 
   it("renvoie les candidats rapprochés de sa propre mission", async () => {
@@ -1467,7 +1478,11 @@ describe("rapprochement — symétrie des deux espaces", () => {
     expect(selection.inactive).toBeNull();
     expect(selection.candidates.length).toBeGreaterThan(0);
 
-    for (const candidate of selection.candidates) {
+    // Un échantillon, et non la liste entière : chaque vérification relit tout
+    // le catalogue pour un intérimaire, et le jeu de fixtures grossit à chaque
+    // suite. Une asymétrie est structurelle par nature — elle toucherait tous
+    // les profils, pas un seul —, donc les premiers suffisent à la révéler.
+    for (const candidate of selection.candidates.slice(0, 5)) {
       const { matches } = await matching.missionsForWorker(candidate.id, false);
       expect([candidate.id, matches.map((m) => m.mission.id)]).toEqual([
         candidate.id,
@@ -1624,9 +1639,9 @@ describe("rapprochement - engagements acceptes", () => {
     const mission = await publish({ title: "Deja postule", ...day(75, 9, 6) });
 
     expect(
-      (await matching.candidatesForMission(bossId, mission, false)).candidates.map(
-        (c) => c.id,
-      ),
+      (
+        await matching.candidatesForMission(bossId, mission, false)
+      ).candidates.map((c) => c.id),
     ).toContain(postulantId);
 
     await db.query(
@@ -1635,9 +1650,9 @@ describe("rapprochement - engagements acceptes", () => {
     );
 
     expect(
-      (await matching.candidatesForMission(bossId, mission, false)).candidates.map(
-        (c) => c.id,
-      ),
+      (
+        await matching.candidatesForMission(bossId, mission, false)
+      ).candidates.map((c) => c.id),
     ).not.toContain(postulantId);
   });
 
@@ -1654,5 +1669,218 @@ describe("rapprochement - engagements acceptes", () => {
 
     const selection = await matching.candidatesForMission(bossId, cible, false);
     expect(selection.candidates.map((c) => c.id)).not.toContain(occupeId);
+  });
+});
+
+/**
+ * Profils hors zone.
+ *
+ * D04 : « Hors rayon : outside_zone=true, score localisation 0, profil toujours
+ * consultable » et « Hors zone : affichage et selection volontaires par
+ * l entreprise ». Le moteur les ecartait purement et simplement : une
+ * entreprise pretant a elargir sa recherche n avait rien a elargir.
+ *
+ * La distinction tient en une phrase : l interimaire a fixe son rayon, on le
+ * respecte et la mission ne lui est pas proposee ; l entreprise n a fixe aucun
+ * rayon, elle peut donc regarder plus loin si elle le decide.
+ */
+describe("rapprochement - profils hors zone", () => {
+  const publish = async (over: Record<string, unknown> = {}) => {
+    const id = await missions.create(bossId, draft(over));
+    await publishMission(id);
+    return id;
+  };
+
+  /** Un interimaire employable, place a une position donnee. */
+  const workerAt = async (
+    email: string,
+    place: { latitude: number; longitude: number; radius: number },
+  ) => {
+    const token = (await accounts.register(email, password)).access_token;
+    const id = (await accounts.authenticate(token)).id;
+    await makeEmployable(id);
+    await db.query(
+      `UPDATE worker_profiles
+          SET latitude=$2, longitude=$3, mobility_radius_km=$4
+        WHERE profile_id=$1`,
+      [id, place.latitude, place.longitude, place.radius],
+    );
+    return { token, id };
+  };
+
+  // Lyon et Paris : environ 392 km, bien au-dela de tout rayon raisonnable.
+  const LYON = { latitude: 45.75, longitude: 4.85, radius: 30 };
+  const PARIS = { latitude: 48.857, longitude: 2.352, radius: 30 };
+
+  it("sort le profil hors zone de la liste principale sans le detruire", async () => {
+    const mission = await publish({ title: "Hors zone", ...day(80, 9, 6) });
+    const proche = await workerAt("zone.proche@example.test", LYON);
+    const loin = await workerAt("zone.loin@example.test", PARIS);
+
+    const selection = await matching.candidatesForMission(
+      bossId,
+      mission,
+      false,
+    );
+    const principaux = selection.candidates.map((c) => c.id);
+    const elargis = selection.outside_zone.map((c) => c.id);
+
+    expect(principaux).toContain(proche.id);
+    expect(principaux).not.toContain(loin.id);
+    // Le profil lointain reste consultable, dans sa propre liste.
+    expect(elargis).toContain(loin.id);
+    expect(elargis).not.toContain(proche.id);
+  });
+
+  it("marque le hors zone et sa distance sur le profil elargi", async () => {
+    const mission = await publish({
+      title: "Hors zone marque",
+      ...day(81, 9, 6),
+    });
+    const loin = await workerAt("zone.marque@example.test", PARIS);
+
+    const selection = await matching.candidatesForMission(
+      bossId,
+      mission,
+      false,
+    );
+    const trouve = selection.outside_zone.find((c) => c.id === loin.id);
+    expect(trouve?.match.outside_zone).toBe(true);
+    expect(trouve?.match.distance_km).toBeGreaterThan(300);
+    // Le motif reste lisible : c est bien la distance, et elle seule.
+    expect(trouve?.match.blockers).toEqual(["out_of_range"]);
+  });
+
+  it("n elargit qu a la distance, jamais a un autre motif", async () => {
+    // Un profil hors zone ET depourvu d une competence exigee n a pas a
+    // remonter : elargir la zone ne lui rendrait pas la competence.
+    const inedite = (
+      await db.query<{ id: string }>(
+        "INSERT INTO skills(name) VALUES('Sommellerie hors zone') RETURNING id",
+      )
+    ).rows[0].id;
+    const mission = await publish({
+      title: "Hors zone et sans competence",
+      required_skill_ids: [inedite],
+      ...day(82, 9, 6),
+    });
+    const loin = await workerAt("zone.demuni@example.test", PARIS);
+    // `makeEmployable` accorde toutes les competences existantes : il faut lui
+    // retirer celle-ci pour reconstituer le cas voulu.
+    await db.query(
+      "DELETE FROM worker_skills WHERE profile_id=$1 AND skill_id=$2",
+      [loin.id, inedite],
+    );
+
+    const selection = await matching.candidatesForMission(
+      bossId,
+      mission,
+      false,
+    );
+    expect(selection.outside_zone.map((c) => c.id)).not.toContain(loin.id);
+  });
+
+  it("garde la mission invisible pour l interimaire hors zone", async () => {
+    // La symetrie ne s applique pas ici, et c est voulu : l interimaire a fixe
+    // son rayon. L entreprise elargit, lui non.
+    const mission = await publish({
+      title: "Hors zone worker",
+      ...day(83, 9, 6),
+    });
+    const loin = await workerAt("zone.worker@example.test", PARIS);
+
+    const { matches, excluded } = await matching.missionsForWorker(
+      loin.id,
+      false,
+    );
+    expect(matches.map((m) => m.mission.id)).not.toContain(mission);
+    expect(excluded.reasons.out_of_range).toBeGreaterThan(0);
+  });
+
+  it("conserve la cloison demo dans la liste elargie", async () => {
+    const mission = await publish({
+      title: "Hors zone demo",
+      ...day(84, 9, 6),
+    });
+    const selection = await matching.candidatesForMission(
+      bossId,
+      mission,
+      false,
+    );
+    expect(selection.outside_zone.map((c) => c.id)).not.toContain(
+      demoWorkerProfileId,
+    );
+  });
+
+  it("n elargit pas une mission qui n est plus offerte", async () => {
+    const brouillon = await missions.create(
+      bossId,
+      draft({ title: "Brouillon hors zone" }),
+    );
+    const selection = await matching.candidatesForMission(
+      bossId,
+      brouillon,
+      false,
+    );
+    expect(selection.inactive).toBe("draft");
+    expect(selection.outside_zone).toEqual([]);
+  });
+});
+
+/**
+ * Explicabilite du score, telle que l entreprise la recoit.
+ *
+ * Le frontend doit pouvoir ecrire « competences obligatoires : 3/3 » sans
+ * recompter quoi que ce soit, et sans recevoir la mecanique interne du moteur.
+ */
+describe("rapprochement - explicabilite", () => {
+  it("porte le decompte des competences et les dimensions du score", async () => {
+    const mission = await missions.create(
+      bossId,
+      draft({
+        title: "Explicable",
+        required_skill_ids: [skillIds[0]],
+        desired_skill_ids: [skillIds[1], skillIds[2]],
+        ...day(85, 9, 6),
+      }),
+    );
+    await publishMission(mission);
+
+    const r = await auth(
+      request(app).get(`/api/v1/missions/${mission}/candidates`),
+      boss,
+    );
+    expect(r.status).toBe(200);
+    const candidat = r.body.candidates[0];
+    expect(candidat.match.skills.required).toEqual({ held: 1, total: 1 });
+    expect(candidat.match.skills.desired).toEqual({ held: 2, total: 2 });
+    expect(candidat.match.outside_zone).toBe(false);
+
+    // Chaque dimension se raconte : une cle, un libelle, une part.
+    for (const dimension of candidat.match.dimensions) {
+      expect(typeof dimension.key).toBe("string");
+      expect(typeof dimension.label).toBe("string");
+      expect(dimension.ratio).toBeGreaterThanOrEqual(0);
+      expect(dimension.ratio).toBeLessThanOrEqual(1);
+    }
+  });
+
+  it("n expose pas le score non arrondi ni de mecanique interne", async () => {
+    // `raw_score` sert au classement, pas a l affichage : le publier
+    // inviterait le frontend a montrer « 81,33 % », ce qui n a aucun sens
+    // pour une estimation.
+    const mission = await missions.create(
+      bossId,
+      draft({ title: "Sans mecanique", ...day(86, 9, 6) }),
+    );
+    await publishMission(mission);
+    const r = await auth(
+      request(app).get(`/api/v1/missions/${mission}/candidates`),
+      boss,
+    );
+    const serialise = JSON.stringify(r.body);
+    expect(serialise).not.toContain("raw_score");
+    expect(serialise).not.toContain("engagements");
+    expect(serialise).not.toContain("skill_ids");
   });
 });
