@@ -4,6 +4,7 @@ import {
   ArrowRight,
   Building2,
   BriefcaseBusiness,
+  Plus,
   Utensils,
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
@@ -16,13 +17,24 @@ import { PlanningCard } from "../components/mission/PlanningCard";
 import {
   listMissions,
   missionTabs,
+  missionTabOf,
   type Mission,
   type MissionTab,
 } from "../services/missions";
 
+function MissionsSkeleton() {
+  return (
+    <div className="mission-grid" aria-hidden="true">
+      {Array.from({ length: 4 }).map((_, index) => (
+        <div key={index} className="skeleton-card" />
+      ))}
+    </div>
+  );
+}
+
 /**
- * Accueil de l'espace entreprise, repris de la maquette : carte héros, section
- * « Vos missions » avec ses filtres, puis rail droit planning et établissement.
+ * Accueil de l'espace entreprise : carte héros, section « Vos missions » avec
+ * ses filtres, puis rail droit planning et établissement.
  *
  * Les blocs Messages, Documents, mode urgent et aide conversationnelle de la
  * maquette ne sont pas repris : les services correspondants n'existent pas, et
@@ -60,133 +72,158 @@ export function CompanyDashboard() {
 
   if (!user) return null;
   const p = user.profile;
-  const shown = data.filter((m) => m.status === tab).slice(0, 4);
+  // Même regroupement que les compteurs servis par le serveur : filtrer sur
+  // `status` laissait « Pourvues » et « Terminées » vides face à un compteur
+  // non nul, ces statuts n'étant jamais écrits.
+  const shown = data.filter((m) => missionTabOf(m) === tab).slice(0, 4);
   const pending = pendingByMission(applications);
 
   return (
-    <>
+    <div className="dashboard-page">
       {user.demo && (
-        <p className="demo-label">DEVELOPMENT / DEMO DATA · Profil fictif</p>
+        <p className="demo-banner" role="status">
+          DEVELOPMENT / DEMO DATA · Profil fictif
+        </p>
       )}
-      <div className="layout">
-        <div className="layout-main">
-          <section className="hero" data-tour="profile-status">
-            <div className="hero-body">
-              <span className="hero-badge">
-                {p.establishment_name ?? "Votre établissement"}
-              </span>
-              <h1>
-                {user.first_name ? `Bonjour ${user.first_name},` : "Bonjour,"}
-                <br />
-                Prêt à renforcer votre équipe&nbsp;?
-              </h1>
-              <p>
-                Publiez une mission en quelques minutes et trouvez des talents
-                qualifiés près de chez vous.
-              </p>
-              <Link className="button" to="/company/missions/new">
-                Créer une mission
-                <ArrowRight size={18} aria-hidden="true" />
-              </Link>
-            </div>
-            <div className="hero-media" aria-hidden="true">
-              <Utensils />
-            </div>
-          </section>
 
-          <section data-tour="missions">
-            <div className="section-head">
-              <h2>Vos missions</h2>
-              <div className="chips">
+      <div className="dashboard-hero" data-tour="profile-status">
+        <div className="dashboard-hero__inner">
+          <div className="dashboard-hero__body">
+            <span className="hero-badge">
+              {p.establishment_name ?? "Votre établissement"}
+            </span>
+            <h1 className="dashboard-hero__title">
+              {user.first_name ? `Bonjour ${user.first_name},` : "Bonjour,"}
+              <span className="dashboard-hero__sub">
+                Prêt à renforcer votre équipe&nbsp;?
+              </span>
+            </h1>
+            <p className="dashboard-hero__lead">
+              Publiez une mission en quelques minutes et trouvez des talents
+              qualifiés près de chez vous.
+            </p>
+            <Link className="dashboard-hero__cta" to="/company/missions/new">
+              <Plus size={18} aria-hidden="true" />
+              Créer une mission
+            </Link>
+          </div>
+          <div className="dashboard-hero__media" aria-hidden="true">
+            <Utensils />
+          </div>
+        </div>
+      </div>
+
+      <div className="dashboard-body">
+        <div className="dashboard-layout">
+          <div className="dashboard-main">
+            <section aria-labelledby="missions-title" data-tour="missions">
+              <div className="dashboard-section-head">
+                <h2 id="missions-title">Vos missions</h2>
+                <Link className="link-more" to="/company/missions">
+                  Voir toutes les missions →
+                </Link>
+              </div>
+
+              <div className="dashboard-tabs" aria-label="Filtrer les missions">
                 {missionTabs.map((entry) => (
                   <button
                     key={entry.key}
                     type="button"
-                    className={"chip" + (tab === entry.key ? " is-active" : "")}
+                    className={
+                      "dashboard-tab" + (tab === entry.key ? " is-active" : "")
+                    }
                     aria-pressed={tab === entry.key}
                     onClick={() => setTab(entry.key)}
                   >
                     {entry.label}
-                    <span className="chip-count">{counts[entry.key] ?? 0}</span>
+                    <span className="dashboard-tab__count">
+                      {counts[entry.key] ?? 0}
+                    </span>
                   </button>
                 ))}
               </div>
-              <Link className="link-more" to="/company/missions">
-                Voir toutes les missions →
-              </Link>
-            </div>
 
-            {error && (
-              <p className="form-error" role="alert">
-                {error}
-              </p>
-            )}
-            {!error &&
-              (loading ? (
-                <p role="status" className="quiet">
-                  Chargement de vos missions…
+              {error && (
+                <p className="form-error" role="alert">
+                  {error}
                 </p>
-              ) : shown.length > 0 ? (
-                <div className="mission-grid">
-                  {shown.map((mission) => (
-                    <MissionCard
-                      key={mission.id}
-                      mission={mission}
-                      pendingApplications={pending.get(mission.id) ?? 0}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <div className="empty">
-                  <BriefcaseBusiness aria-hidden="true" />
-                  <h3>Aucune mission dans cet onglet</h3>
-                  <p>
-                    Créez une mission pour commencer à recevoir des candidats
-                    compatibles.
+              )}
+              {!error &&
+                (loading ? (
+                  <>
+                    <p role="status" className="sr-only">
+                      Chargement de vos missions…
+                    </p>
+                    <MissionsSkeleton />
+                  </>
+                ) : shown.length > 0 ? (
+                  <div className="mission-grid">
+                    {shown.map((mission) => (
+                      <MissionCard
+                        key={mission.id}
+                        mission={mission}
+                        pendingApplications={pending.get(mission.id) ?? 0}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="empty">
+                    <BriefcaseBusiness aria-hidden="true" />
+                    <h3>Aucune mission dans cet onglet</h3>
+                    <p>
+                      Créez une mission pour commencer à recevoir des candidats
+                      compatibles.
+                    </p>
+                    <Link className="button" to="/company/missions/new">
+                      Créer une mission
+                    </Link>
+                  </div>
+                ))}
+            </section>
+
+            <RecentApplications />
+          </div>
+
+          <aside
+            className="dashboard-rail"
+            aria-label="Planning et établissement"
+          >
+            <PlanningCard missions={data} />
+            <section className="detail-card" aria-labelledby="company-info">
+              <h2 id="company-info" className="detail-card__title">
+                <Building2 size={16} aria-hidden="true" />
+                Votre établissement
+              </h2>
+              {user.onboarding_completed ? (
+                <>
+                  <p className="detail-company-name">{p.establishment_name}</p>
+                  <p className="quiet">
+                    {p.address ? `${p.address}, ` : ""}
+                    {p.postal_code} {p.city}
                   </p>
-                  <Link className="button" to="/company/missions/new">
-                    Créer une mission
+                  <Link className="link-more" to="/company/profile">
+                    Modifier les informations →
                   </Link>
-                </div>
-              ))}
-          </section>
-
-          <RecentApplications />
+                </>
+              ) : (
+                <>
+                  <p className="quiet">
+                    Les intérimaires verront ces informations avant de répondre
+                    à vos missions.
+                  </p>
+                  <Link
+                    className="secondary-button inline"
+                    to="/company/profile"
+                  >
+                    Compléter mon établissement
+                    <ArrowRight size={16} aria-hidden="true" />
+                  </Link>
+                </>
+              )}
+            </section>
+          </aside>
         </div>
-
-        <aside className="layout-rail">
-          <PlanningCard missions={data} />
-          <section className="rail-card">
-            <div className="rail-head">
-              <Building2 size={18} aria-hidden="true" />
-              <h2>Votre établissement</h2>
-            </div>
-            {user.onboarding_completed ? (
-              <>
-                <p className="lead-figure">{p.establishment_name}</p>
-                <p className="quiet">
-                  {p.address ? `${p.address}, ` : ""}
-                  {p.postal_code} {p.city}
-                </p>
-                <Link className="link-more" to="/company/profile">
-                  Modifier les informations →
-                </Link>
-              </>
-            ) : (
-              <>
-                <p className="quiet">
-                  Les intérimaires verront ces informations avant de répondre à
-                  vos missions.
-                </p>
-                <Link className="secondary-button inline" to="/company/profile">
-                  Compléter mon établissement
-                  <ArrowRight size={16} aria-hidden="true" />
-                </Link>
-              </>
-            )}
-          </section>
-        </aside>
       </div>
-    </>
+    </div>
   );
 }

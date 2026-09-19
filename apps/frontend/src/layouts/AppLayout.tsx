@@ -5,8 +5,22 @@ import {
   useNavigate,
   useSearchParams,
 } from "react-router-dom";
-import { Sprout, Search, LifeBuoy, LogOut, ChevronDown } from "lucide-react";
-import { useRef, useState, type FormEvent } from "react";
+import {
+  Briefcase,
+  Building2,
+  ChevronDown,
+  ClipboardList,
+  FileText,
+  LayoutDashboard,
+  LifeBuoy,
+  LogOut,
+  MapPin,
+  Search,
+  ShieldCheck,
+  Sprout,
+  UserCircle,
+} from "lucide-react";
+import { useRef, useState, type FormEvent, type ReactNode } from "react";
 import { useAuth } from "../hooks/useAuth";
 import { useCompanyData } from "../hooks/CompanyData";
 import {
@@ -23,21 +37,65 @@ import {
   tourFor,
 } from "../services/tours";
 
+interface NavItem {
+  to: string;
+  label: string;
+  icon: ReactNode;
+}
+
 /** Navigation de la maquette : Accueil · Missions · Candidats · Entreprise. */
-const links: Record<Role, { to: string; label: string }[]> = {
+const links: Record<Role, NavItem[]> = {
   worker: [
-    { to: "/worker", label: "Tableau de bord" },
-    { to: "/worker/profile", label: "Mon profil" },
-    { to: "/worker/missions", label: "Missions" },
-    { to: "/worker/applications", label: "Mes candidatures" },
+    {
+      to: "/worker",
+      label: "Tableau de bord",
+      icon: <LayoutDashboard size={17} aria-hidden="true" />,
+    },
+    {
+      to: "/worker/profile",
+      label: "Mon profil",
+      icon: <UserCircle size={17} aria-hidden="true" />,
+    },
+    {
+      to: "/worker/missions",
+      label: "Missions",
+      icon: <MapPin size={17} aria-hidden="true" />,
+    },
+    {
+      to: "/worker/applications",
+      label: "Mes candidatures",
+      icon: <ClipboardList size={17} aria-hidden="true" />,
+    },
   ],
   company: [
-    { to: "/company", label: "Accueil" },
-    { to: "/company/missions", label: "Missions" },
-    { to: "/company/applications", label: "Candidatures" },
-    { to: "/company/profile", label: "Entreprise" },
+    {
+      to: "/company",
+      label: "Accueil",
+      icon: <LayoutDashboard size={17} aria-hidden="true" />,
+    },
+    {
+      to: "/company/missions",
+      label: "Missions",
+      icon: <Briefcase size={17} aria-hidden="true" />,
+    },
+    {
+      to: "/company/applications",
+      label: "Candidatures",
+      icon: <FileText size={17} aria-hidden="true" />,
+    },
+    {
+      to: "/company/profile",
+      label: "Entreprise",
+      icon: <Building2 size={17} aria-hidden="true" />,
+    },
   ],
-  admin: [{ to: "/admin", label: "Administration" }],
+  admin: [
+    {
+      to: "/admin",
+      label: "Administration",
+      icon: <ShieldCheck size={17} aria-hidden="true" />,
+    },
+  ],
 };
 
 const initials = (user: User) => {
@@ -91,8 +149,8 @@ export function AppLayout() {
    * derrière. Si elle échoue, la visite se represente à la prochaine session —
    * sans conséquence, et sans message d'erreur qui n'apprendrait rien.
    *
-   * `PUT /me/tour` renvoie déjà le profil à jour : le `GET /me` qui suivait
-   * était un second aller-retour pour une information déjà en main.
+   * `PUT /me/tour` renvoie déjà le profil à jour : un `GET /me` supplémentaire
+   * serait un second aller-retour pour une information déjà en main.
    */
   function closeTour() {
     setReplay(false);
@@ -120,126 +178,141 @@ export function AppLayout() {
 
   return (
     <>
-      <a className="skip" href="#content">
+      <a className="skip-link" href="#content">
         Aller au contenu
       </a>
-      <header className="shell-header">
-        <NavLink className="shell-brand" to={user ? destination(user) : "/"}>
-          <Sprout size={22} aria-hidden="true" />
-          InteriMatch
-        </NavLink>
-        {user ? (
-          <>
-            <nav
-              aria-label="Navigation principale"
-              className="shell-nav"
-              data-tour="nav"
-            >
-              {links[user.role].map((link) => (
-                <NavLink
-                  key={link.to}
-                  to={link.to}
-                  end={link.to === destination(user)}
-                >
-                  {link.label}
-                  {/* Le badge ne compte que de vraies candidatures en attente.
-                      Il porte son propre texte : une pastille colorée seule ne
-                      dit rien à qui ne distingue pas les couleurs, ni à un
-                      lecteur d'écran. */}
-                  {link.to === "/company/applications" && pending > 0 && (
-                    <span className="nav-badge">
-                      {pending}
-                      <span className="sr-only">
-                        {" "}
-                        candidature{pending > 1 ? "s" : ""} en attente
-                      </span>
-                    </span>
-                  )}
-                </NavLink>
-              ))}
-            </nav>
-            {user.role === "company" && (
-              <form
-                className="shell-search"
-                role="search"
-                onSubmit={search}
-                key={params.get("q") ?? ""}
+      <header className="app-header">
+        <div className="app-header__inner">
+          <NavLink
+            className="app-header__logo"
+            to={user ? destination(user) : "/"}
+          >
+            <Sprout size={22} aria-hidden="true" />
+            <span className="app-header__brand">InteriMatch</span>
+          </NavLink>
+
+          {user ? (
+            <>
+              <nav
+                aria-label="Navigation principale"
+                className="app-header__nav"
+                data-tour="nav"
               >
-                <Search size={16} aria-hidden="true" />
-                <input
-                  name="q"
-                  type="search"
-                  aria-label="Rechercher une mission"
-                  placeholder="Rechercher une mission…"
-                  defaultValue={params.get("q") ?? ""}
-                />
-              </form>
-            )}
-            <details
-              className="shell-account"
-              ref={account}
-              data-tour="account"
-            >
-              <summary aria-label="Mon compte">
-                <span className="avatar" aria-hidden="true">
-                  {initials(user)}
-                </span>
-                <span className="account-identity">
-                  <strong>
-                    {user.first_name
-                      ? `${user.first_name} ${user.last_name}`.trim()
-                      : user.email}
-                  </strong>
-                  <span>
-                    {user.role === "admin"
-                      ? "Administration"
-                      : user.role === "company"
-                        ? (user.profile.establishment_name ??
-                          "Votre établissement")
-                        : "Espace intérimaire"}
-                  </span>
-                </span>
-                <ChevronDown size={16} aria-hidden="true" />
-              </summary>
-              <div className="account-menu">
-                {user.role !== "admin" && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      account.current?.removeAttribute("open");
-                      setReplay(true);
-                    }}
-                    disabled={!onDashboard}
-                    title={
-                      onDashboard
-                        ? undefined
-                        : "Disponible depuis votre tableau de bord"
+                {links[user.role].map((link) => (
+                  <NavLink
+                    key={link.to}
+                    to={link.to}
+                    end={link.to === destination(user)}
+                    className={({ isActive }) =>
+                      "app-header__nav-link" + (isActive ? " is-active" : "")
                     }
                   >
-                    <LifeBuoy size={16} aria-hidden="true" />
-                    Revoir la visite
-                  </button>
+                    {link.icon}
+                    <span>{link.label}</span>
+                    {/* Le badge ne compte que de vraies candidatures en
+                        attente. Il porte son propre texte : une pastille
+                        colorée seule ne dit rien à qui ne distingue pas les
+                        couleurs, ni à un lecteur d'écran. */}
+                    {link.to === "/company/applications" && pending > 0 && (
+                      <span className="nav-badge">
+                        {pending}
+                        <span className="sr-only">
+                          {" "}
+                          candidature{pending > 1 ? "s" : ""} en attente
+                        </span>
+                      </span>
+                    )}
+                  </NavLink>
+                ))}
+              </nav>
+
+              <div className="app-header__actions">
+                {user.role === "company" && (
+                  <form
+                    className="shell-search"
+                    role="search"
+                    onSubmit={search}
+                    key={params.get("q") ?? ""}
+                  >
+                    <Search size={16} aria-hidden="true" />
+                    <input
+                      name="q"
+                      type="search"
+                      aria-label="Rechercher une mission"
+                      placeholder="Rechercher une mission…"
+                      defaultValue={params.get("q") ?? ""}
+                    />
+                  </form>
                 )}
-                <button type="button" onClick={() => void logout()}>
-                  <LogOut size={16} aria-hidden="true" />
-                  Se déconnecter
-                </button>
+
+                <details
+                  className="shell-account"
+                  ref={account}
+                  data-tour="account"
+                >
+                  <summary aria-label="Mon compte">
+                    <span className="avatar" aria-hidden="true">
+                      {initials(user)}
+                    </span>
+                    <span className="account-identity">
+                      <strong>
+                        {user.first_name
+                          ? `${user.first_name} ${user.last_name}`.trim()
+                          : user.email}
+                      </strong>
+                      <span>
+                        {user.role === "admin"
+                          ? "Administration"
+                          : user.role === "company"
+                            ? (user.profile.establishment_name ??
+                              "Votre établissement")
+                            : "Espace intérimaire"}
+                      </span>
+                    </span>
+                    <ChevronDown size={16} aria-hidden="true" />
+                  </summary>
+                  <div className="account-menu">
+                    {user.role !== "admin" && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          account.current?.removeAttribute("open");
+                          setReplay(true);
+                        }}
+                        disabled={!onDashboard}
+                        title={
+                          onDashboard
+                            ? undefined
+                            : "Disponible depuis votre tableau de bord"
+                        }
+                      >
+                        <LifeBuoy size={16} aria-hidden="true" />
+                        Revoir la visite
+                      </button>
+                    )}
+                    <button type="button" onClick={() => void logout()}>
+                      <LogOut size={16} aria-hidden="true" />
+                      Se déconnecter
+                    </button>
+                  </div>
+                </details>
               </div>
-            </details>
-          </>
-        ) : (
-          <nav className="account-link" aria-label="Compte">
-            <NavLink to="/login">Connexion</NavLink>
-            <NavLink to="/register">Créer un compte</NavLink>
-          </nav>
-        )}
+            </>
+          ) : (
+            <nav className="account-link" aria-label="Compte">
+              <NavLink to="/login">Connexion</NavLink>
+              <NavLink to="/register">Créer un compte</NavLink>
+            </nav>
+          )}
+        </div>
       </header>
+
       {error && (
         <p role="alert" className="form-error">
           {error}
         </p>
       )}
-      <main id="content" tabIndex={-1}>
+      <main id="content" className="app-main" tabIndex={-1}>
         <Outlet />
       </main>
       <footer className="shell-footer">

@@ -261,17 +261,6 @@ footer > span:last-child {
 .login .quiet {
   margin-top: 20px;
 }
-.skip {
-  position: absolute;
-  left: 16px;
-  top: -100px;
-  background: white;
-  padding: 12px;
-  z-index: 10;
-}
-.skip:focus {
-  top: 8px;
-}
 @media (max-width: 900px) {
   .workspace {
     grid-template-columns: 1fr;
