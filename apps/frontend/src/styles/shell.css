@@ -1808,3 +1808,69 @@
     display: none;
   }
 }
+/* ═══════════════════════════════════════════════════════════════════════════
+   COMPANY MISSIONS LIST — page, toolbar, search bar, grid wide
+═══════════════════════════════════════════════════════════════════════════ */
+
+.missions-list-page {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100dvh - 64px);
+}
+
+/* Hero — variante avec CTA aligné à droite */
+.page-hero__inner--space {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+/* Corps */
+.missions-list-body {
+  flex: 1;
+  max-width: 1280px;
+  margin-inline: auto;
+  padding: 2rem 1.5rem 4rem;
+  width: 100%;
+}
+
+/* Toolbar */
+.missions-list-toolbar {
+  margin-bottom: 1.5rem;
+}
+
+/* Barre résultat recherche */
+.search-result-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+.search-clear-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.625rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 0.8125rem;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.search-clear-btn:hover {
+  border-color: var(--forest-mid);
+  color: var(--ink);
+}
+
+/* Grille large — 3 colonnes desktop */
+.mission-grid--wide {
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+}
