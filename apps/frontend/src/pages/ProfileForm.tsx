@@ -31,9 +31,9 @@ function Field({
   defaultValue?: string | number;
 }) {
   return (
-    <label>
+    <label htmlFor={name}>
       {label}
-      <input name={name} type={type} required={required} {...rest} />
+      <input id={name} name={name} type={type} required={required} {...rest} />
     </label>
   );
 }
@@ -135,9 +135,14 @@ export function ProfileForm() {
               defaultValue={p.establishment_name}
             />
           </div>
-          <label>
+          <label htmlFor="company-sector">
             Secteur
-            <select name="sector" required defaultValue={p.sector}>
+            <select
+              id="company-sector"
+              name="sector"
+              required
+              defaultValue={p.sector}
+            >
               {sectors.map((s) => (
                 <option key={s.value} value={s.value}>
                   {s.label}
@@ -152,9 +157,10 @@ export function ProfileForm() {
             type="tel"
             defaultValue={p.phone ?? ""}
           />
-          <label>
+          <label htmlFor="company-description">
             Description (facultative)
             <textarea
+              id="company-description"
               name="description"
               maxLength={1500}
               defaultValue={p.description}

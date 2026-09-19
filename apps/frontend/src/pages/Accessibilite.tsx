@@ -34,44 +34,106 @@ export function Accessibilite() {
       </section>
 
       <section>
-        <h2>2. Dispositions techniques prises en compte</h2>
+        <h2>2. Améliorations techniques réalisées</h2>
         <p>
-          Dès la phase de développement du prototype, des principes de base de
-          l’accessibilité numérique ont été intégrés à l’interface :
+          Dès la phase de développement du prototype, des principes fondamentaux
+          de l’accessibilité numérique (RGAA 4.1 / WCAG 2.1) ont été intégrés à
+          l’interface :
         </p>
         <ul>
           <li>
-            <strong>Structure sémantique du HTML :</strong> utilisation des
+            <strong>Structure sémantique et repères :</strong> utilisation des
             balises structurelles (<code>header</code>, <code>nav</code>,{" "}
-            <code>main</code>, <code>footer</code>, <code>section</code>,{" "}
-            <code>article</code>) et respect d’une hiérarchie de titres cohérente
-            (<code>h1</code>, <code>h2</code>, <code>h3</code>) ;
+            <code>main</code>, <code>footer</code>, <code>aside</code>,{" "}
+            <code>section</code>, <code>article</code>) et respect d’une
+            hiérarchie de titres ordonnée (<code>h1</code>, <code>h2</code>,{" "}
+            <code>h3</code>) ;
           </li>
           <li>
-            <strong>Navigation au clavier et repères :</strong> présence d’un
-            lien d’évitement (« Aller au contenu ») accessible dès le premier
-            point de tabulation pour contourner l’en-tête ;
+            <strong>Navigation au clavier et lien d’évitement :</strong>{" "}
+            présence d’un lien d’évitement (« Aller au contenu ») accessible dès
+            le premier point de tabulation pour contourner l’en-tête, et gestion
+            du piège du focus clavier dans les fenêtres modales et la visite
+            guidée ;
           </li>
           <li>
             <strong>Indicateurs de focus visibles :</strong> conservation d’un
             contour de focus contrasté sur les éléments interactifs (liens,
-            boutons, champs) lors de la navigation au clavier ;
+            boutons, champs de saisie) lors de la navigation au clavier ;
           </li>
           <li>
             <strong>Formulaires accessibles :</strong> association systématique
-            de labels explicites aux champs de saisie et signalement des messages
-            d’erreur via le rôle ARIA <code>role="alert"</code> ;
+            de labels explicites aux champs de saisie (via <code>label</code> et{" "}
+            <code>htmlFor</code>), et signalement des messages d’erreur via le
+            rôle ARIA <code>role="alert"</code> ;
+          </li>
+          <li>
+            <strong>Composants graphiques et icônes :</strong> masquage des
+            icônes décoratives via <code>aria-hidden="true"</code> et présence de
+            textes alternatifs ou libellés accessibles pour les actions sous forme
+            d’icônes ;
+          </li>
+          <li>
+            <strong>Changements de contexte :</strong> signalement explicite des
+            liens s’ouvrant dans un nouvel onglet ou une nouvelle fenêtre via une
+            mention dédiée aux technologies d’assistance ;
           </li>
           <li>
             <strong>Respect des préférences utilisateur :</strong> prise en
             compte du paramètre système <code>prefers-reduced-motion</code> pour
-            désactiver les transitions et défilements animés non désirés.
+            neutraliser les transitions et animations non désirées.
           </li>
         </ul>
       </section>
 
       <section>
-        <h2>3. Signalement et contact</h2>
+        <h2>3. Vérifications manuelles restant à effectuer</h2>
+        <p>
+          Certains critères d’accessibilité nécessitent des tests manuels
+          approfondis qui restent à planifier dans le cadre d’un audit complet :
+        </p>
+        <ul>
+          <li>
+            <strong>Lecteurs d’écran :</strong> restitution complète et
+            comportement des parcours clés avec NVDA, JAWS et VoiceOver ;
+          </li>
+          <li>
+            <strong>Agrandissement de texte et zoom :</strong> vérification de
+            l’absence de perte de contenu ou de fonctionnalité jusqu’à 200&nbsp;%
+            de zoom ;
+          </li>
+          <li>
+            <strong>Parcours clavier exhaustif :</strong> validation du bon ordre
+            de tabulation sur l’intégralité des parcours métier complexes ;
+          </li>
+          <li>
+            <strong>Vérification colorimétrique complète :</strong> contrôle des
+            ratios de contraste dans l’ensemble des états interactifs et
+            variantes graphiques.
+          </li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>4. Limites connues</h2>
+        <p>
+          En tant que prototype applicatif en cours de développement :
+        </p>
+        <ul>
+          <li>
+            La plateforme n’a pas encore fait l’objet d’un audit formel complet
+            réalisé par un tiers certificateur habilité ;
+          </li>
+          <li>
+            Certains contenus ou flux dynamiques issus d’intégrations externes
+            (ex. offres France Travail) dépendent de la qualité des données
+            fournies par les tiers.
+          </li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>5. Signalement et contact</h2>
         <p>
           Si vous rencontrez une difficulté pour accéder à un contenu ou à une
           fonctionnalité de l’application, ou si vous constatez un défaut
@@ -86,7 +148,7 @@ export function Accessibilite() {
       </section>
 
       <section>
-        <h2>4. Voies de recours</h2>
+        <h2>6. Voies de recours</h2>
         <p>
           Si vous constatez un défaut d’accessibilité vous empêchant d’accéder à
           un contenu ou une fonctionnalité du site, que vous nous le signalez et
@@ -103,6 +165,7 @@ export function Accessibilite() {
               rel="noopener noreferrer"
             >
               formulaire en ligne du Défenseur des droits
+              <span className="sr-only"> (nouvelle fenêtre)</span>
             </a>{" "}
             ;
           </li>
@@ -114,6 +177,7 @@ export function Accessibilite() {
               rel="noopener noreferrer"
             >
               carte des délégués
+              <span className="sr-only"> (nouvelle fenêtre)</span>
             </a>{" "}
             ;
           </li>

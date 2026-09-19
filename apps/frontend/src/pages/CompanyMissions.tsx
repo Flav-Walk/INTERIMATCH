@@ -139,11 +139,16 @@ export function CompanyMissions() {
               <MissionsSkeleton />
             </>
           ) : filtered.length > 0 ? (
-            <div className="mission-grid is-wide">
-              {filtered.map((mission) => (
-                <MissionCard key={mission.id} mission={mission} />
-              ))}
-            </div>
+            <section aria-labelledby="company-missions-list-title">
+              <h2 id="company-missions-list-title" className="sr-only">
+                Liste de vos missions
+              </h2>
+              <div className="mission-grid is-wide">
+                {filtered.map((mission) => (
+                  <MissionCard key={mission.id} mission={mission} />
+                ))}
+              </div>
+            </section>
           ) : query ? (
             <div className="empty">
               <SearchX aria-hidden="true" />

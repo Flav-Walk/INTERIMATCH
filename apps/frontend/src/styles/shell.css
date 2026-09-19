@@ -99,6 +99,8 @@
 }
 .shell-search:focus-within {
   border-color: var(--forest);
+  outline: 2px solid var(--forest);
+  outline-offset: 1px;
 }
 .shell-account {
   flex: none;
@@ -892,7 +894,8 @@
   transition: top 0.15s ease;
 }
 /* Visible uniquement au focus clavier */
-.skip-link:focus {
+.skip-link:focus,
+.skip-link:focus-visible {
   top: 1rem;
 }
 

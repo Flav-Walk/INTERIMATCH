@@ -295,7 +295,10 @@ export function WorkerPublicOfferDetail() {
                   rel="noopener noreferrer"
                   className="button button--primary public-offer-rail-cta"
                 >
-                  <span>Postuler sur France Travail</span>
+                  <span>
+                    Postuler sur France Travail
+                    <span className="sr-only"> (nouvelle fenêtre)</span>
+                  </span>
                   <ExternalLink size={16} aria-hidden="true" />
                 </a>
               ) : (

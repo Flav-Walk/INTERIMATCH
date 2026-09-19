@@ -167,18 +167,23 @@ export function Missions() {
               </div>
 
               {shown.length > 0 ? (
-                <div className="mission-grid is-wide">
-                  {shown.map((mission) => (
-                    <MissionCard
-                      key={mission.id}
-                      mission={mission}
-                      basePath="/worker/missions"
-                      score={mission.match.score}
-                      band={mission.match.band}
-                      bandLabel={mission.match.band_label}
-                    />
-                  ))}
-                </div>
+                <section aria-labelledby="missions-list-title">
+                  <h2 id="missions-list-title" className="sr-only">
+                    Liste des missions disponibles
+                  </h2>
+                  <div className="mission-grid is-wide">
+                    {shown.map((mission) => (
+                      <MissionCard
+                        key={mission.id}
+                        mission={mission}
+                        basePath="/worker/missions"
+                        score={mission.match.score}
+                        band={mission.match.band}
+                        bandLabel={mission.match.band_label}
+                      />
+                    ))}
+                  </div>
+                </section>
               ) : (
                 <div className="empty">
                   <BriefcaseBusiness aria-hidden="true" />

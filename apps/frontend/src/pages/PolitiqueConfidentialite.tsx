@@ -247,6 +247,7 @@ export function PolitiqueConfidentialite() {
             rel="noopener noreferrer"
           >
             CNIL (Commission Nationale de l’Informatique et des Libertés)
+            <span className="sr-only"> (nouvelle fenêtre)</span>
           </a>
           .
         </p>

@@ -100,9 +100,10 @@ export function Login({ register = false }: { register?: boolean }) {
           </>
         )}
         <form onSubmit={(e) => void submit(e)}>
-          <label>
+          <label htmlFor="login-email">
             Email
             <input
+              id="login-email"
               name="email"
               type="email"
               autoComplete="email"

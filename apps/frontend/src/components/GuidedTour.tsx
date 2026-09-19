@@ -84,13 +84,53 @@ export function GuidedTour({
     };
   }, [measure]);
 
+  const previouslyFocused = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    previouslyFocused.current = document.activeElement as HTMLElement | null;
+    return () => {
+      previouslyFocused.current?.focus();
+    };
+  }, []);
+
   useEffect(() => card.current?.focus(), [index]);
 
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
-      if (event.key === "Escape") onClose(true);
-      if (event.key === "ArrowRight" && !last) setIndex((i) => i + 1);
-      if (event.key === "ArrowLeft" && index > 0) setIndex((i) => i - 1);
+      if (event.key === "Escape") {
+        onClose(true);
+        return;
+      }
+      if (event.key === "ArrowRight" && !last) {
+        setIndex((i) => i + 1);
+        return;
+      }
+      if (event.key === "ArrowLeft" && index > 0) {
+        setIndex((i) => i - 1);
+        return;
+      }
+      if (event.key === "Tab" && card.current) {
+        const focusable = card.current.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        );
+        if (!focusable.length) return;
+        const first = focusable[0];
+        const lastEl = focusable[focusable.length - 1];
+        if (event.shiftKey) {
+          if (
+            document.activeElement === first ||
+            document.activeElement === card.current
+          ) {
+            event.preventDefault();
+            lastEl.focus();
+          }
+        } else {
+          if (document.activeElement === lastEl) {
+            event.preventDefault();
+            first.focus();
+          }
+        }
+      }
     }
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
