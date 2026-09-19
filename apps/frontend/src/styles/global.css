@@ -1,6 +1,7 @@
 @import "./tokens.css";
 @import "./shell.css";
 @import "./company-applications.css";
+@import "./public-offers.css";
 * {
   box-sizing: border-box;
 }

@@ -5,6 +5,7 @@ import {
   BriefcaseBusiness,
   Check,
   ChevronDown,
+  Globe,
   Sparkles,
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
@@ -96,6 +97,20 @@ export function Missions() {
       </div>
 
       <div className="missions-page__body">
+        <div className="public-offers-disclaimer" role="note">
+          <Globe size={18} aria-hidden="true" />
+          <div>
+            <strong>Recherche élargie :</strong> En complément des missions
+            InteriMatch, découvrez les opportunités du réseau public.{" "}
+            <Link
+              to="/worker/public-offers"
+              style={{ fontWeight: 600, textDecoration: "underline" }}
+            >
+              Consulter les offres France Travail →
+            </Link>
+          </div>
+        </div>
+
         {error && (
           <p className="form-error" role="alert">
             {error}
