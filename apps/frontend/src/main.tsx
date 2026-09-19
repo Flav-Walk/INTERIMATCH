@@ -43,6 +43,16 @@ const WorkerApplications = lazy(() =>
     default: m.WorkerApplications,
   })),
 );
+const WorkerPublicOffers = lazy(() =>
+  import("./pages/WorkerPublicOffers").then((m) => ({
+    default: m.WorkerPublicOffers,
+  })),
+);
+const WorkerPublicOfferDetail = lazy(() =>
+  import("./pages/WorkerPublicOfferDetail").then((m) => ({
+    default: m.WorkerPublicOfferDetail,
+  })),
+);
 const CompanyDashboard = lazy(() =>
   import("./pages/CompanyDashboard").then((m) => ({
     default: m.CompanyDashboard,
@@ -101,6 +111,11 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
                 <Route path="missions" element={<Missions />} />
                 <Route path="missions/:id" element={<WorkerMissionDetail />} />
                 <Route path="applications" element={<WorkerApplications />} />
+                <Route path="public-offers" element={<WorkerPublicOffers />} />
+                <Route
+                  path="public-offers/:id"
+                  element={<WorkerPublicOfferDetail />}
+                />
               </Route>
             </Route>
 

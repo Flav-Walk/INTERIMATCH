@@ -11,6 +11,7 @@ import {
   ChevronDown,
   ClipboardList,
   FileText,
+  Globe,
   LayoutDashboard,
   LifeBuoy,
   LogOut,
@@ -65,6 +66,11 @@ const links: Record<Role, NavItem[]> = {
       to: "/worker/applications",
       label: "Mes candidatures",
       icon: <ClipboardList size={17} aria-hidden="true" />,
+    },
+    {
+      to: "/worker/public-offers",
+      label: "Offres France Travail",
+      icon: <Globe size={17} aria-hidden="true" />,
     },
   ],
   company: [
