@@ -31,3 +31,19 @@ Auth : inscription/login classiques, mot de passe hashé, session invalide/expir
 Propositions : accepter/refuser uniquement les siennes, idempotence, expiration, mission fermée. Attribution : capacité et conflits sous concurrence avec tests d’intégration PostgreSQL réels. Événements : rollback ne produit pas d’envoi, doublon, signature invalide, retry et panne externe. E2E : entreprise publie → candidat reçoit/accepte → entreprise attribue → mission pourvue.
 
 Coverage généré et conservé comme livrable final ; pas de pourcentage revendiqué avant exécution. Le Lot 8 consolide les preuves, il ne reporte pas les tests jusque-là.
+
+## Lot SL2e — Données publiques France Travail
+
+- **Normaliseur France Travail (`apps/backend/src/public-data/normalizer.test.ts`)** :
+  - Extraction et normalisation sur les 2 fixtures versionnées dans `apps/backend/src/public-data/fixtures/`.
+  - Cas limites vérifiés : entreprise vide, salaire vide, compétences/qualités absentes, coordonnées GPS absentes, recherches à 0 résultat, rejet des offres sans ID ou sans titre, tolérance aux champs inconnus, chaînes longues, caractères accentués, neutralisation d'URLs dangereuses.
+- **Service et API (`apps/backend/src/public-data/public-data.test.ts`)** :
+  - Import initial, idempotence stricte lors de ré-imports identiques, mise à jour ciblée sur modification de contenu.
+  - Dédoublonnage au sein d'un même lot avec priorité à la version source la plus récente, et imports concurrents.
+  - Filtrage (search, rome, location, contract_type) et pagination.
+  - Consultation par UUID et par identifiant externe, ambiguïté UUID externe, autorisation worker et 404.
+- **Service Frontend (`apps/frontend/src/services/publicOffers.test.ts`)** :
+  - Construction des requêtes avec et sans filtres, encodage des identifiants et filtrage des URLs externes.
+- **E2E Playwright (`apps/frontend/e2e/public-data.spec.ts`)** :
+  - Validation sur Desktop et Mobile : connexion intérimaire, navigation, consultation de la liste et du détail, distinction stricte avec les missions InteriMatch, support des données partielles, états vide/erreur, contenu hostile rendu comme texte, lien externe dangereux neutralisé, absence d'overflow horizontal et 0 erreur console.
+  - Les routes API des offres publiques sont interceptées : il s'agit d'un E2E UI, pas d'un E2E full-stack frontend/backend/PostgreSQL.
