@@ -16,7 +16,8 @@
     "start": "node dist/server.js",
     "db:migrate": "tsx src/scripts/migrate.ts",
     "db:seed": "tsx src/scripts/seed.ts",
-    "db:check": "tsx src/scripts/check-connections.ts"
+    "db:check": "tsx src/scripts/check-connections.ts",
+    "data:france-travail": "tsx src/scripts/import-france-travail.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.116.0",

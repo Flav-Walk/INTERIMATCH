@@ -15,7 +15,9 @@ import type { MissionService } from "./missions/service.js";
 import type { AdminService } from "./admin/service.js";
 import { adminRouter } from "./admin/routes.js";
 import type { ApplicationService } from "./applications/service.js";
-import { requireAuth } from "./auth/routes.js";
+import type { PublicJobOfferService } from "./public-data/service.js";
+import { publicJobOffersRouter } from "./public-data/routes.js";
+import { requireAuth, requireRole } from "./auth/routes.js";
 import { HttpError } from "./errors.js";
 /**
  * Message d'une requête refusée à la validation. Nommer les champs fautifs rend
@@ -65,6 +67,7 @@ export function createApp(
   missions?: MissionService,
   admin?: AdminService,
   applications?: ApplicationService,
+  publicOffers?: PublicJobOfferService,
 ) {
   const app = express();
   const logger = pino({
@@ -134,6 +137,15 @@ export function createApp(
   });
   app.use("/api/v1", healthRouter);
   app.use(cookieParser());
+  // Le catalogue appartient à l'espace intérimaire. Le protéger ici, et pas
+  // seulement dans React, empêche un appel direct anonyme ou entreprise.
+  if (accounts && publicOffers)
+    app.use(
+      "/api/v1/public-job-offers",
+      requireAuth(accounts),
+      requireRole("worker"),
+      publicJobOffersRouter(publicOffers),
+    );
   if (accounts && admin)
     app.use("/api/v1/admin", requireAuth(accounts), adminRouter(admin));
   if (accounts)

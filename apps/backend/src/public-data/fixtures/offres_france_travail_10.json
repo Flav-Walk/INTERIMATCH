@@ -1,0 +1,753 @@
+{
+  "date_extraction": "2026-09-18T17:11:45",
+  "criteres": {
+    "localisation": "Lyon",
+    "code_commune": "69123",
+    "type_contrat": "Intérim",
+    "code_type_contrat": "MIS",
+    "nombre_maximum_par_intitule": 1
+  },
+  "nombre_total_offres": 10,
+  "recherches": [
+    {
+      "intitule_recherche": "Serveur / Serveuse",
+      "nombre_offres": 1,
+      "offres": [
+        {
+          "id": "213HXKM",
+          "intitule": "Serveur / Serveuse (H/F)",
+          "description": "Vous avez envie de diversifier vos expériences professionnelles, de gagner en liberté et en sérénité ? Vous êtes au bon endroit ! Avec nos 190 agences réparties sur tout le territoire, nous sommes toujours plus proches de vous. Il y a plein de raisons de donner raison à notre intérim, découvrez l'intérim fait pour vous !\n\nMissions :\nLa mise en place de la salle\nLa prise de commande\nL'accueil\nLe service à l'assiette\nLe débarrassage\nLe nettoyage.\n\nProfil :\nExpérience validée en tant que serveur(se)\nVous avez l'esprit d'équipe et le sens de l'organisation et de la qualité. Vous êtes dynamique, ponctuel, souriant, discret et vous avez un bon sens relationnel.\nÊtre véhiculé est un plus !\nPoste accessible aux personnes en situation de handicap.",
+          "dateCreation": "2026-09-03T10:18:09.236Z",
+          "dateActualisation": "2026-09-03T10:24:24.192Z",
+          "lieuTravail": {
+            "libelle": "69 - LYON",
+            "latitude": 45.753267,
+            "longitude": 4.826881,
+            "codePostal": "69002",
+            "commune": "69382"
+          },
+          "romeCode": "G1803",
+          "romeLibelle": "Serveur / Serveuse en restauration",
+          "appellationlibelle": "Garçon / Serveuse de restaurant",
+          "entreprise": {
+            "nom": "RAS 420",
+            "entrepriseAdaptee": false
+          },
+          "typeContrat": "MIS",
+          "typeContratLibelle": "Intérim - 6 Mois",
+          "natureContrat": "Contrat travail",
+          "experienceExige": "E",
+          "experienceLibelle": "3 Mois",
+          "langues": [
+            {
+              "libelle": "Anglais",
+              "exigence": "S"
+            },
+            {
+              "libelle": "Français",
+              "exigence": "S"
+            }
+          ],
+          "competences": [
+            {
+              "code": "101901",
+              "libelle": "Accueillir le client et l'installer",
+              "exigence": "S"
+            },
+            {
+              "code": "300556",
+              "libelle": "Conseiller le client dans ses choix de boissons ou plats selon ses goûts",
+              "exigence": "E"
+            },
+            {
+              "code": "117933",
+              "libelle": "Effectuer le service des plats à table",
+              "exigence": "E"
+            },
+            {
+              "code": "104324",
+              "libelle": "Prendre une commande client",
+              "exigence": "E"
+            },
+            {
+              "code": "117932",
+              "libelle": "Réaliser la mise en place de la salle et de l'office",
+              "exigence": "E"
+            }
+          ],
+          "salaire": {
+            "libelle": "Horaire de 12.31 Euros sur 12 mois"
+          },
+          "dureeTravailLibelle": "35H/semaine\nTravail en journée...",
+          "dureeTravailLibelleConverti": "Temps plein",
+          "alternance": false,
+          "contact": {},
+          "agence": {},
+          "nombrePostes": 1,
+          "deplacementCode": "2",
+          "deplacementLibelle": "Ponctuels Zone départementale",
+          "qualificationCode": "6",
+          "qualificationLibelle": "Employé qualifié",
+          "codeNAF": "78.20Z",
+          "secteurActivite": "78",
+          "secteurActiviteLibelle": "Activités des agences de travail temporaire",
+          "qualitesProfessionnelles": [
+            {
+              "libelle": "Avoir l'esprit d'équipe",
+              "description": "Capacité à travailler et à se coordonner avec les autres au sein de l'entreprise pour réaliser les objectifs fixés."
+            },
+            {
+              "libelle": "Avoir le sens du service",
+              "description": "Capacité à identifier (voire anticiper) les besoins des usagers, clients (internes et externes) et à apporter une réponse adaptée afin de les satisfaire."
+            },
+            {
+              "libelle": "Faire preuve de réactivité",
+              "description": "Capacité à réagir rapidement face à des évènements et à des imprévus, en hiérarchisant les actions, en fonction de leur degré d'urgence / d'importance."
+            }
+          ],
+          "trancheEffectifEtab": "50 à 99 salariés",
+          "origineOffre": {
+            "origine": "1",
+            "urlOrigine": "https://candidat.francetravail.fr/offres/recherche/detail/213HXKM"
+          },
+          "offresManqueCandidats": false,
+          "contexteTravail": {
+            "horaires": [
+              "35H/semaine\nTravail en journée",
+              " Travail en horaires décalés",
+              " Travail en horaires fractionnés",
+              " Travail les week-ends et jours fériés"
+            ]
+          },
+          "entrepriseAdaptee": false,
+          "employeurHandiEngage": false
+        }
+      ]
+    },
+    {
+      "intitule_recherche": "Chef de rang",
+      "nombre_offres": 1,
+      "offres": [
+        {
+          "id": "6741918",
+          "intitule": "Chef de rang (H/F)",
+          "description": "Description du poste Le Chef de rang orchestre le service des tables au sein du restaurant.***Organise et prépare la mise en place de son rang avant le service***Anime et coordonne les activités de son équipe de serveurs***Accueille et conseille les clients avec professionnalisme***Prend les commandes et veille à leur bonne exécution en cuisine***Veille au bon déroulement du service à table***Contrôle la satisfaction des clients et gère les éventuelles réclamations\n\nDescription du profil Bon relationnel et une maîtrise parfaite des codes de la relation avec les clients - Connaissances approfondies des règles et des techniques du service - La pratique d'une ou plusieurs langues étrangères est un plus (au moins l'anglais).",
+          "dateCreation": "2026-09-09T03:29:18.937Z",
+          "dateActualisation": "2026-09-09T03:29:18.937Z",
+          "lieuTravail": {
+            "libelle": "69 - Lyon 5e Arrondissement",
+            "codePostal": "69005",
+            "commune": "69385"
+          },
+          "romeCode": "G1810",
+          "romeLibelle": "Chef / Cheffe de rang",
+          "appellationlibelle": "Chef / Cheffe de rang",
+          "entreprise": {},
+          "typeContrat": "MIS",
+          "typeContratLibelle": "Intérim - 5 Jour(s)",
+          "natureContrat": "Contrat travail",
+          "experienceExige": "D",
+          "experienceLibelle": "Débutant accepté",
+          "salaire": {},
+          "alternance": false,
+          "contact": {},
+          "nombrePostes": 1,
+          "codeNAF": "78.20Z",
+          "secteurActivite": "78",
+          "secteurActiviteLibelle": "Activités des agences de travail temporaire",
+          "origineOffre": {
+            "origine": "2",
+            "urlOrigine": "https://candidat.francetravail.fr/offres/recherche/detail/6741918",
+            "partenaires": [
+              {
+                "nom": "METEOJOB",
+                "url": "https://www.meteojob.com/jobs/56646562?utm_source=pole-emploi&utm_medium=aggregator-free",
+                "logo": "https://www.francetravail.fr/logos/img/partenaires/meteojob80.png"
+              }
+            ]
+          },
+          "contexteTravail": {},
+          "entrepriseAdaptee": false,
+          "employeurHandiEngage": false
+        }
+      ]
+    },
+    {
+      "intitule_recherche": "Maître d'hôtel",
+      "nombre_offres": 1,
+      "offres": [
+        {
+          "id": "5968295",
+          "intitule": "Maître d'hôtel évènementiel (H/F)",
+          "description": "Description du poste :\n\nVos missions\n\nSous la responsabilité du responsable de site ou de l'organisateur de l'événement, vous aurez pour mission de Encadrer, animer et coordonner les équipes de salle (serveurs, chefs de rang, hôtes et hôtesses Organiser et répartir les postes de travail avant chaque prestation.***Effectuer les briefings et débriefings auprès des équipes.***Veiller à la bonne mise en place des espaces de réception, buffets, cocktails et salles de restauration.***Contrôler la conformité des installations avant l'arrivée des clients.***Accueillir les clients et assurer leur satisfaction tout au long de l'événement.***Superviser le déroulement du service et garantir le respect des standards de qualité.***Assurer la liaison entre les équipes de cuisine, de salle et les organisateurs.***Gérer les imprévus et apporter des solutions rapides et adaptées.***Veiller au respect des règles d'hygiène, de sécurité et des procédures internes.***Participer activement au service lorsque l'activité le nécessite.***Garantir une excellente expérience client et représenter l'image de l'établissement avec professionnalisme.\n\nDescription du profil :\n\nProfil recherché***Vous justifiez d'une expérience significative de 3 ans minimum en qualité de Maître d'Hôtel, Responsable de Salle ou sur un poste similaire.***Vous avez idéalement une expérience dans l'événementiel, le traiteur ou l'hôtellerie-restauration haut de gamme.***Vous maîtrisez les techniques de service à l'assiette, au plateau, en cocktail et en banquet.***Vous possédez de réelles qualités de management et savez fédérer une équipe.***Vous êtes capable de gérer plusieurs prestations simultanément dans un environnement dynamique.***La maîtrise de l'anglais est un plus.\n\nQualités et compétences requises\n\nSavoir-faire***Organisation et gestion des priorités.***Coordination et management d'équipes.***Excellente connaissance des techniques de service.***Gestion des imprévus et sens de l'anticipation.***Respect des normes HACCP et des règles de sécurité.\n\nSavoir-être***Leadership et exemplarité.***Excellent relationnel et sens du service.***Réactivité et capacité d'adaptation.***Rigueur et professionnalisme.***Présentation soignée.***Esprit d'équipe et sens des responsabilités.",
+          "dateCreation": "2026-08-14T03:29:27.328Z",
+          "dateActualisation": "2026-09-15T09:24:15.317Z",
+          "lieuTravail": {
+            "libelle": "69 - Lyon 5e Arrondissement",
+            "codePostal": "69005",
+            "commune": "69385"
+          },
+          "romeCode": "G1802",
+          "romeLibelle": "Maître / Maîtresse d'hôtel",
+          "appellationlibelle": "Maître / Maîtresse d'hôtel",
+          "entreprise": {},
+          "typeContrat": "MIS",
+          "typeContratLibelle": "Intérim - 1 Mois",
+          "natureContrat": "Contrat travail",
+          "experienceExige": "D",
+          "experienceLibelle": "Débutant accepté",
+          "salaire": {},
+          "alternance": false,
+          "contact": {},
+          "nombrePostes": 1,
+          "codeNAF": "78.20Z",
+          "secteurActivite": "78",
+          "secteurActiviteLibelle": "Activités des agences de travail temporaire",
+          "origineOffre": {
+            "origine": "2",
+            "urlOrigine": "https://candidat.francetravail.fr/offres/recherche/detail/5968295",
+            "partenaires": [
+              {
+                "nom": "METEOJOB",
+                "url": "https://www.meteojob.com/jobs/56103892?utm_source=pole-emploi&utm_medium=aggregator-free",
+                "logo": "https://www.francetravail.fr/logos/img/partenaires/meteojob80.png"
+              }
+            ]
+          },
+          "contexteTravail": {},
+          "entrepriseAdaptee": false,
+          "employeurHandiEngage": false
+        }
+      ]
+    },
+    {
+      "intitule_recherche": "Commis de salle",
+      "nombre_offres": 0,
+      "offres": []
+    },
+    {
+      "intitule_recherche": "Barman / Barmaid",
+      "nombre_offres": 1,
+      "offres": [
+        {
+          "id": "5026092",
+          "intitule": "BARMAN (H/F)",
+          "description": "Nous recherchons pour le compte de notre client...Nous recherchons un(e) Barman/Barmaid professionnel(le) et passionné(e) pour rejoindre notre équipe. Vous serez le visage de notre espace bar et garant de la satisfaction de notre clientèle.\n\nVos responsabilités :\n\nAccueillir les clients, prendre les commandes et assurer le service des boissons de manière soignée.\n\nRéaliser la préparation des boissons chaudes, des softs et des cocktails selon les fiches techniques de l'établissement.\n\nGérer la caisse et enregistrer les consommations.\n\nAssurer l'approvisionnement des frigos, la gestion des stocks du bar et la réception des marchandises.\n\nMaintenir une propreté irréprochable du comptoir et de l'arrière-bar (normes HACCP).",
+          "dateCreation": "2026-07-16T05:00:14.000Z",
+          "dateActualisation": "2026-07-17T05:00:52.000Z",
+          "lieuTravail": {
+            "libelle": "69 - Lyon 3e Arrondissement",
+            "latitude": 45.760123,
+            "longitude": 4.849235,
+            "codePostal": "69003",
+            "commune": "69383"
+          },
+          "romeCode": "G1801",
+          "romeLibelle": "Barman / Barmaid",
+          "appellationlibelle": "Barman / Barmaid",
+          "entreprise": {
+            "nom": "Randstad",
+            "description": "Randstad vous ouvre toutes les portes de l'emploi : intérim, CDD, CDI. Chaque année, 330 000 collaborateurs (f/h) travaillent dans nos 60 000 entreprises clientes. Rejoignez-nous !"
+          },
+          "typeContrat": "MIS",
+          "typeContratLibelle": "Intérim - 2 Mois",
+          "natureContrat": "Contrat travail",
+          "experienceExige": "E",
+          "experienceLibelle": "3 An(s)",
+          "salaire": {},
+          "dureeTravailLibelle": "\nTravail en journée",
+          "alternance": false,
+          "contact": {},
+          "nombrePostes": 1,
+          "codeNAF": "78.20Z",
+          "secteurActivite": "78",
+          "secteurActiviteLibelle": "Activités des agences de travail temporaire",
+          "origineOffre": {
+            "origine": "2",
+            "urlOrigine": "https://candidat.francetravail.fr/offres/recherche/detail/5026092",
+            "partenaires": [
+              {
+                "nom": "HANDICAP_JOB",
+                "url": "https://www.handicap-job.com/recherche/detail/oid/6628823/barman-fh.html",
+                "logo": "https://www.francetravail.fr/logos/img/partenaires/handicap_job80.png"
+              }
+            ]
+          },
+          "contexteTravail": {
+            "horaires": [
+              "\nTravail en journée"
+            ]
+          },
+          "entrepriseAdaptee": false,
+          "employeurHandiEngage": false
+        }
+      ]
+    },
+    {
+      "intitule_recherche": "Cuisinier / Cuisinière",
+      "nombre_offres": 1,
+      "offres": [
+        {
+          "id": "214CDXY",
+          "intitule": "Cuisinier(ère) (H/F)",
+          "description": "À propos de Staffmatch :\nCréée en avril 2015, l'entreprise se lance le pari de révolutionner le marché du travail temporaire et de casser les idées reçues des agences d'intérim traditionnelles. Pari réussi, Staffmatch affiche aujourd'hui une couverture nationale, une centaine de collaborateurs permanents et plus de 50 000 collaborateurs intérimaires.\nVos missions\nNous recherchons pour un de nos clients situé à Lyon 7ème un/une Cuisinier(ère) en intérim.\nPrise de poste immédiat\n\nMissions :\n- Cuisinier capable de produire pour 400 couverts comportant trois protéines (poisson, viande, végétale) + accompagnements : légumes & féculents\n- Doit effectuer la traçabilité quotidiennement\n- Travaille avec une personne en assistance durant toute la durée de travail\n- Faire le service en rechargeant les légumes et féculents dans le bac de distribution libre-service\n- Effectuer le service en cadence et sans ruptures de produits jusqu'à 13h30\n- Rangement et nettoyage des espaces de travail\n- Anticipation du menu du lendemain en binôme avec le magasinier\n\nProfil recherché :\n- Vous êtes organisé(e), autonome et capable de prendre des initiatives en cas de besoin\n- Vous possédez de l'expérience en collectivité en tant que cuisinier(ère)\n- Vous possédez un CAP Cuisine",
+          "dateCreation": "2026-09-18T14:22:26.064Z",
+          "dateActualisation": "2026-09-18T14:22:26.586Z",
+          "lieuTravail": {
+            "libelle": "69 - LYON 07",
+            "latitude": 45.746385,
+            "longitude": 4.841631,
+            "codePostal": "69007",
+            "commune": "69387"
+          },
+          "romeCode": "G1606",
+          "romeLibelle": "Cuisinier / Cuisinière de collectivité",
+          "appellationlibelle": "Cuisinier / Cuisinière de collectivité",
+          "entreprise": {
+            "nom": "STAFFMATCH FRANCE 3",
+            "entrepriseAdaptee": false
+          },
+          "typeContrat": "MIS",
+          "typeContratLibelle": "Intérim - 6 Mois",
+          "natureContrat": "Contrat travail",
+          "experienceExige": "E",
+          "experienceLibelle": "1 An(s)",
+          "formations": [
+            {
+              "codeFormation": "42752",
+              "domaineLibelle": "Cuisine",
+              "niveauLibelle": "CAP, BEP et équivalents",
+              "exigence": "E"
+            }
+          ],
+          "competences": [
+            {
+              "code": "124919",
+              "libelle": "Cuire des viandes, poissons ou légumes",
+              "exigence": "S"
+            },
+            {
+              "code": "124935",
+              "libelle": "Dresser des plats pour le service",
+              "exigence": "S"
+            },
+            {
+              "code": "124947",
+              "libelle": "Eplucher des légumes et des fruits",
+              "exigence": "S"
+            },
+            {
+              "code": "104207",
+              "libelle": "Préparer les viandes et les poissons",
+              "exigence": "S"
+            }
+          ],
+          "salaire": {
+            "libelle": "Horaire de 12.45 Euros"
+          },
+          "dureeTravailLibelle": "35H/semaine\nTravail en journée",
+          "dureeTravailLibelleConverti": "Temps plein",
+          "alternance": false,
+          "contact": {},
+          "agence": {},
+          "nombrePostes": 1,
+          "deplacementCode": "1",
+          "deplacementLibelle": "Jamais",
+          "qualificationCode": "5",
+          "qualificationLibelle": "Employé non qualifié",
+          "codeNAF": "78.20Z",
+          "secteurActivite": "78",
+          "secteurActiviteLibelle": "Activités des agences de travail temporaire",
+          "qualitesProfessionnelles": [
+            {
+              "libelle": "Avoir l'esprit d'équipe",
+              "description": "Capacité à travailler et à se coordonner avec les autres au sein de l'entreprise pour réaliser les objectifs fixés."
+            },
+            {
+              "libelle": "Faire preuve de créativité, d'inventivité",
+              "description": "Capacité à créer, imaginer quelque chose de nouveau (nouveau produit, nouvelle solution, …)."
+            },
+            {
+              "libelle": "Faire preuve d'autonomie",
+              "description": "Capacité à prendre en charge son activité sans devoir être encadré de façon continue (le cas échéant, à solliciter les autres acteurs de l'entreprise)."
+            }
+          ],
+          "trancheEffectifEtab": "200 à 249 salariés",
+          "origineOffre": {
+            "origine": "1",
+            "urlOrigine": "https://candidat.francetravail.fr/offres/recherche/detail/214CDXY"
+          },
+          "offresManqueCandidats": false,
+          "contexteTravail": {
+            "horaires": [
+              "35H/semaine\nTravail en journée"
+            ]
+          },
+          "entrepriseAdaptee": false,
+          "employeurHandiEngage": false
+        }
+      ]
+    },
+    {
+      "intitule_recherche": "Chef de partie",
+      "nombre_offres": 1,
+      "offres": [
+        {
+          "id": "214CDZG",
+          "intitule": "Chef(fe) de partie (H/F)",
+          "description": "À propos de Staffmatch\n\nCréée en avril 2015, l'entreprise se lance le pari de révolutionner le marché du travail temporaire et de casser les idées reçues des agences d'intérim traditionnelles. Pari réussi, Staffmatch affiche aujourd'hui une couverture nationale, une centaine de collaborateurs permanents et plus de 50 000 collaborateurs intérimaires.\n\nVos missions\n\n- Préparer et dresser les plats,\n- Assurer la qualité et bonne présentation des plats,\n- Coordonner et organiser l'équipe de son rang (cuisiniers, commis),\n- Appliquer les règles d'hygiène et de sécurité alimentaire.\n\nProfil recherché\n\nUne expérience en restauration traditionnelle est demandée.\n\nInformation complémentaire\n\nLa possession d'une tenue de travail de cuisine est exigée.",
+          "dateCreation": "2026-09-18T14:24:00.398Z",
+          "dateActualisation": "2026-09-18T14:24:00.836Z",
+          "lieuTravail": {
+            "libelle": "69 - Lyon 3e Arrondissement",
+            "latitude": 45.760123,
+            "longitude": 4.849235,
+            "codePostal": "69003",
+            "commune": "69383"
+          },
+          "romeCode": "G1609",
+          "romeLibelle": "Cuisinier / Cuisinière",
+          "appellationlibelle": "Chef / Cheffe de partie",
+          "entreprise": {
+            "nom": "STAFFMATCH FRANCE 3",
+            "entrepriseAdaptee": false
+          },
+          "typeContrat": "MIS",
+          "typeContratLibelle": "Intérim - 6 Mois",
+          "natureContrat": "Contrat travail",
+          "experienceExige": "E",
+          "experienceLibelle": "12 Mois",
+          "competences": [
+            {
+              "code": "124919",
+              "libelle": "Cuire des viandes, poissons ou légumes",
+              "exigence": "S"
+            },
+            {
+              "code": "124935",
+              "libelle": "Dresser des plats pour le service",
+              "exigence": "S"
+            },
+            {
+              "code": "104207",
+              "libelle": "Préparer les viandes et les poissons",
+              "exigence": "S"
+            }
+          ],
+          "salaire": {
+            "libelle": "Horaire de 13.56 Euros",
+            "complement1": "Restauration",
+            "listeComplements": [
+              {
+                "code": "8",
+                "libelle": "Restauration"
+              }
+            ]
+          },
+          "dureeTravailLibelle": "35H/semaine\nTravail en journée",
+          "dureeTravailLibelleConverti": "Temps plein",
+          "alternance": false,
+          "contact": {},
+          "agence": {},
+          "nombrePostes": 1,
+          "qualificationCode": "6",
+          "qualificationLibelle": "Employé qualifié",
+          "codeNAF": "78.20Z",
+          "secteurActivite": "78",
+          "secteurActiviteLibelle": "Activités des agences de travail temporaire",
+          "trancheEffectifEtab": "200 à 249 salariés",
+          "origineOffre": {
+            "origine": "1",
+            "urlOrigine": "https://candidat.francetravail.fr/offres/recherche/detail/214CDZG"
+          },
+          "offresManqueCandidats": false,
+          "contexteTravail": {
+            "horaires": [
+              "35H/semaine\nTravail en journée"
+            ]
+          },
+          "entrepriseAdaptee": false,
+          "employeurHandiEngage": false
+        }
+      ]
+    },
+    {
+      "intitule_recherche": "Commis de cuisine",
+      "nombre_offres": 1,
+      "offres": [
+        {
+          "id": "214CDXH",
+          "intitule": "Commis de cuisine (H/F)",
+          "description": "À propos de Staffmatch\n\nCréée en avril 2015, l'entreprise se lance le pari de révolutionner le marché du travail temporaire et de casser les idées reçues des agences d'intérim traditionnelles. Pari réussi, Staffmatch affiche aujourd'hui une couverture nationale, une centaine de collaborateurs permanents et plus de 50 000 collaborateurs intérimaires.\n\nVos missions\n\n- Préparer et assembler les ingrédients sous la supervision du chef de cuisine (plats chauds et postes froids)\n- Assurer l'entretien du poste de travail,\n- Veiller au respect des normes HACCP et contribuer au bon déroulement du service...\n\nProfil recherché\n\n- Expérience en restauration collective exigée\n- Diplôme en cuisine (CAP, bac pro, BP ...)\n- Etre autonome et organisé dans son travail\n\nInformation complémentaire :\n\nLa possession d'une tenue de travail de cuisine est exigée.",
+          "dateCreation": "2026-09-18T14:21:36.036Z",
+          "dateActualisation": "2026-09-18T14:21:36.502Z",
+          "lieuTravail": {
+            "libelle": "69 - LYON 03",
+            "latitude": 45.760123,
+            "longitude": 4.849235,
+            "codePostal": "69003",
+            "commune": "69383"
+          },
+          "romeCode": "G1607",
+          "romeLibelle": "Employé / Employée de restauration collective",
+          "appellationlibelle": "Commis / Commise de cuisine de collectivité",
+          "entreprise": {
+            "nom": "STAFFMATCH FRANCE 3",
+            "entrepriseAdaptee": false
+          },
+          "typeContrat": "MIS",
+          "typeContratLibelle": "Intérim - 6 Mois",
+          "natureContrat": "Contrat travail",
+          "experienceExige": "E",
+          "experienceLibelle": "12 Mois",
+          "formations": [
+            {
+              "codeFormation": "42752",
+              "domaineLibelle": "Cuisine",
+              "niveauLibelle": "CAP, BEP et équivalents",
+              "exigence": "E"
+            }
+          ],
+          "competences": [
+            {
+              "code": "300282",
+              "libelle": "Entretenir, nettoyer un espace, un lieu, un local",
+              "exigence": "S"
+            },
+            {
+              "code": "104227",
+              "libelle": "Préparer, assembler des plats simples",
+              "exigence": "S"
+            }
+          ],
+          "salaire": {
+            "libelle": "Horaire de 12.31 Euros",
+            "complement1": "Restauration",
+            "listeComplements": [
+              {
+                "code": "8",
+                "libelle": "Restauration"
+              }
+            ]
+          },
+          "dureeTravailLibelle": "35H/semaine\nTravail en journée",
+          "dureeTravailLibelleConverti": "Temps plein",
+          "alternance": false,
+          "contact": {},
+          "agence": {},
+          "nombrePostes": 1,
+          "qualificationCode": "5",
+          "qualificationLibelle": "Employé non qualifié",
+          "codeNAF": "78.20Z",
+          "secteurActivite": "78",
+          "secteurActiviteLibelle": "Activités des agences de travail temporaire",
+          "trancheEffectifEtab": "200 à 249 salariés",
+          "origineOffre": {
+            "origine": "1",
+            "urlOrigine": "https://candidat.francetravail.fr/offres/recherche/detail/214CDXH"
+          },
+          "offresManqueCandidats": false,
+          "contexteTravail": {
+            "horaires": [
+              "35H/semaine\nTravail en journée"
+            ]
+          },
+          "entrepriseAdaptee": false,
+          "employeurHandiEngage": false
+        }
+      ]
+    },
+    {
+      "intitule_recherche": "Plongeur / Plongeuse",
+      "nombre_offres": 1,
+      "offres": [
+        {
+          "id": "214CFBW",
+          "intitule": "Plongeur(euse) - Marcy-l'Etoile (H/F)",
+          "description": "À propos de Staffmatch\n\nCréée en avril 2015, l'entreprise se lance le pari de révolutionner le marché du travail temporaire et de casser les idées reçues des agences d'intérim traditionnelles. Pari réussi, Staffmatch affiche aujourd'hui une couverture nationale, une centaine de collaborateurs permanents et plus de 50 000 collaborateurs intérimaires. En postulant à cette offre, vous autorisez Staffmatch à utiliser les informations de votre candidature pour vous inscrire à notre parcours d'onboarding. Un e-mail vous sera envoyé pour finaliser votre inscription.\n\nVos missions\n\n- Entretenir et nettoyer de la vaisselle et ustensiles de cuisine,\n- Assurer l'hygiène de la cuisine et des locaux.\n\nProfil recherché\n\nPremière expérience en plonge (si possible en collectivité)\nPersonne dynamique, rigoureuse et ponctuelle\n\nSite non desservi en tranports en communs",
+          "dateCreation": "2026-09-18T14:26:04.708Z",
+          "dateActualisation": "2026-09-18T14:26:05.217Z",
+          "lieuTravail": {
+            "libelle": "69 - MARCY L ETOILE",
+            "latitude": 45.781254,
+            "longitude": 4.70539,
+            "codePostal": "69280",
+            "commune": "69127"
+          },
+          "romeCode": "G1605",
+          "romeLibelle": "Plongeur officier / Plongeuse officière de cuisine",
+          "appellationlibelle": "Plongeur / Plongeuse en restauration",
+          "entreprise": {
+            "nom": "STAFFMATCH FRANCE 3",
+            "entrepriseAdaptee": false
+          },
+          "typeContrat": "MIS",
+          "typeContratLibelle": "Intérim - 6 Mois",
+          "natureContrat": "Contrat travail",
+          "experienceExige": "E",
+          "experienceLibelle": "12 Mois",
+          "competences": [
+            {
+              "code": "300282",
+              "libelle": "Entretenir, nettoyer un espace, un lieu, un local",
+              "exigence": "S"
+            }
+          ],
+          "salaire": {
+            "libelle": "Horaire de 12.31 Euros",
+            "complement1": "Restauration",
+            "listeComplements": [
+              {
+                "code": "8",
+                "libelle": "Restauration"
+              }
+            ]
+          },
+          "dureeTravailLibelle": "35H/semaine\nTravail en journée",
+          "dureeTravailLibelleConverti": "Temps plein",
+          "alternance": false,
+          "contact": {},
+          "agence": {},
+          "nombrePostes": 1,
+          "qualificationCode": "5",
+          "qualificationLibelle": "Employé non qualifié",
+          "codeNAF": "78.20Z",
+          "secteurActivite": "78",
+          "secteurActiviteLibelle": "Activités des agences de travail temporaire",
+          "trancheEffectifEtab": "200 à 249 salariés",
+          "origineOffre": {
+            "origine": "1",
+            "urlOrigine": "https://candidat.francetravail.fr/offres/recherche/detail/214CFBW"
+          },
+          "offresManqueCandidats": false,
+          "contexteTravail": {
+            "horaires": [
+              "35H/semaine\nTravail en journée"
+            ]
+          },
+          "entrepriseAdaptee": false,
+          "employeurHandiEngage": false
+        }
+      ]
+    },
+    {
+      "intitule_recherche": "Réceptionniste",
+      "nombre_offres": 1,
+      "offres": [
+        {
+          "id": "6762593",
+          "intitule": "Réceptionnaire automobile H/F",
+          "description": "L'agence Temporis Lyon 9 recrute pour l'un de nos partenaires, acteur du monde de l'automobile situé à Vaulx-en-Velin.\nLe job en bref :\n\nQuoi ? Réceptionnaire automobile.\n\nOù ? Vaulx-en-Velin (69).\n\nComment (missions) ? :\n- Accueil et conseil clients\n- Ouverture et suivi des ordres de réparation\n- Planification des interventions avec l'atelier\n- Élaboration des devis\n- Restitution des véhicules et suivi de la satisfaction client\n\n\nCe qu'il faut pour postuler :\n- Première expérience en réception automobile ou après-vente appréciée\n- Connaissances en mécanique automobile\n- Sens du service, organisation et bon relationnel.\n\n\nPoste à pourvoir rapidement.\nRémunération : A partir 12.50€ brut/h + TR.\n\n\nPourquoi nous rejoindre ?\n- Poste à pourvoir immédiatement\n- Avantages intérim : FASTT, CE, indemnité de fin de mission (10%), indemnité de congés payés (10%), mutuelle\n- Flexibilité financière : Acompte disponible chaque jeudi (demande à faire avant mercredi soir)\n- Simplicité administrative : Contrat et fiche de paie dématérialisés via notre application ARMADO\n\n\nÊTRE MOTIVÉ : C'est le plus important !",
+          "dateCreation": "2026-09-09T08:01:58.256Z",
+          "dateActualisation": "2026-09-09T08:01:58.256Z",
+          "lieuTravail": {
+            "libelle": "69 - Vaulx-en-Velin",
+            "codePostal": "69120",
+            "commune": "69256"
+          },
+          "romeCode": "G1703",
+          "romeLibelle": "Réceptionniste",
+          "appellationlibelle": "Réceptionniste",
+          "entreprise": {
+            "nom": "Temporis Lyon Vaise"
+          },
+          "typeContrat": "MIS",
+          "typeContratLibelle": "Intérim - 4 Mois",
+          "natureContrat": "Contrat travail",
+          "experienceExige": "E",
+          "experienceLibelle": "2 An(s)",
+          "salaire": {},
+          "dureeTravailLibelle": "35H/semaine",
+          "alternance": false,
+          "contact": {},
+          "nombrePostes": 1,
+          "codeNAF": "78.20Z",
+          "secteurActivite": "78",
+          "secteurActiviteLibelle": "Activités des agences de travail temporaire",
+          "origineOffre": {
+            "origine": "2",
+            "urlOrigine": "https://candidat.francetravail.fr/offres/recherche/detail/6762593",
+            "partenaires": [
+              {
+                "nom": "TEMPORIS",
+                "url": "https://www.temporis-franchise.fr/offres-emploi/receptionnaire-automobile-hf-9934407577?utm_source=jobboard&utm_campaign=poleemploi&utm_medium=temporis-interim-lyon-vaise",
+                "logo": "https://www.francetravail.fr/logos/img/partenaires/temporis80.png"
+              }
+            ]
+          },
+          "contexteTravail": {
+            "horaires": [
+              "35H/semaine"
+            ]
+          },
+          "entrepriseAdaptee": false,
+          "employeurHandiEngage": false
+        }
+      ]
+    },
+    {
+      "intitule_recherche": "Employé·e d'étage",
+      "nombre_offres": 0,
+      "offres": []
+    },
+    {
+      "intitule_recherche": "Hôte / Hôtesse d'accueil",
+      "nombre_offres": 1,
+      "offres": [
+        {
+          "id": "6123356",
+          "intitule": "Hôte d'accueil standardiste (H/F)",
+          "description": "RESPONSABILITÉS : \n\nDans le cadre d'un remplacement, votre enthousiasme, votre polyvalence et votre professionnalisme seront mis en avant au travers des tâches confiées pour notre client.\nVos missions seront les suivantes :\n - Accueil physique et téléphonique\n - Vérification des dossiers de locations\n - Vérifications des pièces nécessaires\n - Autres missions administratives annexes\nConditions du poste :\n - Contrat : Intérim du 24/08 au 31/10\n - Horaires :8h30 - 16 h30 du lundi au vendredi (35h/semaine)\n - Localisation : Lyon 6\n - Démarrage : 24/08/2026\nUne formation sera programmée en amont afin de vous accompagner au mieux dans votre prise de poste et d'assurer une qualité de service optimale à notre client.\nRémunération et avantages :\n - 13€ bruts/heure soit 1972€ bruts/mensuel\n - Avantages sociaux : titre restaurant de 6€/jour travaillé, remboursement à hauteur de 50% du titre de transports en commun\nProcessus de recrutement :\n1. Pré-entretien téléphonique\n2. Entretien physique avec un(e) chargé(e) de recrutement\nAu-delà du parcours, nous recherchons avant tout une personnalité. Rejoindre Armonia, c'est intégrer un groupe international et familial en pleine croissance, animé par des valeurs d'exigence et d'innovation, où la performance se construit dans la collaboration.\nNos collaborateurs évoluent dans un cadre de travail moderne, avec un accompagnement dès l'intégration, des opportunités d'évolution et la possibilité de s'impliquer dans des projets porteurs de sens.\nChez ARMONIA, nous sommes convaincus que la diversité, la mixité et l'inclusion sont des leviers essentiels de performance et d'innovation. Nous veillons à offrir un environnement de travail respectueux des différences, permettant à chacun d'exprimer pleinement son potentiel et de contribuer à notre réussite collective.\n\nPROFIL RECHERCHÉ : \n\nVous êtes à l'aise avec les outils bureautiques et votre orthographe est irréprochable. \nEn bon Welcomer, vous avez le sens du service, votre présentation est soignée et professionnelle.",
+          "dateCreation": "2026-08-20T04:31:36.312Z",
+          "dateActualisation": "2026-08-20T04:31:36.312Z",
+          "lieuTravail": {
+            "libelle": "69 - Lyon 6e Arrondissement",
+            "codePostal": "69006",
+            "commune": "69386"
+          },
+          "romeCode": "M1614",
+          "romeLibelle": "Standardiste",
+          "appellationlibelle": "Standardiste",
+          "entreprise": {
+            "nom": "AVENIR RH"
+          },
+          "typeContrat": "MIS",
+          "typeContratLibelle": "Intérim - 2 Mois",
+          "natureContrat": "Contrat travail",
+          "experienceExige": "E",
+          "experienceLibelle": "Expérience exigée",
+          "salaire": {
+            "libelle": "Horaire de 13.0 Euros à 13.0 Euros"
+          },
+          "dureeTravailLibelle": "35H/semaine\nTravail en journée",
+          "alternance": false,
+          "contact": {},
+          "nombrePostes": 1,
+          "qualificationCode": "5",
+          "qualificationLibelle": "Employé non qualifié",
+          "codeNAF": "78.20Z",
+          "secteurActivite": "78",
+          "secteurActiviteLibelle": "Activités des agences de travail temporaire",
+          "origineOffre": {
+            "origine": "2",
+            "urlOrigine": "https://candidat.francetravail.fr/offres/recherche/detail/6123356",
+            "partenaires": [
+              {
+                "nom": "BEETWEEN",
+                "url": "https://app.beetween.com/WeaselWeb/p/#/apply/job/g1q9e9owkz8/hote-d-accueil-standardiste-h-f",
+                "logo": "https://www.francetravail.fr/logos/img/partenaires/beetween80.png"
+              }
+            ]
+          },
+          "contexteTravail": {
+            "horaires": [
+              "35H/semaine\nTravail en journée"
+            ]
+          },
+          "entrepriseAdaptee": false,
+          "employeurHandiEngage": false
+        }
+      ]
+    }
+  ]
+}

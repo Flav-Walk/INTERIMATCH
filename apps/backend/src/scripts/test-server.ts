@@ -7,6 +7,7 @@ import { AccountService } from "../auth/service.js";
 import { WorkerService } from "../worker/service.js";
 import { MissionService } from "../missions/service.js";
 import { ApplicationService } from "../applications/service.js";
+import { PublicJobOfferService } from "../public-data/service.js";
 import type { Db } from "../db.js";
 if (process.env.NODE_ENV !== "test")
   throw new Error("Test server requires NODE_ENV=test");
@@ -63,6 +64,7 @@ const accounts = new AccountService(db, undefined, geocode);
 const workers = new WorkerService(db, geocode);
 const missions = new MissionService(db, geocode);
 const applications = new ApplicationService(db);
+const publicOffers = new PublicJobOfferService(db);
 
 /**
  * Compte entreprise pré-rempli avec des missions, pour que la suite navigateur
@@ -572,4 +574,5 @@ createApp(
   missions,
   undefined,
   applications,
+  publicOffers,
 ).listen(3001, "127.0.0.1");

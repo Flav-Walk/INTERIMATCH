@@ -1,0 +1,61 @@
+{
+  "date_extraction": "2026-09-18T17:07:36",
+  "criteres": {
+    "localisation": "Lyon",
+    "code_commune": "69123",
+    "type_contrat": "Intérim",
+    "code_type_contrat": "MIS",
+    "nombre_maximum_par_intitule": 1
+  },
+  "nombre_total_offres": 1,
+  "recherches": [
+    {
+      "intitule_recherche": "Maître d'hôtel",
+      "nombre_offres": 1,
+      "offres": [
+        {
+          "id": "5968295",
+          "intitule": "Maître d'hôtel évènementiel (H/F)",
+          "description": "Description du poste :\n\nVos missions\n\nSous la responsabilité du responsable de site ou de l'organisateur de l'événement, vous aurez pour mission de Encadrer, animer et coordonner les équipes de salle (serveurs, chefs de rang, hôtes et hôtesses Organiser et répartir les postes de travail avant chaque prestation.***Effectuer les briefings et débriefings auprès des équipes.***Veiller à la bonne mise en place des espaces de réception, buffets, cocktails et salles de restauration.***Contrôler la conformité des installations avant l'arrivée des clients.***Accueillir les clients et assurer leur satisfaction tout au long de l'événement.***Superviser le déroulement du service et garantir le respect des standards de qualité.***Assurer la liaison entre les équipes de cuisine, de salle et les organisateurs.***Gérer les imprévus et apporter des solutions rapides et adaptées.***Veiller au respect des règles d'hygiène, de sécurité et des procédures internes.***Participer activement au service lorsque l'activité le nécessite.***Garantir une excellente expérience client et représenter l'image de l'établissement avec professionnalisme.\n\nDescription du profil :\n\nProfil recherché***Vous justifiez d'une expérience significative de 3 ans minimum en qualité de Maître d'Hôtel, Responsable de Salle ou sur un poste similaire.***Vous avez idéalement une expérience dans l'événementiel, le traiteur ou l'hôtellerie-restauration haut de gamme.***Vous maîtrisez les techniques de service à l'assiette, au plateau, en cocktail et en banquet.***Vous possédez de réelles qualités de management et savez fédérer une équipe.***Vous êtes capable de gérer plusieurs prestations simultanément dans un environnement dynamique.***La maîtrise de l'anglais est un plus.\n\nQualités et compétences requises\n\nSavoir-faire***Organisation et gestion des priorités.***Coordination et management d'équipes.***Excellente connaissance des techniques de service.***Gestion des imprévus et sens de l'anticipation.***Respect des normes HACCP et des règles de sécurité.\n\nSavoir-être***Leadership et exemplarité.***Excellent relationnel et sens du service.***Réactivité et capacité d'adaptation.***Rigueur et professionnalisme.***Présentation soignée.***Esprit d'équipe et sens des responsabilités.",
+          "dateCreation": "2026-08-14T03:29:27.328Z",
+          "dateActualisation": "2026-09-15T09:24:15.317Z",
+          "lieuTravail": {
+            "libelle": "69 - Lyon 5e Arrondissement",
+            "codePostal": "69005",
+            "commune": "69385"
+          },
+          "romeCode": "G1802",
+          "romeLibelle": "Maître / Maîtresse d'hôtel",
+          "appellationlibelle": "Maître / Maîtresse d'hôtel",
+          "entreprise": {},
+          "typeContrat": "MIS",
+          "typeContratLibelle": "Intérim - 1 Mois",
+          "natureContrat": "Contrat travail",
+          "experienceExige": "D",
+          "experienceLibelle": "Débutant accepté",
+          "salaire": {},
+          "alternance": false,
+          "contact": {},
+          "nombrePostes": 1,
+          "codeNAF": "78.20Z",
+          "secteurActivite": "78",
+          "secteurActiviteLibelle": "Activités des agences de travail temporaire",
+          "origineOffre": {
+            "origine": "2",
+            "urlOrigine": "https://candidat.francetravail.fr/offres/recherche/detail/5968295",
+            "partenaires": [
+              {
+                "nom": "METEOJOB",
+                "url": "https://www.meteojob.com/jobs/56103892?utm_source=pole-emploi&utm_medium=aggregator-free",
+                "logo": "https://www.francetravail.fr/logos/img/partenaires/meteojob80.png"
+              }
+            ]
+          },
+          "contexteTravail": {},
+          "entrepriseAdaptee": false,
+          "employeurHandiEngage": false
+        }
+      ]
+    }
+  ]
+}
