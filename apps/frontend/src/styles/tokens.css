@@ -11,6 +11,10 @@
   --border: oklch(0.88 0.008 160);
   --tint: oklch(0.94 0.025 160);
   --radius: 12px;
+  /* Vert intermédiaire : survol et aplats sur le bandeau sombre. */
+  --forest-mid: oklch(0.42 0.085 165);
+  /* Rayon propre aux cartes, plus généreux que --radius. */
+  --radius-card: 18px;
   /* Gabarit de page partagé par l'en-tête, le contenu et le pied, pour qu'ils
      s'alignent sur la même gouttière quelle que soit la largeur d'écran. */
   --page-max: 1440px;

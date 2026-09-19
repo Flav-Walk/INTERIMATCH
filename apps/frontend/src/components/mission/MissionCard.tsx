@@ -2,45 +2,41 @@ import { Link } from "react-router-dom";
 import {
   ArrowRight,
   CalendarDays,
+  Check,
   ChefHat,
+  Coins,
   ConciergeBell,
   GlassWater,
   MapPin,
   Users,
   Utensils,
+  UtensilsCrossed,
 } from "lucide-react";
 import {
   missionStatePresentation,
   type Mission,
-  type MissionStatus,
 } from "../../services/missions";
 import { MatchBadge } from "./MatchBadge";
 
 /**
- * Carte mission de la maquette : bloc média, badge de statut en surimpression,
- * titre, lieu, créneau, puis pied avec l'effectif et la flèche circulaire.
+ * Carte mission : bloc média, badge d'état en surimpression, titre, lieu,
+ * créneau, puis pied avec l'effectif et la flèche circulaire.
  */
-
-const statusLabels: Record<MissionStatus, string> = {
-  draft: "Brouillon",
-  open: "À pourvoir",
-  filled: "En cours",
-  completed: "Terminée",
-  cancelled: "Annulée",
-};
 
 /**
- * Glyphe du métier. Il occupe la place d'une photographie : la maquette prévoit
- * une image, que nous n'avons pas encore. Le cadrage et les proportions sont
- * conservés pour qu'un média réel puisse s'y substituer sans toucher au layout.
+ * Glyphe du métier. Il occupe la place d'une photographie, que nous n'avons pas
+ * encore. Le cadrage et les proportions sont conservés pour qu'un média réel
+ * puisse s'y substituer sans toucher au layout.
  */
 function JobGlyph({ job }: { job: string }) {
-  if (job.includes("cuisin") || job.includes("chef_de_partie"))
+  const value = job.toLowerCase();
+  if (value.includes("cuisin") || value.includes("chef"))
     return <ChefHat aria-hidden="true" />;
-  if (job === "barman") return <GlassWater aria-hidden="true" />;
-  if (job === "receptionniste" || job === "hote_accueil")
+  if (value.includes("bar")) return <GlassWater aria-hidden="true" />;
+  if (value.includes("reception") || value.includes("accueil"))
     return <ConciergeBell aria-hidden="true" />;
-  if (job === "employe_etage") return <Users aria-hidden="true" />;
+  if (value.includes("etage")) return <Users aria-hidden="true" />;
+  if (value.includes("plongeur")) return <UtensilsCrossed aria-hidden="true" />;
   return <Utensils aria-hidden="true" />;
 }
 
@@ -49,6 +45,7 @@ const dayMonth = new Intl.DateTimeFormat("fr-FR", {
   month: "short",
   year: "numeric",
 });
+
 /** Notation de la maquette : « 18h » à l'heure pile, « 18h30 » sinon. */
 const frenchHour = (date: Date) => {
   const minutes = date.getMinutes();
@@ -60,6 +57,15 @@ const frenchHour = (date: Date) => {
 export function missionSchedule(mission: Mission) {
   const start = new Date(mission.starts_at);
   return `${dayMonth.format(start)} · ${frenchHour(start)} – ${frenchHour(new Date(mission.ends_at))}`;
+}
+
+/** Rémunération lisible, ou `null` quand le montant et son unité manquent. */
+export function missionPay(amount: string | null, unit: string | null) {
+  if (!amount || !unit) return null;
+  const value = Number(amount);
+  if (!Number.isFinite(value)) return null;
+  const suffix = unit === "hour" ? "€/h" : unit === "day" ? "€/j" : "€";
+  return `${value.toFixed(2).replace(".", ",")} ${suffix}`;
 }
 
 /**
@@ -95,13 +101,19 @@ export function MissionCard({
   pendingApplications?: number;
 }) {
   const seats = Array.from({ length: Math.min(mission.headcount, 3) });
-  // La carte corrigeait ici le libellé pour son compte, parce que
-  // `missionStatePresentation` s'appuyait sur un statut jamais écrit. Elle le
-  // lit désormais de la fonction commune, qui consulte la capacité servie par
-  // le serveur : une règle, un endroit.
+  // L'état affiché vient de la fonction commune, qui croise le statut écrit,
+  // les dates et la capacité servie par le serveur.
   const status = missionStatePresentation(mission);
+  // Le cycle est clos : la carte s'estompe et la flèche devient une coche.
+  const closed =
+    status.temporal === "cancelled" || status.temporal === "completed";
+  const pay = missionPay(mission.pay_amount, mission.pay_unit);
+
   return (
-    <Link className="mission-card" to={`${basePath}/${mission.id}`}>
+    <Link
+      className={`mission-card${closed ? " is-closed" : ""}`}
+      to={`${basePath}/${mission.id}`}
+    >
       <div className="mission-media">
         <JobGlyph job={mission.job} />
         <span className={`mission-status ${status.className}`}>
@@ -132,6 +144,12 @@ export function MissionCard({
           <CalendarDays size={14} aria-hidden="true" />
           {missionSchedule(mission)}
         </p>
+        {pay && (
+          <p className="mission-meta mission-meta--pay">
+            <Coins size={14} aria-hidden="true" />
+            {pay}
+          </p>
+        )}
       </div>
       <div className="mission-foot">
         <span className="avatar-stack" aria-hidden="true">
@@ -155,11 +173,13 @@ export function MissionCard({
           <MatchBadge score={score} band={band} bandLabel={bandLabel} />
         )}
         <span className="circle-button" aria-hidden="true">
-          <ArrowRight size={15} />
+          {closed ? (
+            <Check size={14} strokeWidth={2.5} />
+          ) : (
+            <ArrowRight size={15} />
+          )}
         </span>
       </div>
     </Link>
   );
 }
-
-export { statusLabels };

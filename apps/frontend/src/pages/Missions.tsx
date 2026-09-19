@@ -1,6 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, BriefcaseBusiness, Check } from "lucide-react";
+import {
+  ArrowRight,
+  BriefcaseBusiness,
+  Check,
+  ChevronDown,
+  Sparkles,
+} from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { errorMessage } from "../services/session";
 import { MissionCard } from "../components/mission/MissionCard";
@@ -18,17 +24,28 @@ const steps = [
   "Accepter ou refuser chaque proposition",
 ];
 
+function SkeletonGrid() {
+  return (
+    <div className="mission-grid is-wide" aria-hidden="true">
+      {Array.from({ length: 6 }).map((_, index) => (
+        <div key={index} className="skeleton-card" />
+      ))}
+    </div>
+  );
+}
+
 /**
  * Missions offertes aux intérimaires.
  *
- * Toutes les missions publiées sont présentées, sans classement : le
- * rapprochement par affinité viendra au lot suivant et ordonnera cette même
- * liste. Rien n'est simulé — ce qui s'affiche vient du serveur.
+ * Le serveur envoie déjà la liste triée par compatibilité et n'y met que les
+ * missions réellement accessibles au profil. Le filtre par ville est un confort
+ * de lecture appliqué à ce résultat : il ne rejoue aucune règle de sélection.
  */
 export function Missions() {
   const { user, revision } = useAuth();
   const [missions, setMissions] = useState<OpenMission[]>([]),
     [excluded, setExcluded] = useState<Exclusions>(),
+    [filterCity, setFilterCity] = useState(""),
     [loading, setLoading] = useState(true),
     [error, setError] = useState("");
 
@@ -51,92 +68,159 @@ export function Missions() {
     // apparaît sans qu'il faille recharger la page.
   }, [revision]);
 
+  const cities = useMemo(
+    () =>
+      Array.from(new Set(missions.map((m) => m.city).filter(Boolean))).sort(),
+    [missions],
+  );
+
   if (!user || user.role !== "worker") return null;
   // Le serveur a déjà fait le tri : on n'affiche qu'une raison, celle qui
   // explique le plus grand nombre de missions manquantes.
   const reason = explainEmpty(excluded);
+  const shown = filterCity
+    ? missions.filter((m) => m.city === filterCity)
+    : missions;
 
   return (
-    <section className="page-wide">
-      <span className="eyeline">Espace intérimaire</span>
-      <h1>Missions disponibles</h1>
-      <p className="quiet page-lead">
-        Les missions qui correspondent à votre profil, à votre zone et à vos
-        disponibilités — de la plus compatible à la moins compatible.
-      </p>
-
-      {error && (
-        <p className="form-error" role="alert">
-          {error}
-        </p>
-      )}
-
-      {!error &&
-        (loading ? (
-          <p role="status" className="quiet">
-            Chargement des missions…
+    <div className="missions-page">
+      <div className="page-hero">
+        <div className="page-hero__inner">
+          <span className="eyeline">Espace intérimaire</span>
+          <h1>Missions disponibles</h1>
+          <p className="page-hero__lead">
+            Les missions qui correspondent à votre profil, à votre zone et à vos
+            disponibilités — de la plus compatible à la moins compatible.
           </p>
-        ) : missions.length > 0 ? (
-          <>
-            <p className="quiet" role="status">
-              {missions.length} mission{missions.length > 1 ? "s" : ""}{" "}
-              compatible
-              {missions.length > 1 ? "s" : ""} avec votre profil
-            </p>
-            <div className="mission-grid is-wide">
-              {missions.map((mission) => (
-                <MissionCard
-                  key={mission.id}
-                  mission={mission}
-                  basePath="/worker/missions"
-                  score={mission.match.score}
-                  band={mission.match.band}
-                  bandLabel={mission.match.band_label}
-                />
-              ))}
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="empty">
-              <BriefcaseBusiness aria-hidden="true" />
-              <h2>
-                {reason
-                  ? reason.title
-                  : "Aucune mission disponible pour le moment"}
-              </h2>
-              <p>
-                {reason
-                  ? reason.detail
-                  : "Aucune mission n’est publiée pour l’instant. Dès qu’un établissement en publie une qui vous correspond, elle apparaît ici."}
-              </p>
-              {reason ? (
-                <Link className="button" to={reason.action.to}>
-                  {reason.action.label}
-                  <ArrowRight size={16} aria-hidden="true" />
-                </Link>
-              ) : (
-                !user.onboarding_completed && (
-                  <Link className="button" to="/worker/profile">
-                    Compléter mon profil
-                  </Link>
-                )
-              )}
-            </div>
+        </div>
+      </div>
 
-            <section className="section">
-              <h2>Comment cela fonctionnera</h2>
-              <ol className="steps-list">
-                {steps.map((label) => (
-                  <li key={label}>
-                    <Check size={16} aria-hidden="true" />
-                    {label}
-                  </li>
-                ))}
-              </ol>
-            </section>
-          </>
-        ))}
-    </section>
+      <div className="missions-page__body">
+        {error && (
+          <p className="form-error" role="alert">
+            {error}
+          </p>
+        )}
+
+        {!error &&
+          (loading ? (
+            <>
+              <p role="status" className="sr-only">
+                Chargement des missions…
+              </p>
+              <SkeletonGrid />
+            </>
+          ) : missions.length > 0 ? (
+            <>
+              <div className="missions-toolbar">
+                <p className="missions-toolbar__count" role="status">
+                  <Sparkles size={15} aria-hidden="true" />
+                  <strong>{shown.length}</strong> mission
+                  {shown.length > 1 ? "s" : ""} compatible
+                  {shown.length > 1 ? "s" : ""}
+                  {filterCity ? ` à ${filterCity}` : " avec votre profil"}
+                </p>
+
+                {cities.length > 1 && (
+                  <div className="missions-toolbar__filter">
+                    <label htmlFor="filter-city" className="sr-only">
+                      Filtrer par ville
+                    </label>
+                    <div className="select-wrapper">
+                      <select
+                        id="filter-city"
+                        value={filterCity}
+                        onChange={(e) => setFilterCity(e.target.value)}
+                      >
+                        <option value="">Toutes les villes</option>
+                        {cities.map((city) => (
+                          <option key={city} value={city}>
+                            {city}
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown size={14} aria-hidden="true" />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {shown.length > 0 ? (
+                <div className="mission-grid is-wide">
+                  {shown.map((mission) => (
+                    <MissionCard
+                      key={mission.id}
+                      mission={mission}
+                      basePath="/worker/missions"
+                      score={mission.match.score}
+                      band={mission.match.band}
+                      bandLabel={mission.match.band_label}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="empty">
+                  <BriefcaseBusiness aria-hidden="true" />
+                  <h2>Aucune mission à {filterCity}</h2>
+                  <p>
+                    Essayez une autre ville ou revenez à l’ensemble des
+                    missions.
+                  </p>
+                  <button
+                    type="button"
+                    className="button"
+                    onClick={() => setFilterCity("")}
+                  >
+                    Voir toutes les missions
+                  </button>
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              <div className="empty">
+                <BriefcaseBusiness aria-hidden="true" />
+                <h2>
+                  {reason
+                    ? reason.title
+                    : "Aucune mission disponible pour le moment"}
+                </h2>
+                <p>
+                  {reason
+                    ? reason.detail
+                    : "Aucune mission n’est publiée pour l’instant. Dès qu’un établissement en publie une qui vous correspond, elle apparaît ici."}
+                </p>
+                {reason ? (
+                  <Link className="button" to={reason.action.to}>
+                    {reason.action.label}
+                    <ArrowRight size={16} aria-hidden="true" />
+                  </Link>
+                ) : (
+                  !user.onboarding_completed && (
+                    <Link className="button" to="/worker/profile">
+                      Compléter mon profil
+                    </Link>
+                  )
+                )}
+              </div>
+
+              <section className="how-it-works" aria-labelledby="how-title">
+                <h2 id="how-title">Comment cela fonctionnera</h2>
+                <ol className="how-steps">
+                  {steps.map((label, index) => (
+                    <li key={label} className="how-step">
+                      <span className="how-step__num" aria-hidden="true">
+                        {index + 1}
+                      </span>
+                      <Check size={14} aria-hidden="true" />
+                      <span>{label}</span>
+                    </li>
+                  ))}
+                </ol>
+              </section>
+            </>
+          ))}
+      </div>
+    </div>
   );
 }
