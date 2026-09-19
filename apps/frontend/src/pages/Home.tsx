@@ -11,6 +11,7 @@ import {
   Users,
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
+import { usePageSeo } from "../hooks/usePageSeo";
 import { destination } from "../services/session";
 
 const WORKER_FEATURES = [
@@ -68,6 +69,12 @@ const HOW_STEPS = [
 ];
 
 export function Home() {
+  usePageSeo({
+    title: "InteriMatch · Missions et recrutement en hôtellerie-restauration",
+    description:
+      "Plateforme de mise en relation entre professionnels et établissements de l’hôtellerie-restauration. Missions adaptées, compétences et disponibilités.",
+    robots: "index,follow",
+  });
   const { user } = useAuth();
 
   return (

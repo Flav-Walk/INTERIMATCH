@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { getSupabase } from "../services/supabase";
 import { destination, errorMessage, type User } from "../services/session";
 import { useAuth } from "../hooks/useAuth";
+import { usePageSeo } from "../hooks/usePageSeo";
 let completed: Promise<User> | null = null;
 let exchange: Promise<string> | null = null;
 function providerToken() {
@@ -25,6 +26,11 @@ function providerToken() {
   return exchange;
 }
 export function Callback() {
+  usePageSeo({
+    title: "Connexion en cours · InteriMatch",
+    description: "Authentification sécurisée InteriMatch.",
+    robots: "noindex,nofollow",
+  });
   const auth = useAuth(),
     navigate = useNavigate(),
     [error, setError] = useState("");

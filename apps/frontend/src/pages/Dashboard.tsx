@@ -9,6 +9,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
+import { usePageSeo } from "../hooks/usePageSeo";
 import {
   formatSlot,
   requirementLabels,
@@ -67,6 +68,16 @@ function ProfileStatus({
 
 export function Dashboard() {
   const { user, revision } = useAuth();
+  const isWorker = user?.role === "worker";
+  usePageSeo({
+    title: isWorker
+      ? "Tableau de bord intérimaire · InteriMatch"
+      : "Tableau de bord entreprise · InteriMatch",
+    description: isWorker
+      ? "Espace personnel intérimaire InteriMatch."
+      : "Espace établissement entreprise InteriMatch.",
+    robots: "noindex,nofollow",
+  });
   const [open, setOpen] = useState<OpenMission[]>([]);
   const [excluded, setExcluded] = useState<Exclusions>();
   const [mine, setMine] = useState<WorkerApplication[]>([]);
@@ -74,7 +85,6 @@ export function Dashboard() {
   const [applicationsError, setApplicationsError] = useState("");
   const [missionsLoading, setMissionsLoading] = useState(true);
   const [applicationsLoading, setApplicationsLoading] = useState(true);
-  const isWorker = user?.role === "worker";
 
   // Un aperçu des missions réellement offertes. Le tableau de bord annonçait
   // jusqu'ici une fonctionnalité à venir : elle existe maintenant.

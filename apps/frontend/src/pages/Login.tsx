@@ -1,12 +1,22 @@
 import { useId, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
+import { usePageSeo } from "../hooks/usePageSeo";
 import { destination, errorMessage } from "../services/session";
 import { getSupabase, supabaseConfigured } from "../services/supabase";
 import { PasswordField } from "../components/PasswordField";
 import { PasswordStrength } from "../components/PasswordStrength";
 import { MIN_PASSWORD_LENGTH } from "../services/password";
 export function Login({ register = false }: { register?: boolean }) {
+  usePageSeo({
+    title: register
+      ? "Créer un compte · InteriMatch"
+      : "Connexion · InteriMatch",
+    description: register
+      ? "Créer votre compte professionnel sur la plateforme InteriMatch."
+      : "Connexion à votre espace professionnel InteriMatch.",
+    robots: "noindex,nofollow",
+  });
   const auth = useAuth(),
     navigate = useNavigate();
   const [error, setError] = useState(""),
@@ -136,6 +146,16 @@ export function Login({ register = false }: { register?: boolean }) {
                 ? "Créer mon compte"
                 : "Me connecter"}
           </button>
+          {register && (
+            <p className="legal-notice">
+              En créant un compte, vous reconnaissez avoir pris connaissance de
+              notre{" "}
+              <Link to="/politique-confidentialite">
+                Politique de confidentialité
+              </Link>{" "}
+              et de nos <Link to="/mentions-legales">Mentions légales</Link>.
+            </p>
+          )}
         </form>
         <p className="form-switch">
           {register ? "Déjà inscrit ?" : "Pas encore de compte ?"}{" "}

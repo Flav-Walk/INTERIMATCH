@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { CalendarX2, MapPin, Users, Utensils } from "lucide-react";
 import { useCompanyData } from "../hooks/CompanyData";
+import { usePageSeo } from "../hooks/usePageSeo";
 import {
   applicationCandidateName,
   applicationLabels,
@@ -81,6 +82,11 @@ function Card({ application }: { application: CompanyApplication }) {
  * traite que les personnes qui ont réellement choisi de postuler.
  */
 export function CompanyApplicationsPage() {
+  usePageSeo({
+    title: "Candidatures reçues · InteriMatch",
+    description: "Consultation des candidatures pour vos missions.",
+    robots: "noindex,nofollow",
+  });
   const { applications, counts, loading, error } = useCompanyData();
   const [filter, setFilter] = useState<Filter>("pending");
 

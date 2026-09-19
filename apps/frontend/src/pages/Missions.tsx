@@ -9,6 +9,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
+import { usePageSeo } from "../hooks/usePageSeo";
 import { errorMessage } from "../services/session";
 import { MissionCard } from "../components/mission/MissionCard";
 import {
@@ -43,6 +44,11 @@ function SkeletonGrid() {
  * de lecture appliqué à ce résultat : il ne rejoue aucune règle de sélection.
  */
 export function Missions() {
+  usePageSeo({
+    title: "Vos propositions de mission · InteriMatch",
+    description: "Suivi des propositions de mission reçues.",
+    robots: "noindex,nofollow",
+  });
   const { user, revision } = useAuth();
   const [missions, setMissions] = useState<OpenMission[]>([]),
     [excluded, setExcluded] = useState<Exclusions>(),

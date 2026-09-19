@@ -7,7 +7,25 @@ import { AppLayout } from "./layouts/AppLayout";
 import { ProtectedRoute, PublicRoute } from "./components/Guards";
 import { Home } from "./pages/Home";
 import { Login } from "./pages/Login";
+import { MentionsLegales } from "./pages/MentionsLegales";
+import { PolitiqueConfidentialite } from "./pages/PolitiqueConfidentialite";
+import { Accessibilite } from "./pages/Accessibilite";
+import { usePageSeo } from "./hooks/usePageSeo";
 import "./styles/global.css";
+
+function NotFound() {
+  usePageSeo({
+    title: "Page introuvable · InteriMatch",
+    description: "La page demandée est introuvable sur InteriMatch.",
+    robots: "noindex,nofollow",
+  });
+  return (
+    <section className="login">
+      <h1>Page introuvable</h1>
+      <Link to="/">Revenir à l’accueil</Link>
+    </section>
+  );
+}
 
 /**
  * Chaque espace est chargé quand on y entre.
@@ -103,6 +121,12 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
               <Route path="register" element={<Login register />} />
             </Route>
             <Route path="auth/callback" element={<Callback />} />
+            <Route path="mentions-legales" element={<MentionsLegales />} />
+            <Route
+              path="politique-confidentialite"
+              element={<PolitiqueConfidentialite />}
+            />
+            <Route path="accessibilite" element={<Accessibilite />} />
 
             <Route element={<ProtectedRoute role="worker" />}>
               <Route path="worker">
@@ -160,12 +184,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
             />
             <Route
               path="*"
-              element={
-                <section className="login">
-                  <h1>Page introuvable</h1>
-                  <Link to="/">Revenir à l’accueil</Link>
-                </section>
-              }
+              element={<NotFound />}
             />
           </Route>
         </Routes>

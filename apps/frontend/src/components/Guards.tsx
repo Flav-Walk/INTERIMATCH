@@ -1,5 +1,6 @@
 import { Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
+import { usePageSeo } from "../hooks/usePageSeo";
 import { destination, type Role } from "../services/session";
 
 /**
@@ -7,6 +8,7 @@ import { destination, type Role } from "../services/session";
  * à chaque requête, qui relit le rôle en base et répond 403 pour un espace étranger.
  */
 export function ProtectedRoute({ role }: { role?: Role }) {
+  usePageSeo({ robots: "noindex,nofollow" });
   const { user, loading, loadError } = useAuth();
   if (loading) return <p role="status">Chargement de votre espace…</p>;
   if (loadError)

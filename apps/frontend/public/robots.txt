@@ -1,0 +1,6 @@
+User-agent: *
+Disallow: /worker
+Disallow: /company
+Disallow: /auth/
+
+Sitemap: https://interimatch-five.vercel.app/sitemap.xml

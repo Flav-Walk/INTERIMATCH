@@ -326,10 +326,14 @@ export function AppLayout() {
           <Sprout size={19} aria-hidden="true" />
           InteriMatch
         </span>
-        <span>Les talents d’aujourd’hui, vos réussites de demain.</span>
-        <nav aria-label="Liens utiles">
-          <span>Prototype · Hôtellerie &amp; restauration</span>
+        <nav aria-label="Informations légales" className="footer-links">
+          <NavLink to="/mentions-legales">Mentions légales</NavLink>
+          <NavLink to="/politique-confidentialite">
+            Politique de confidentialité
+          </NavLink>
+          <NavLink to="/accessibilite">Accessibilité : non conforme</NavLink>
         </nav>
+        <span>Prototype · Hôtellerie &amp; restauration</span>
       </footer>
       {runTour && user && (
         <GuidedTour

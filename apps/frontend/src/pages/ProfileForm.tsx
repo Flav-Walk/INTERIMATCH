@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
+import { usePageSeo } from "../hooks/usePageSeo";
 import {
   api,
   errorMessage,
@@ -38,6 +39,11 @@ function Field({
 }
 
 export function ProfileForm() {
+  usePageSeo({
+    title: "Mon établissement · InteriMatch",
+    description: "Gestion des informations de l’établissement.",
+    robots: "noindex,nofollow",
+  });
   const auth = useAuth(),
     { invalidate } = auth,
     navigate = useNavigate();
