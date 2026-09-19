@@ -218,7 +218,7 @@ test("une candidature refusée reste visible et ne redevient pas disponible", as
 
   await page.goto("/worker/missions");
   await expect(
-    page.getByRole("heading", { name: "Missions disponibles" }),
+    page.getByRole("heading", { name: "Missions disponibles", exact: true }),
   ).toBeVisible();
   await expect(
     page.locator(`a[href="/worker/missions/${missionId}"]`),

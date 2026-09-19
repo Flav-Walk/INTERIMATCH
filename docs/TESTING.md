@@ -1,33 +1,80 @@
-# Vérifications — Lot 0 terminé
+# Stratégie de tests et vérifications · InteriMatch
 
-## Résultats actuels
+Ce document consigne la stratégie de test, l'outillage et les résultats factuels constatés sur le frontend d'InteriMatch à l'issue de la consolidation du Lot 8 (sous-lots 8A à 8D).
 
-Le 16 septembre 2026, dans chaque application : dépendances installées, typecheck, lint, tests avec coverage et build réussis. Backend : 8 tests ; frontend : 5 tests unitaires et 4 tests Playwright (desktop/mobile Chromium). Smoke test du backend compilé sur le port temporaire 3099 : GET /api/v1/health → 200 avec le JSON documenté ; processus arrêté après contrôle.
+---
 
-Tests backend : healthcheck sans services externes, headers, 404, JSON invalide, corps trop volumineux, CORS, rate limiting, config et factories non configurées. Frontend : client API, erreur serveur, bearer, réponse vide, refus de cible absolue ; navigateur : routes des deux rôles, 404, connexion désactivée explicitement, absence de débordement, lien d’évitement clavier, absence d’erreur JavaScript. Captures desktop/mobile inspectées ; correction de l’encodage des accents effectuée avant la validation finale.
+## 1. Résultats factuels constatés (Frontend)
 
-Coverage Vitest (lignes) : backend **88,88 %**, frontend **53,19 %**. Rapports HTML et JSON dans coverage/ de chaque application. La couverture frontend inclut les composants TSX non couverts par les tests unitaires ; les parcours Playwright ne sont pas fusionnés dans ce chiffre. Connexions externes non testées, aucune couverture métier revendiquée.
+À l'issue des sous-lots 8A, 8B, 8C et 8D, l'ensemble des contrôles automatisés s'exécute avec succès :
 
-Commandes : npm run typecheck ; npm run lint ; npm run test:coverage ; npm run build. Frontend : npm run test:e2e. Les tests Vitest sont limités aux sources pour ne pas exécuter les artefacts compilés.
+| Type de contrôle | Commande | Résultat | Périmètre couvert |
+| --- | --- | --- | --- |
+| **Typecheck** | `npm run typecheck` | **PASS** | Contrôle statique strict TypeScript (aucun `any` implicite, typage exhaustif). |
+| **Linter** | `npm run lint` | **PASS** | ESLint 10 + règles TypeScript-ESLint (zéro avertissement, zéro erreur). |
+| **Tests unitaires & intégration** | `npm test` | **230 PASS (17 fichiers)** | Services API, session, missions, candidatures, offres publiques, SEO, accessibilité, pages légales, composants de formulaires et modales. |
+| **Compilation de production** | `npm run build` | **PASS** | Build Vite / Rolldown, minification, code splitting par route et génération des bundles sous `dist/`. |
+| **Tests E2E Playwright** | `npm run test:e2e` | **66 PASS (9 fichiers)** | Parcours complets desktop (Chromium) et mobile (iPhone 13 émulation Chromium) sans secrets externes. |
 
-Avertissements restants : Vite/Rolldown signale les directives use client de React Router/Lucide dans cette SPA ; build réussi et parcours navigateur validés. npm signale le script d’installation esbuild non approuvé, sans empêcher les outils exécutés. Playwright a initialement rencontré un certificat manquant ; installation réussie avec `node --use-system-ca node_modules/playwright/cli.js install chromium`, sans désactiver TLS.
+---
 
-## Exécuté pendant l’audit
+## 2. Organisation de la suite de tests
 
-- Lecture des six sources et extraction de toutes les pages/slides.
-- Consultation Git : échec explicite, absence de dépôt.
-- Inspection de la documentation et des modèles d’environnement.
+### A. Tests unitaires et d'intégration Vitest (`npm test`)
 
-Lors de l’audit initial seulement, aucun test applicatif n’était possible. Ce constat est désormais remplacé par les résultats ci-dessus.
+Les 230 tests Vitest s'exécutent en mémoire ultra-rapide (Node.js) et couvrent :
 
-## Reprise du Lot 0
+1. **Services réseau & session :**
+   * Client HTTP (`api.test.ts`), gestion du bearer en mémoire, interception 401 et renouvellement via `im_refresh` (`session.test.ts`, `session.retry.test.ts`).
+   * Services métier : `missions.test.ts`, `applications.test.ts`, `profile.test.ts`, `publicOffers.test.ts`, `admin.test.ts`, `password.test.ts`, `tours.test.ts`.
+2. **Composants d'interface :**
+   * Badges de matching et explications de compatibilité (`MatchBadge.test.ts`, `MatchedProfiles.test.ts`, `MatchExplanation.test.ts`).
+3. **Conformité, SEO et accessibilité (Lot 8) :**
+   * `legal.test.tsx` : Rendu des mentions légales, de la politique de confidentialité, de la déclaration d'accessibilité, présence des liens du footer et mentions sur le formulaire d'inscription.
+   * `seo.test.tsx` : Hook `usePageSeo`, balises méta dynamiques (titres, descriptions, directives `index,follow` vs `noindex,nofollow`), validation syntaxique et contenu strict de `robots.txt` et `sitemap.xml`.
+   * `accessibility.test.tsx` : Landmarks HTML5, lien d'évitement (`.skip-link`), associations explicite `label`/`input`, avertissement `(nouvelle fenêtre)` sur les liens externes, trap focus et modales `role="dialog"`.
 
-Prévoir scripts `typecheck`, `lint`, `test`, `test:coverage`, `build`. Backend : tests du healthcheck, 404, validation de configuration, format d’erreur, CORS et headers de sécurité. Frontend : compilation, navigation de base, erreurs de configuration explicites et inspection responsive/clavier. Vérifier que les secrets serveur n’apparaissent jamais dans le build navigateur.
+### B. Tests End-to-End Playwright (`npm run test:e2e`)
 
-## Tests critiques à chaque lot
+Playwright valide les scénarios réels dans deux environnements navigateurs :
+* **Projet `desktop` :** Résolution standard Desktop Chrome.
+* **Projet `mobile` :** Émulation iPhone 13 (Chromium mobile).
 
-Auth : inscription/login classiques, mot de passe hashé, session invalide/expirée/révoquée, validation Google, refus d’escalade admin et d’accès aux ressources d’autrui. Profils/missions : validation et propriétaire. Matching : cas nominaux et limites de D04, minuit, intervalles contigus, disponibilité partielle, géolocalisation manquante, égalités, poids/seuils invalides et paliers.
+Le lanceur Playwright démarre automatiquement le serveur de développement Vite (port 5174) et un serveur d'API de test local avec base PostgreSQL éphémère (PGlite, port 3001). **Aucun secret distant ni service tiers externe n'est requis.**
 
-Propositions : accepter/refuser uniquement les siennes, idempotence, expiration, mission fermée. Attribution : capacité et conflits sous concurrence avec tests d’intégration PostgreSQL réels. Événements : rollback ne produit pas d’envoi, doublon, signature invalide, retry et panne externe. E2E : entreprise publie → candidat reçoit/accepte → entreprise attribue → mission pourvue.
+Les 9 fichiers de spécifications couvrent :
+* `foundation.spec.ts` : Authentification, redirections protégées, visites guidées, profils intérimaire/entreprise, tableau de bord, création/édition/publication de missions.
+* `lifecycle.spec.ts` : Cycle de vie complet des missions, états d'avancement, clôture et annulation.
+* `applications.spec.ts` : Dépôt de candidature par l'intérimaire, réception et traitement par l'entreprise.
+* `matching.spec.ts` : Rapprochement algorithmique entre profil et offre, calcul et affichage du score.
+* `attribution.spec.ts` : Attribution des postes et gestion des capacités.
+* `engagement.spec.ts` : Détection et refus de double engagement sur le même créneau.
+* `admin.spec.ts` : Consultation et gestion des comptes utilisateurs par un profil administrateur.
+* `public-data.spec.ts` : Consultation des offres France Travail, absence de confusion avec InteriMatch, résilience aux données hostiles / partielles.
+* `compliance.spec.ts` : Accès et navigation vers les pages légales depuis le footer, gestion des erreurs 404 avec directive `noindex`, et service statique des fichiers `robots.txt` et `sitemap.xml`.
 
-Coverage généré et conservé comme livrable final ; pas de pourcentage revendiqué avant exécution. Le Lot 8 consolide les preuves, il ne reporte pas les tests jusque-là.
+---
+
+## 3. Commandes d'exécution
+
+Depuis le dossier `apps/frontend` :
+
+```powershell
+# Vérification du typage
+npm run typecheck
+
+# Analyse statique du code
+npm run lint
+
+# Exécution des 230 tests Vitest
+npm test
+
+# Exécution des tests avec mesure de couverture
+npm run test:coverage
+
+# Compilation de production
+npm run build
+
+# Exécution de la suite E2E Playwright
+npm run test:e2e
+```

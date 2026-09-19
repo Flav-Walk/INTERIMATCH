@@ -1,6 +1,6 @@
 # Document de conformité · InteriMatch
 
-Ce document consigne l'état factuel de conformité de la plateforme InteriMatch au terme du sous-lot 8C, couvrant le RGPD, l'accessibilité numérique (RGAA 4.1 / WCAG 2.1), l'écoconception numérique (RGESN) et le référencement (SEO).
+Ce document consigne l'état factuel de conformité de la plateforme InteriMatch au terme du Lot 8 (sous-lots 8A, 8B, 8C et 8D), couvrant le RGPD, l'accessibilité numérique (RGAA 4.1 / WCAG 2.1), l'écoconception numérique (RGESN), le référencement (SEO) et la recette de consolidation.
 
 ---
 
@@ -147,3 +147,38 @@ Tous les espaces protégés et parcours d'authentification sont strictement excl
 * Le fichier `public/robots.txt` autorise le moissonnage des pages publiques, interdit l'accès aux répertoires privés (`/worker/`, `/company/`, `/admin/`, `/auth/`), et référence le plan de site :
   `Sitemap: https://interimatch-five.vercel.app/sitemap.xml`
 * Le fichier `public/sitemap.xml` liste exhaustivement les 4 URLs publiques canoniques avec leur fréquence de modification et priorité.
+
+---
+
+## E. Synthèse et Recette du Lot 8 (Sous-lot 8D)
+
+### 1. Synthèse des sous-lots constitutifs
+* **Sous-lot 8A (Pages légales & RGPD) :**
+  * Création des routes et pages publiques `/mentions-legales`, `/politique-confidentialite` et `/accessibilite`.
+  * Intégration systématique des liens légaux au pied de page (`AppLayout.tsx`).
+  * Rappel d'information légale lors de l'inscription (`/register`).
+  * Formalisation des finalités, durées de conservation et mesures de sécurité technique (absence de traceurs publicitaires, stockage du token en mémoire, cookie HttpOnly `im_refresh`).
+* **Sous-lot 8B (Référencement naturel & SEO) :**
+  * Définition du domaine canonique de référence : `https://interimatch-five.vercel.app`.
+  * Méta-balises dynamiques gérées par le hook `usePageSeo` avec titres uniques et méta-descriptions pertinentes.
+  * Indexation stricte (`index,follow`) des 4 pages publiques et désindexation systématique (`noindex,nofollow`) des espaces d'authentification, espaces privés et de la page d'erreur 404 (`NotFound`).
+  * Création des fichiers `public/robots.txt` et `public/sitemap.xml` et réécriture préservée dans `vercel.json`.
+* **Sous-lot 8C (Accessibilité RGAA 4.1 & Écoconception RGESN) :**
+  * Accessibilité : statut légalement affiché « non conforme », landmarks sémantiques, lien d'évitement (`.skip-link` vers `#content`), associations `label`/`input` explicites, avertissement `(nouvelle fenêtre)` sur les liens externes, trap de tabulation sur la boîte de dialogue modale `GuidedTour`, support de `prefers-reduced-motion`.
+  * Écoconception (RGESN) : découpage du bundle par route via `React.lazy()` / `Suspense` (chargement à la demande), pagination bornée à 12 offres sur France Travail, absence totale de polling.
+* **Sous-lot 8D (Documentation & Recette de consolidation) :**
+  * Remise à niveau intégrale de la documentation obsolète (`README.md`, `apps/frontend/README.md`, `docs/DATA_PUBLIC.md`, `docs/TESTING.md`, `docs/DEPLOYMENT.md`).
+  * Documentation factuelle de l'intégration France Travail (table séparée `public_job_offers`, import par lot/fixture, aucune candidature InteriMatch, connecteur live non branché).
+  * Ajout de la suite de tests E2E `apps/frontend/e2e/compliance.spec.ts` validant en conditions réelles les pages légales, le footer, la page 404 noindex et les fichiers statiques SEO.
+
+### 2. Limites connues de la plateforme
+* **Accessibilité :** Déclaration de non-conformité maintenue tant qu'un audit formel complet des 106 critères du RGAA 4.1 n'a pas été conduit par un auditeur habilité.
+* **France Travail :** Les offres proviennent d'un import de données représentatives (fixture) dans la table `public_job_offers` et non d'une requête en temps réel vers l'API France Travail (provider live non activé).
+* **Données légales éditeur :** Raison sociale, SIRET, contact DPO et adresse du siège social sont indiqués sous la mention `[Information à compléter]`.
+* **Droits RGPD :** Aucun système d'export ou d'effacement autonome en libre-service n'est encore implémenté dans le prototype (exercice des droits sur demande manuelle).
+
+### 3. Contrôles manuels restants à effectuer
+* Restitution vocale intégrale avec lecteurs d'écran (NVDA sous Firefox, JAWS sous Chrome, VoiceOver sous Safari / iOS).
+* Parcours clavier intégral (sans souris) sur les formulaires complexes à étapes (sélection des disponibilités, création de mission).
+* Vérification du zoom typographique à 200 % et graphique à 400 % sur terminaux mobiles et tablettes.
+* Audit colorimétrique exhaustif de tous les états (:hover, :focus, :active, :disabled) dans les thèmes clair/sombre.
