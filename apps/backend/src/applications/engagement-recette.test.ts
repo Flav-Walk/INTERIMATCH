@@ -8,6 +8,10 @@ import type { Db } from "../db.js";
 import { AccountService } from "../auth/service.js";
 import { MissionService } from "../missions/service.js";
 import { ApplicationService } from "./service.js";
+import { memoryMediaService, uploadedMedia } from "../media/testing.js";
+
+// Stockage en memoire : la photo est desormais exigee a la publication.
+const missionMedia = memoryMediaService();
 
 /**
  * Recette technique de la migration 008 — conflits d'engagement.
@@ -38,7 +42,7 @@ const db: Db = {
     ),
 };
 const accounts = new AccountService(db);
-const missions = new MissionService(db);
+const missions = new MissionService(db, undefined, undefined, missionMedia);
 const applications = new ApplicationService(db);
 const app = createApp(
   readConfig({ NODE_ENV: "test", RATE_LIMIT: "5000" }),
@@ -98,6 +102,7 @@ async function published(
     min_years_experience: null,
     required_skill_ids: [],
     desired_skill_ids: [],
+    media: uploadedMedia(ownerId),
     ...window,
   });
   await missions.publish(ownerId, id);

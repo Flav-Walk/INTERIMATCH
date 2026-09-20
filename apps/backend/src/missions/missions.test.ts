@@ -10,6 +10,10 @@ import { WorkerService } from "../worker/service.js";
 import { MissionService, notOpenToWorkers } from "./service.js";
 import { MatchingService } from "../matching/service.js";
 import { missionCreateSchema } from "./schemas.js";
+import { memoryMediaService, uploadedMedia } from "../media/testing.js";
+
+// Stockage en memoire : la photo est desormais exigee a la publication.
+const missionMedia = memoryMediaService();
 
 const pg = new PGlite();
 const db: Db = {
@@ -27,7 +31,7 @@ const db: Db = {
 const geocode = vi.fn(async () => ({ latitude: 45.75, longitude: 4.85 }));
 const accounts = new AccountService(db);
 const workers = new WorkerService(db, geocode);
-const missions = new MissionService(db, geocode);
+const missions = new MissionService(db, geocode, undefined, missionMedia);
 const matching = new MatchingService(db, missions);
 const app = createApp(
   readConfig({
@@ -60,6 +64,7 @@ const draft = (over: Record<string, unknown> = {}) =>
     city: "Lyon",
     postal_code: "69002",
     ...day(4),
+    media: uploadedMedia(bossId),
     ...over,
   });
 
@@ -747,7 +752,9 @@ describe("missions — espace intérimaire", () => {
     const mine = await publish({ title: "Chez le boss" });
     const theirs = await missions.create(
       rivalId,
-      draft({ title: "Chez le rival" }),
+      // La photo appartient au rival : une entreprise ne peut associer que les
+      // siennes, et c'est bien lui qui publie cette mission.
+      draft({ title: "Chez le rival", media: uploadedMedia(rivalId) }),
     );
     await auth(
       request(app).post(`/api/v1/missions/${theirs}/publish`),
@@ -830,7 +837,7 @@ describe("missions — espace intérimaire", () => {
   it("supporte une entreprise qui n'a pas encore présenté son établissement", async () => {
     const orphan = await missions.create(
       rivalId,
-      draft({ title: "Sans vitrine" }),
+      draft({ title: "Sans vitrine", media: uploadedMedia(rivalId) }),
     );
     await auth(
       request(app).post(`/api/v1/missions/${orphan}/publish`),
@@ -873,7 +880,10 @@ describe("missions — données de démonstration", () => {
     // Une mission fictive, créée comme le seed la crée.
     demoMissionId = await missions.create(
       demoCompanyId,
-      draft({ title: "Mission fictive du seed" }),
+      draft({
+        title: "Mission fictive du seed",
+        media: uploadedMedia(demoCompanyId),
+      }),
       { demo: true },
     );
     await db.query(
@@ -987,7 +997,7 @@ describe("missions — données de démonstration", () => {
     // brouillon fictif reste invisible, même d'un compte fictif.
     const fictifNonPublie = await missions.create(
       demoCompanyId,
-      draft({ title: "Brouillon fictif" }),
+      draft({ title: "Brouillon fictif", media: uploadedMedia(demoCompanyId) }),
       { demo: true },
     );
     const visible = await ids(demoWorker);

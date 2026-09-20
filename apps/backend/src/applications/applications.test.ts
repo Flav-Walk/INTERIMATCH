@@ -10,6 +10,10 @@ import { MissionService } from "../missions/service.js";
 import { missionCreateSchema } from "../missions/schemas.js";
 import { ApplicationService } from "./service.js";
 import { createBusinessEvent } from "../events/business-event.js";
+import { memoryMediaService, uploadedMedia } from "../media/testing.js";
+
+// Stockage en memoire : la photo est desormais exigee a la publication.
+const missionMedia = memoryMediaService();
 
 const pg = new PGlite();
 const db: Db = {
@@ -25,7 +29,7 @@ const db: Db = {
     ),
 };
 const accounts = new AccountService(db);
-const missions = new MissionService(db);
+const missions = new MissionService(db, undefined, undefined, missionMedia);
 const applications = new ApplicationService(db);
 const app = createApp(
   readConfig({ NODE_ENV: "test", RATE_LIMIT: "1000" }),
@@ -53,6 +57,7 @@ const draft = (title: string, over: Record<string, unknown> = {}) =>
     city: "Lyon",
     postal_code: "69002",
     ...futureSlot(),
+    media: uploadedMedia(ownerId),
     ...over,
   });
 

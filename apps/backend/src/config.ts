@@ -40,6 +40,12 @@ export const environmentSchema = z.object({
   BREVO_API_KEY: optional,
   BREVO_SENDER_EMAIL: optional,
   BREVO_SENDER_NAME: optional,
+  // Clé d'ACCÈS Unsplash — celle que leur documentation appelle « Access Key »
+  // et transmet en `Authorization: Client-ID`. Elle reste côté serveur : le
+  // quota qu'elle porte est celui de l'application entière. Voir
+  // `media/unsplash.ts`. Absente, la bibliothèque est simplement désactivée et
+  // l'import depuis l'ordinateur reste disponible.
+  UNSPLASH_ACCESS_KEY: optional,
   N8N_WEBHOOK_URL: optionalUrl,
   N8N_WEBHOOK_SECRET: optional,
   WEBHOOK_SIGNING_SECRET: optional,

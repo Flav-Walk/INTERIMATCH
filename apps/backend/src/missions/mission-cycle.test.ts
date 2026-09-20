@@ -9,6 +9,10 @@ import { AccountService } from "../auth/service.js";
 import { ApplicationService } from "../applications/service.js";
 import { MissionService } from "./service.js";
 import { missionCreateSchema } from "./schemas.js";
+import { memoryMediaService, uploadedMedia } from "../media/testing.js";
+
+// Stockage en memoire : la photo est desormais exigee a la publication.
+const missionMedia = memoryMediaService();
 
 /**
  * Le cycle de vie d'une mission, joué de bout en bout contre une vraie base.
@@ -41,7 +45,7 @@ const db: Db = {
 
 const publish = vi.fn();
 const accounts = new AccountService(db);
-const missions = new MissionService(db, undefined, { publish });
+const missions = new MissionService(db, undefined, { publish }, missionMedia);
 const applications = new ApplicationService(db, { publish });
 const app = createApp(
   readConfig({ NODE_ENV: "test", RATE_LIMIT: "1000" }),
@@ -78,6 +82,7 @@ const draft = (title: string, over: Record<string, unknown> = {}) =>
     city: "Lyon",
     postal_code: "69002",
     ...slotAt(20, 9, 6),
+    media: uploadedMedia(ownerId),
     ...over,
   });
 

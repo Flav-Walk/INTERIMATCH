@@ -13,6 +13,10 @@ import {
   type BusinessEventType,
 } from "./business-event.js";
 import type { BusinessEventPublisher } from "./dispatcher.js";
+import { memoryMediaService, uploadedMedia } from "../media/testing.js";
+
+// Stockage en memoire : la photo est desormais exigee a la publication.
+const missionMedia = memoryMediaService();
 
 const pg = new PGlite();
 const db: Db = {
@@ -36,7 +40,7 @@ const publisher: BusinessEventPublisher = {
     return event;
   },
 };
-const missions = new MissionService(db, undefined, publisher);
+const missions = new MissionService(db, undefined, publisher, missionMedia);
 const applications = new ApplicationService(db, publisher);
 
 let companyId = "";
@@ -64,6 +68,7 @@ const draft = (title: string, over: Record<string, unknown> = {}) =>
     pay_unit: "hour",
     required_skill_ids: skillId ? [skillId] : [],
     ...futureSlot(),
+    media: uploadedMedia(companyId),
     ...over,
   });
 
@@ -371,7 +376,9 @@ describe("événements métier missions et candidatures", () => {
   it("ne mélange ni worker ni entreprise et accepte les profils optionnels absents", async () => {
     const missionId = await missions.create(
       otherCompanyId,
-      draft("Mission entreprise sans établissement"),
+      draft("Mission entreprise sans établissement", {
+        media: uploadedMedia(otherCompanyId),
+      }),
     );
     await missions.publish(otherCompanyId, missionId);
     const bareWorker = (

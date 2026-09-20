@@ -3,11 +3,14 @@ import { HttpError } from "../errors.js";
 import type { BusinessEventPublisher } from "../events/dispatcher.js";
 import { loadMissionEventData } from "../events/payloads.js";
 import type { Geocoder } from "../worker/geocode.js";
+import type { MissionMediaService } from "../media/service.js";
+import type { MissionMedia } from "../media/schemas.js";
 import { missionGroup, missionLifecycle } from "./lifecycle.js";
 import type { MissionGroup } from "./lifecycle.js";
 import {
   brokenRule,
   type Mission,
+  type MissionDraftInput,
   type MissionInput,
   type MissionPatch,
   type MissionSkill,
@@ -66,7 +69,7 @@ const COLUMNS = `m.id, m.company_id, m.title, m.description, m.job,
   m.starts_at, m.ends_at, m.address, m.city, m.postal_code,
   m.latitude, m.longitude, m.geocoded_at, m.pay_amount, m.pay_unit,
   m.headcount, m.min_years_experience, m.status, m.published_at,
-  m.demo, m.created_at, m.updated_at`;
+  m.demo, m.created_at, m.updated_at, m.media`;
 
 /**
  * Colonnes d'une mission telles qu'un intérimaire peut les voir, jointes aux
@@ -78,7 +81,7 @@ const OPEN_COLUMNS = `m.id, m.title, m.description, m.job,
   m.starts_at, m.ends_at, m.address, m.city, m.postal_code,
   m.latitude, m.longitude, m.geocoded_at, m.pay_amount, m.pay_unit,
   m.headcount, m.min_years_experience, m.status, m.published_at,
-  m.demo, m.created_at, m.updated_at,
+  m.demo, m.created_at, m.updated_at, m.media,
   c.establishment_name, c.sector, c.description AS company_description`;
 
 /**
@@ -151,7 +154,29 @@ export class MissionService {
     public db: Db,
     private geocode?: Geocoder,
     private events?: BusinessEventPublisher,
+    private media?: MissionMediaService,
   ) {}
+
+  /**
+   * Résout la photo envoyée par le client.
+   *
+   * Toujours HORS transaction : résoudre une photo Unsplash est un appel
+   * réseau, et le faire en tenant un verrou de ligne immobiliserait la mission
+   * pendant toute la latence d'un tiers.
+   */
+  private async resolveMedia(
+    companyId: string,
+    input: MissionInput["media"],
+  ): Promise<MissionMedia | null> {
+    if (input === null || input === undefined) return null;
+    if (!this.media)
+      throw new HttpError(
+        503,
+        "MEDIA_NOT_CONFIGURED",
+        "Le service de photos n'est pas configuré sur ce serveur.",
+      );
+    return this.media.resolve(companyId, input);
+  }
 
   private async attachSkills<T extends { id: string; skills: MissionSkill[] }>(
     missions: T[],
@@ -387,19 +412,20 @@ export class MissionService {
    */
   async create(
     companyId: string,
-    input: MissionInput,
+    input: MissionDraftInput,
     options: { demo?: boolean } = {},
   ) {
     const coordinates =
       this.geocode && (await this.geocode(input.city, input.postal_code));
+    const media = await this.resolveMedia(companyId, input.media ?? null);
     const skillIds = [...input.required_skill_ids, ...input.desired_skill_ids];
     return this.db.transaction(async (db) => {
       await this.assertKnownSkills(db, skillIds);
       const { rows } = await db.query<{ id: string }>(
         `INSERT INTO missions(company_id, title, description, job, starts_at, ends_at,
             address, city, postal_code, latitude, longitude, geocoded_at,
-            pay_amount, pay_unit, headcount, min_years_experience, demo)
-         VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
+            pay_amount, pay_unit, headcount, min_years_experience, demo, media)
+         VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
          RETURNING id`,
         [
           companyId,
@@ -419,6 +445,7 @@ export class MissionService {
           input.headcount,
           input.min_years_experience,
           options.demo ?? false,
+          media,
         ],
       );
       const id = rows[0].id;
@@ -474,8 +501,9 @@ export class MissionService {
       postal_code: string;
       pay_amount: string | null;
       pay_unit: string | null;
+      media: MissionMedia | null;
     }>(
-      `SELECT status, starts_at, ends_at, city, postal_code, pay_amount, pay_unit
+      `SELECT status, starts_at, ends_at, city, postal_code, pay_amount, pay_unit, media
          FROM missions WHERE id = $1 AND company_id = $2 FOR UPDATE`,
       [missionId, companyId],
     );
@@ -498,6 +526,14 @@ export class MissionService {
    * transaction : une compétence inconnue laisse la mission strictement intacte.
    */
   async update(companyId: string, missionId: string, patch: MissionPatch) {
+    // Résolue avant d'ouvrir la transaction : voir `resolveMedia`. `undefined`
+    // signifie « champ absent de la requête », donc « photo inchangée » — une
+    // distinction que `null`, qui veut dire « retire la photo », ne porte pas.
+    const nextMedia =
+      patch.media === undefined
+        ? undefined
+        : await this.resolveMedia(companyId, patch.media);
+    let replaced: MissionMedia | null = null;
     await this.db.transaction(async (db) => {
       const current = await this.lock(db, companyId, missionId);
       const keep = <T>(sent: T | undefined, stored: T) =>
@@ -538,6 +574,10 @@ export class MissionService {
       };
       for (const column of writableColumns)
         if (patch[column] !== undefined) set(column, patch[column]);
+      if (nextMedia !== undefined) {
+        replaced = current.media;
+        set("media", nextMedia);
+      }
 
       // Ne géocoder que si la localisation change réellement : une modification
       // de titre ne doit pas déclencher d'appel réseau.
@@ -588,6 +628,9 @@ export class MissionService {
         );
       }
     });
+    // Après COMMIT seulement : un fichier effacé alors que la transaction a été
+    // annulée laisserait une mission pointant vers une image disparue.
+    if (nextMedia !== undefined) await this.media?.discard(replaced, nextMedia);
     return this.get(companyId, missionId);
   }
 
@@ -705,6 +748,17 @@ export class MissionService {
     const eventData = await this.db.transaction(async (db) => {
       const current = await this.lock(db, companyId, missionId);
       this.assertTransition(current.status, "open");
+      // Une mission publiée est une offre montrée à des intérimaires : elle
+      // doit porter la photo de l'établissement qui la propose. Le déclencheur
+      // de la migration 010 tient la même règle pour toute écriture directe ;
+      // elle est énoncée ici pour que l'API réponde un message utile plutôt
+      // qu'une erreur de base.
+      if (!current.media)
+        throw new HttpError(
+          409,
+          "MISSION_MEDIA_REQUIRED",
+          "Ajoutez une photo pour publier cette mission.",
+        );
       if (new Date(current.starts_at).getTime() <= Date.now())
         throw new HttpError(
           409,

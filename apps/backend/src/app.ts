@@ -17,6 +17,8 @@ import { adminRouter } from "./admin/routes.js";
 import type { ApplicationService } from "./applications/service.js";
 import type { PublicJobOfferService } from "./public-data/service.js";
 import { publicJobOffersRouter } from "./public-data/routes.js";
+import type { MissionMediaService } from "./media/service.js";
+import { missionMediaRouter } from "./media/routes.js";
 import { requireAuth, requireRole } from "./auth/routes.js";
 import { HttpError } from "./errors.js";
 /**
@@ -68,6 +70,7 @@ export function createApp(
   admin?: AdminService,
   applications?: ApplicationService,
   publicOffers?: PublicJobOfferService,
+  missionMedia?: MissionMediaService,
 ) {
   const app = express();
   const logger = pino({
@@ -145,6 +148,19 @@ export function createApp(
       requireAuth(accounts),
       requireRole("worker"),
       publicJobOffersRouter(publicOffers),
+    );
+  // Photos de mission, sur leur PROPRE chemin.
+  //
+  // Jamais sur le préfixe `/api/v1` : `app.use(prefixe, mw, routeur)` exécute
+  // `mw` pour toute requête commençant par ce préfixe, pas seulement pour les
+  // chemins du routeur. Un garde posé là exigerait une session pour atteindre
+  // `/auth/login`, et rendrait l'application entière inaccessible.
+  if (accounts && missionMedia)
+    app.use(
+      "/api/v1/company/media",
+      requireAuth(accounts),
+      requireRole("company"),
+      missionMediaRouter(missionMedia),
     );
   if (accounts && admin)
     app.use("/api/v1/admin", requireAuth(accounts), adminRouter(admin));

@@ -14,6 +14,7 @@
     "build": "tsc -p tsconfig.build.json",
     "dev": "tsx watch src/server.ts",
     "start": "node dist/server.js",
+    "demo:local": "tsx src/scripts/local-demo-server.ts",
     "db:migrate": "tsx src/scripts/migrate.ts",
     "db:seed": "tsx src/scripts/seed.ts",
     "db:check": "tsx src/scripts/check-connections.ts",

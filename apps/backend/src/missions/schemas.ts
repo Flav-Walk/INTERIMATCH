@@ -1,5 +1,9 @@
 import { z } from "zod";
 import { jobValues, payUnitValues } from "../domain/reference.js";
+import {
+  missionMediaInputSchema,
+  type MissionMedia,
+} from "../media/schemas.js";
 import type {
   MissionGroup,
   MissionLifecycle,
@@ -44,6 +48,12 @@ const editableFields = {
   min_years_experience: z.number().min(0).max(60).nullable(),
   required_skill_ids: z.array(z.uuid()).max(20),
   desired_skill_ids: z.array(z.uuid()).max(20),
+  /**
+   * Photo de la mission. Le client la DÉSIGNE, il ne la décrit pas entièrement :
+   * une photo Unsplash n'est ici qu'un identifiant, que le serveur résout.
+   * `null` la retire — un brouillon a le droit de ne pas encore en avoir.
+   */
+  media: missionMediaInputSchema.nullable(),
 };
 
 /** État d'une mission suffisant pour juger de sa cohérence d'ensemble. */
@@ -114,6 +124,7 @@ export const missionCreateSchema = z
     min_years_experience: editableFields.min_years_experience.default(null),
     required_skill_ids: editableFields.required_skill_ids.default([]),
     desired_skill_ids: editableFields.desired_skill_ids.default([]),
+    media: editableFields.media.default(null),
   })
   .strict()
   .superRefine((mission, ctx) => {
@@ -143,6 +154,18 @@ export const missionListSchema = z
 
 export type MissionInput = z.infer<typeof missionCreateSchema>;
 export type MissionPatch = z.infer<typeof missionUpdateSchema>;
+
+/**
+ * Mission créée par un appelant interne — semence, fixtures de recette.
+ *
+ * `media` y est facultatif là où il est obligatoire dans `MissionInput` : le
+ * schéma lui donne `null` par défaut, mais ce défaut n'apparaît que dans le type
+ * de SORTIE de l'analyse. Un appelant qui construit l'objet à la main n'a pas à
+ * écrire `media: null` pour dire « brouillon sans photo ».
+ */
+export type MissionDraftInput = Omit<MissionInput, "media"> & {
+  media?: MissionInput["media"];
+};
 
 /**
  * Capacité de recrutement d'une mission.
@@ -241,5 +264,11 @@ export interface Mission {
   demo: boolean;
   created_at: string;
   updated_at: string;
+  /**
+   * Photo de la mission, ou `null`. Nulle sur les missions créées avant que la
+   * photo ne devienne obligatoire : la publication l'exige désormais, mais rien
+   * n'a été réécrit rétroactivement.
+   */
+  media: MissionMedia | null;
   skills: MissionSkill[];
 }

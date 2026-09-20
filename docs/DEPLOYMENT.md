@@ -43,3 +43,46 @@ Commandes fournies, NON exécutées. Push ultérieur par Flavien après fetch/v�
 | Render | backend | apps/backend | npm ci puis npm run build | npm start |
 
 Node 24. Backend prévu https://interimatch.onrender.com, healthcheck /api/v1/health. Réécriture SPA dans apps/frontend/vercel.json. VITE_API_URL inclut /api/v1 ; FRONTEND_URL est une origine sans slash final. Vérifier proxy/limiteur, HTTPS des bases, CORS, secrets et callbacks OAuth avant publication. Jamais de déploiement depuis main.
+
+## Photos de mission — à configurer avant la mise en production
+
+### 1. Compartiment Supabase Storage
+
+Créer un compartiment nommé **`mission-media`**, en accès **public en lecture**.
+
+L'écriture n'est jamais ouverte aux clients : elle passe par la clé de service
+déjà configurée (`SUPABASE_SECRET_KEY` ou `SUPABASE_SERVICE_ROLE_KEY`), donc par
+le backend, qui a préalablement vérifié le rôle et la propriété. Aucun jeton
+d'écriture n'atteint le navigateur.
+
+Sans ce compartiment, l'import échoue en `502 STORAGE_UNAVAILABLE` ; la
+bibliothèque Unsplash, elle, continue de fonctionner.
+
+### 2. Clé Unsplash
+
+Créer une application sur <https://unsplash.com/developers> et reporter sa
+**Access Key** dans `UNSPLASH_ACCESS_KEY`, **côté serveur uniquement**.
+
+- Ne jamais la préfixer `VITE_` : tout ce qui porte ce préfixe finit dans le
+  bundle navigateur.
+- Le quota est celui de l'application : 50 requêtes/heure en mode démonstration,
+  1000/heure une fois l'application validée par Unsplash. Une clé lisible
+  publiquement est un quota que n'importe qui peut épuiser.
+- Variable absente : la bibliothèque est désactivée proprement et l'import
+  depuis l'ordinateur reste la voie disponible.
+
+### 3. Migration
+
+`npm run db:migrate` applique `010_mission_media.sql`. Elle est **additive** :
+une colonne `media` nullable, sa contrainte de forme, et un déclencheur qui
+n'intervient qu'au passage d'une mission vers « publiée ». Les missions déjà
+publiées ne sont pas touchées et restent pilotables.
+
+### 4. Vérification après déploiement
+
+```
+POST /api/v1/auth/login        → 200   (l'API reste joignable)
+GET  /api/v1/company/media/unsplash?query=restaurant  → 200 en tant qu'entreprise
+POST /api/v1/company/media     → 201 avec une image JPEG
+POST /api/v1/missions/:id/publish sans photo → 409 MISSION_MEDIA_REQUIRED
+```

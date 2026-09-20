@@ -6,9 +6,26 @@ import { readConfig } from "../config.js";
 import { AccountService } from "../auth/service.js";
 import { WorkerService } from "../worker/service.js";
 import { MissionService } from "../missions/service.js";
+import { MissionMediaService } from "../media/service.js";
+import { localFixtureMediaStore } from "../media/testing.js";
 import { ApplicationService } from "../applications/service.js";
 import { PublicJobOfferService } from "../public-data/service.js";
 import type { Db } from "../db.js";
+
+/**
+ * Photo déterministe des missions de recette.
+ *
+ * Les jeux de données écrivent `status='open'` en SQL direct : ils franchissent
+ * donc le déclencheur de la migration 010, qui exige une photo à la publication.
+ * Ce chemin est servi par le frontend local ; il n'atteint jamais la production,
+ * qui ne charge aucun de ces scripts.
+ */
+const RECETTE_MEDIA = JSON.stringify({
+  provider: "upload",
+  url: "/images/fixtures/mission.jpg",
+  storage_path: "fixtures/mission.jpg",
+});
+
 if (process.env.NODE_ENV !== "test")
   throw new Error("Test server requires NODE_ENV=test");
 const pg = new PGlite();
@@ -43,6 +60,12 @@ await pg.exec(
      ('place.desktop@example.test','E2E'),('place.mobile@example.test','E2E'),
      ('fresh.desktop@example.test','E2E'),('fresh.mobile@example.test','E2E'),
      ('open.desktop@example.test','E2E'),('open.mobile@example.test','E2E'),
+     -- Photo d'une mission : un compte par scénario, pour que les quatre
+     -- parcours restent indépendants de leur ordre d'exécution.
+     ('photo.form.desktop@example.test','E2E'),('photo.form.mobile@example.test','E2E'),
+     ('photo.panne.desktop@example.test','E2E'),('photo.panne.mobile@example.test','E2E'),
+     ('photo.vide.desktop@example.test','E2E'),('photo.vide.mobile@example.test','E2E'),
+     ('photo.format.desktop@example.test','E2E'),('photo.format.mobile@example.test','E2E'),
      ('match.desktop@example.test','E2E'),('match.mobile@example.test','E2E'),
      -- Recette des conflits d'engagement : deux entreprises distinctes, pour
      -- que la seconde acceptation vienne réellement d'ailleurs.
@@ -62,7 +85,8 @@ await pg.exec(
 const geocode = async () => ({ latitude: 45.75, longitude: 4.85 });
 const accounts = new AccountService(db, undefined, geocode);
 const workers = new WorkerService(db, geocode);
-const missions = new MissionService(db, geocode);
+const missionMedia = new MissionMediaService(localFixtureMediaStore());
+const missions = new MissionService(db, geocode, undefined, missionMedia);
 const applications = new ApplicationService(db);
 const publicOffers = new PublicJobOfferService(db);
 
@@ -130,8 +154,8 @@ for (const project of projects) {
     });
     if (publish)
       await db.query(
-        "UPDATE missions SET status='open', published_at=now() WHERE id=$1",
-        [id],
+        "UPDATE missions SET status='open', published_at=now(), media=$2::jsonb WHERE id=$1",
+        [id, RECETTE_MEDIA],
       );
   }
 
@@ -160,8 +184,8 @@ for (const project of projects) {
     ...slot(4, 16, 8),
   });
   await db.query(
-    "UPDATE missions SET status='open', published_at=now() WHERE id=$1",
-    [applicationMissionId],
+    "UPDATE missions SET status='open', published_at=now(), media=$2::jsonb WHERE id=$1",
+    [applicationMissionId, RECETTE_MEDIA],
   );
   const rejectedMissionId = await missions.create(applicationCompany.id, {
     title: "Serveur candidature non retenue",
@@ -179,8 +203,8 @@ for (const project of projects) {
     ...slot(9, 16, 8),
   });
   await db.query(
-    "UPDATE missions SET status='open', published_at=now() WHERE id=$1",
-    [rejectedMissionId],
+    "UPDATE missions SET status='open', published_at=now(), media=$2::jsonb WHERE id=$1",
+    [rejectedMissionId, RECETTE_MEDIA],
   );
 
   // Intérimaire complet réservé au parcours E2E candidature. Les deux projets
@@ -263,8 +287,8 @@ for (const project of projects) {
       ...window,
     });
     await db.query(
-      "UPDATE missions SET status='open', published_at=now() WHERE id=$1",
-      [id],
+      "UPDATE missions SET status='open', published_at=now(), media=$2::jsonb WHERE id=$1",
+      [id, RECETTE_MEDIA],
     );
   }
 
@@ -356,8 +380,8 @@ for (const project of projects) {
     ...slot(12, 18, 5),
   });
   await db.query(
-    "UPDATE missions SET status='open', published_at=now() WHERE id=$1",
-    [missionId],
+    "UPDATE missions SET status='open', published_at=now(), media=$2::jsonb WHERE id=$1",
+    [missionId, RECETTE_MEDIA],
   );
 
   // Les deux projets Playwright partagent ce serveur, et une entreprise voit
@@ -486,8 +510,8 @@ for (const project of projects) {
     ...slot(15, 9, 6),
   });
   await db.query(
-    "UPDATE missions SET status='open', published_at=now() WHERE id=$1",
-    [missionId],
+    "UPDATE missions SET status='open', published_at=now(), media=$2::jsonb WHERE id=$1",
+    [missionId, RECETTE_MEDIA],
   );
 
   // Une mission déjà passée, pour que l'onglet « Terminées » ait de quoi se
@@ -511,11 +535,11 @@ for (const project of projects) {
   });
   await db.query(
     `UPDATE missions
-        SET status='open', published_at=now(),
+        SET status='open', published_at=now(), media=$2::jsonb,
             starts_at=now()-interval '10 hours',
             ends_at=now()-interval '4 hours'
       WHERE id=$1`,
-    [passeeId],
+    [passeeId, RECETTE_MEDIA],
   );
 
   // Prénoms propres au projet : les deux suites partagent ce serveur.
@@ -575,4 +599,5 @@ createApp(
   undefined,
   applications,
   publicOffers,
+  missionMedia,
 ).listen(3001, "127.0.0.1");

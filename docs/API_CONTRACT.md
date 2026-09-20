@@ -87,3 +87,66 @@ Réponse 404 :
 ```json
 {"error":{"code":"NOT_FOUND","message":"Offre publique introuvable.","request_id":"..."}}
 ```
+
+## Photo d'une mission (lot Média)
+
+Une mission InteriMatch porte une photo choisie par l'établissement. Elle est
+**obligatoire pour publier** ; un brouillon peut exister sans elle.
+
+### `POST /api/v1/company/media`
+
+Entreprise authentifiée. Corps = les octets de l'image, avec son type réel en
+`Content-Type` (`image/jpeg`, `image/png`, `image/webp`). Aucun `multipart` :
+un seul fichier est transporté, le corps EST ce fichier.
+
+| Réponse | Cas |
+| --- | --- |
+| `201` `{ provider, url, storage_path }` | Déposé |
+| `400 EMPTY_FILE` | Fichier vide |
+| `413 FILE_TOO_LARGE` | Au-delà de 5 Mio |
+| `415 UNSUPPORTED_MEDIA_TYPE` | Le contenu n'est pas une image — décidé sur les **octets**, pas sur l'en-tête |
+
+`storage_path` vaut `missions/<company_id>/<uuid>.<ext>`. Ce préfixe est ce qui
+rend la propriété vérifiable : une entreprise ne peut associer à sa mission
+qu'un fichier déposé sous le sien (`403 MEDIA_FORBIDDEN` sinon).
+
+### `GET /api/v1/company/media/unsplash?query=&page=`
+
+Entreprise authentifiée. Relais vers l'API Unsplash, dont la clé d'accès reste
+**côté serveur** : le quota qu'elle porte est celui de l'application entière.
+
+`503 UNSPLASH_NOT_CONFIGURED` · `UNSPLASH_UNAVAILABLE` · `UNSPLASH_RATE_LIMITED`
+selon le cas. Dans les trois, l'import depuis l'ordinateur reste disponible, et
+le message le dit.
+
+### Champ `media` d'une mission
+
+Le client **désigne** une photo, il ne la décrit pas :
+
+```jsonc
+{ "provider": "upload",   "storage_path": "missions/<id>/<uuid>.jpg" }
+{ "provider": "unsplash", "external_id": "<id photo>" }
+```
+
+Le serveur redérive l'URL d'un import, et va chercher la photo Unsplash chez
+Unsplash — l'adresse d'une image ne vient donc jamais de la requête. Il déclenche
+alors `links.download_location`, comme l'exigent les conditions d'utilisation
+d'Unsplash, et n'en conserve pas le lien.
+
+La mission servie porte le média complet : `url`, et pour Unsplash `thumb_url`,
+`author_name`, `author_url` (avec `utm_source`/`utm_medium`) — l'attribution due
+au photographe voyage avec la photo.
+
+`media` absent d'un `PATCH` signifie « inchangé » ; `null` retire la photo.
+
+### `POST /api/v1/missions/:id/publish`
+
+`409 MISSION_MEDIA_REQUIRED` — « Ajoutez une photo pour publier cette mission. »
+La même règle est tenue en base par un déclencheur (migration 010), qui ne juge
+que la **transition** vers « publiée » : les missions publiées avant cette
+évolution restent modifiables et annulables sans photo.
+
+### Offres France Travail
+
+Elles n'ont **aucune image**, d'aucune origine. Aucun visuel local, aucune photo
+Unsplash, aucun média prétendument fourni par la source.

@@ -9,6 +9,10 @@ import { AccountService } from "../auth/service.js";
 import { MissionService } from "../missions/service.js";
 import { WorkerService } from "../worker/service.js";
 import { missionCreateSchema } from "../missions/schemas.js";
+import { memoryMediaService, uploadedMedia } from "../media/testing.js";
+
+// Stockage en memoire : la photo est desormais exigee a la publication.
+const missionMedia = memoryMediaService();
 
 /**
  * Classement des missions proposées à un intérimaire.
@@ -49,7 +53,7 @@ const LYON = { latitude: 45.75, longitude: 4.85 };
 const geocode = vi.fn(async () => LYON);
 const accounts = new AccountService(db, undefined, geocode);
 const workers = new WorkerService(db, geocode);
-const missions = new MissionService(db, geocode);
+const missions = new MissionService(db, geocode, undefined, missionMedia);
 const app = createApp(
   readConfig({ NODE_ENV: "test", RATE_LIMIT: "1000" }),
   accounts,
@@ -102,6 +106,7 @@ async function missionAt(
       job: "serveur",
       city: "Lyon",
       postal_code: "69002",
+      media: uploadedMedia(companyId),
       ...slot(dayOffset),
     }),
   );

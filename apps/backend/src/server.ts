@@ -1,6 +1,10 @@
 import "dotenv/config";
 import pino from "pino";
 import { createApp } from "./app.js";
+import { createSupabaseAdmin } from "./integrations/clients.js";
+import { MissionMediaService } from "./media/service.js";
+import { createSupabaseMediaStore } from "./media/store.js";
+import { UnsplashService } from "./media/unsplash.js";
 import { readConfig } from "./config.js";
 import { createDatabase } from "./db.js";
 import { AccountService } from "./auth/service.js";
@@ -36,7 +40,26 @@ const events =
       )
     : undefined;
 const workers = db ? new WorkerService(db, geocoder, events) : undefined;
-const missions = db ? new MissionService(db, geocoder, events) : undefined;
+/**
+ * Photos de mission.
+ *
+ * Deux capacités indépendantes, et le service existe dès que l'une des deux est
+ * là : sans Supabase, pas d'import ; sans clé Unsplash, pas de bibliothèque —
+ * mais l'une ne conditionne jamais l'autre. C'est ce qui permet à l'import
+ * depuis l'ordinateur de rester disponible quand Unsplash ne l'est pas.
+ */
+const mediaStore = config.SUPABASE_URL
+  ? createSupabaseMediaStore(createSupabaseAdmin(config))
+  : undefined;
+const unsplash = config.UNSPLASH_ACCESS_KEY
+  ? new UnsplashService(config.UNSPLASH_ACCESS_KEY)
+  : undefined;
+const missionMedia = mediaStore
+  ? new MissionMediaService(mediaStore, unsplash)
+  : undefined;
+const missions = db
+  ? new MissionService(db, geocoder, events, missionMedia)
+  : undefined;
 const admin = db ? new AdminService(db) : undefined;
 const applications = db ? new ApplicationService(db, events) : undefined;
 const publicOffers = db ? new PublicJobOfferService(db) : undefined;
@@ -48,6 +71,7 @@ const server = createApp(
   admin,
   applications,
   publicOffers,
+  missionMedia,
 ).listen(config.PORT, () =>
   // Capacités réellement actives : une variable manquante se voit ici, au boot,
   // et non au moment où un utilisateur clique. Aucune valeur secrète n'est journalisée.
@@ -60,6 +84,8 @@ const server = createApp(
       google: Boolean(google),
       n8n_webhook: Boolean(events),
       public_offers: Boolean(publicOffers),
+      mission_media: Boolean(missionMedia),
+      unsplash: Boolean(unsplash),
       trust_proxy: config.TRUST_PROXY,
       frontend_url: config.FRONTEND_URL,
     }),

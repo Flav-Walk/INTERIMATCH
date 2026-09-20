@@ -5,6 +5,21 @@ import { AccountService, passwordHash } from "../auth/service.js";
 import { WorkerService } from "../worker/service.js";
 import { MissionService } from "../missions/service.js";
 import type { Profile } from "../auth/schemas.js";
+
+/**
+ * Photo déterministe des missions de recette.
+ *
+ * Les jeux de données écrivent `status='open'` en SQL direct : ils franchissent
+ * donc le déclencheur de la migration 010, qui exige une photo à la publication.
+ * Ce chemin est servi par le frontend local ; il n'atteint jamais la production,
+ * qui ne charge aucun de ces scripts.
+ */
+const RECETTE_MEDIA = JSON.stringify({
+  provider: "upload",
+  url: "/images/fixtures/mission.jpg",
+  storage_path: "fixtures/mission.jpg",
+});
+
 const config = readConfig(process.env);
 if (config.NODE_ENV === "production" || process.env.ALLOW_DEMO_SEED !== "true")
   throw new Error(
@@ -216,8 +231,8 @@ async function seedMissions(companyId: string) {
     );
     if (publish)
       await db.query(
-        "UPDATE missions SET status='open', published_at=now() WHERE id=$1",
-        [id],
+        "UPDATE missions SET status='open', published_at=now(), media=$2::jsonb WHERE id=$1",
+        [id, RECETTE_MEDIA],
       );
   }
   console.info("Demo missions ready:", drafts.length);

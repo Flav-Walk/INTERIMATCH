@@ -11,6 +11,10 @@ import { MissionService } from "../missions/service.js";
 import { AdminService } from "../admin/service.js";
 import { ApplicationService } from "../applications/service.js";
 import { PublicJobOfferService } from "./service.js";
+import { memoryMediaService } from "../media/testing.js";
+
+// Stockage en memoire : la photo est desormais exigee a la publication.
+const missionMedia = memoryMediaService();
 
 describe("Routing regression: public offers isolation and historical routes", () => {
   const pg = new PGlite();
@@ -30,7 +34,7 @@ describe("Routing regression: public offers isolation and historical routes", ()
   const geocode = async () => ({ latitude: 45.75, longitude: 4.85 });
   const accounts = new AccountService(db, undefined, geocode);
   const workers = new WorkerService(db, geocode);
-  const missions = new MissionService(db, geocode);
+  const missions = new MissionService(db, geocode, undefined, missionMedia);
   const admin = new AdminService(db);
   const applications = new ApplicationService(db);
   const publicOffers = new PublicJobOfferService(db);
@@ -137,7 +141,10 @@ describe("Routing regression: public offers isolation and historical routes", ()
       const badLoginRes = await request(app)
         .post("/api/v1/auth/login")
         .set("Origin", origin)
-        .send({ email: "worker.routing@example.test", password: "wrong-password" });
+        .send({
+          email: "worker.routing@example.test",
+          password: "wrong-password",
+        });
 
       expect(badLoginRes.status).toBe(401);
       expect(badLoginRes.body.error.code).toBe("INVALID_CREDENTIALS");
