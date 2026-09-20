@@ -173,6 +173,19 @@ test("la dernière place attribuée ferme le recrutement, des deux côtés", asy
     name: "Vos prochaines missions",
   });
   await expect(confirmees).toContainText(titre);
+  // Le raccourci global reste dans la navigation ; le répéter dans ce bloc
+  // détournait l'attention de son action utile, l'accès à la mission confirmée.
+  await expect(
+    page
+      .getByRole("navigation", { name: "Navigation principale" })
+      .getByRole("link", { name: "Mes candidatures" }),
+  ).toBeVisible();
+  await expect(
+    confirmees.getByRole("link", { name: "Mes candidatures" }),
+  ).toHaveCount(0);
+  await expect(
+    confirmees.getByRole("link", { name: "Voir la mission" }),
+  ).toBeVisible();
   await expect(
     confirmees.locator(".mission-context-status.is-confirmed"),
   ).toHaveCount(1);

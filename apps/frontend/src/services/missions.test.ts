@@ -12,6 +12,7 @@ import {
   emptyMission,
   explainEmpty,
   formToMission,
+  fromLocalInput,
   missionDaysOfMonth,
   missionDiff,
   missionStatePresentation,
@@ -20,6 +21,7 @@ import {
   missionTemporalState,
   missionToForm,
   searchMissions,
+  toLocalInput,
   upcomingMissions,
   validateMission,
   type Mission,
@@ -577,6 +579,30 @@ describe("préremplissage du formulaire", () => {
 });
 
 describe("corps envoyé à l'API", () => {
+  it("conserve exactement une mission créée le même jour, sans ajouter un an", () => {
+    const values: MissionFormValues = {
+      ...emptyMission,
+      starts_at: "2026-09-25T10:00",
+      ends_at: "2026-09-25T23:59",
+    };
+    const sent = formToMission(values);
+
+    expect(toLocalInput(sent.starts_at)).toBe(values.starts_at);
+    expect(toLocalInput(sent.ends_at)).toBe(values.ends_at);
+  });
+
+  it("conserve exactement une mission qui traverse minuit", () => {
+    const values: MissionFormValues = {
+      ...emptyMission,
+      starts_at: "2026-09-25T18:00",
+      ends_at: "2026-09-26T02:00",
+    };
+    const sent = formToMission(values);
+
+    expect(toLocalInput(sent.starts_at)).toBe(values.starts_at);
+    expect(toLocalInput(sent.ends_at)).toBe(values.ends_at);
+  });
+
   it("n'envoie aucun champ décidé par le serveur", () => {
     const keys = Object.keys(formToMission(missionToForm(stored()))).sort();
     for (const forbidden of [
@@ -684,6 +710,22 @@ describe("écart envoyé en modification", () => {
       pay_unit: null,
     });
   });
+
+  it("transmet les dates modifiées sans changer leur année", () => {
+    const before = base();
+    const after = {
+      ...before,
+      starts_at: fromLocalInput("2026-09-25T10:00"),
+      ends_at: fromLocalInput("2026-09-25T23:59"),
+    };
+
+    expect(missionDiff(before, after)).toEqual({
+      starts_at: after.starts_at,
+      ends_at: after.ends_at,
+    });
+    expect(toLocalInput(after.starts_at)).toBe("2026-09-25T10:00");
+    expect(toLocalInput(after.ends_at)).toBe("2026-09-25T23:59");
+  });
 });
 
 describe("validations de saisie", () => {
@@ -726,6 +768,14 @@ describe("validations de saisie", () => {
     const errors = validateMission({
       ...filled(),
       ends_at: "2027-03-14T17:00",
+    });
+    expect(errors.ends_at).toBe("La fin doit suivre le début.");
+  });
+
+  it("refuse une fin identique au début", () => {
+    const errors = validateMission({
+      ...filled(),
+      ends_at: "2027-03-14T18:00",
     });
     expect(errors.ends_at).toBe("La fin doit suivre le début.");
   });

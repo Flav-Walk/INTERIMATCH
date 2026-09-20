@@ -229,9 +229,6 @@ export function Dashboard() {
                         : "Vos prochaines missions"}
                     </h2>
                   </div>
-                  <Link className="quiet" to="/worker/applications">
-                    Mes candidatures
-                  </Link>
                 </div>
                 {applicationsLoading ? (
                   <p className="quiet" role="status">
