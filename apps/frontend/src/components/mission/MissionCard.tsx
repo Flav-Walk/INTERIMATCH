@@ -24,10 +24,17 @@ const frenchHour = (date: Date) => {
   return minutes ? `${hours}h${String(minutes).padStart(2, "0")}` : `${hours}h`;
 };
 
-/** « 12 oct. 2026 · 18h – 02h » */
+/** Une fin sur un autre jour est toujours datée : l'omettre masque la durée. */
 export function missionSchedule(mission: Mission) {
   const start = new Date(mission.starts_at);
-  return `${dayMonth.format(start)} · ${frenchHour(start)} – ${frenchHour(new Date(mission.ends_at))}`;
+  const end = new Date(mission.ends_at);
+  const sameDay =
+    start.getFullYear() === end.getFullYear() &&
+    start.getMonth() === end.getMonth() &&
+    start.getDate() === end.getDate();
+  return sameDay
+    ? `${dayMonth.format(start)} · ${frenchHour(start)} – ${frenchHour(end)}`
+    : `${dayMonth.format(start)} · ${frenchHour(start)} – ${dayMonth.format(end)} · ${frenchHour(end)}`;
 }
 
 /** Rémunération lisible, ou `null` quand le montant et son unité manquent. */

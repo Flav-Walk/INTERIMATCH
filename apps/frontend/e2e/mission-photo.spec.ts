@@ -47,11 +47,20 @@ async function completeTour(page: Page) {
 const JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46]);
 
 async function remplirMission(page: Page, titre: string) {
+  const starts = new Date();
+  starts.setDate(starts.getDate() + 14);
+  starts.setHours(18, 0, 0, 0);
+  const ends = new Date(starts);
+  ends.setHours(23, 0, 0, 0);
+  const localInput = (date: Date) => {
+    const pad = (value: number) => String(value).padStart(2, "0");
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  };
   await page.goto("/company/missions/new");
   await page.getByLabel("Intitulé de la mission").fill(titre);
   await page.getByLabel("Métier recherché").selectOption("serveur");
-  await page.getByLabel("Début").fill("2027-11-12T18:00");
-  await page.getByLabel("Fin").fill("2027-11-12T23:00");
+  await page.getByLabel("Début").fill(localInput(starts));
+  await page.getByLabel("Fin").fill(localInput(ends));
   await page.getByLabel("Ville").fill("Lyon");
   await page.getByLabel("Code postal").fill("69002");
 }
@@ -85,6 +94,7 @@ const PHOTO = {
 test("une mission ne se publie pas sans photo, et l'entreprise en choisit une", async ({
   page,
 }, testInfo) => {
+  test.setTimeout(60_000);
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await nouvelleEntreprise(
@@ -92,6 +102,11 @@ test("une mission ne se publie pas sans photo, et l'entreprise en choisit une", 
     `photo.form.${testInfo.project.name}@example.test`,
   );
   await completeTour(page);
+  // La photo résolue par la doublure backend conserve une URL Unsplash. Le
+  // navigateur sert ici l'octet local : aucune requête ne quitte la recette.
+  await page.route("https://images.unsplash.com/**", (route) =>
+    route.fulfill({ status: 200, contentType: "image/jpeg", body: JPEG }),
+  );
 
   // ---- Sans photo : refus annoncé, et annoncé avec le bon mot -------------
   await remplirMission(page, `Photo obligatoire ${testInfo.project.name}`);
@@ -154,20 +169,16 @@ test("une mission ne se publie pas sans photo, et l'entreprise en choisit une", 
     /utm_source=interimatch/,
   );
 
-  // ---- Retour à un import, puis enregistrement ----------------------------
-  await fileInput(page).setInputFiles({
-    name: "autre.jpg",
-    mimeType: "image/jpeg",
-    buffer: JPEG,
-  });
-  await expect(page.locator(".photo-field .photo-credit")).toHaveCount(0);
-
+  // ---- Enregistrement du choix Unsplash -----------------------------------
   await page.getByRole("button", { name: "Enregistrer le brouillon" }).click();
   await expect(page).toHaveURL(/\/company\/missions\/[0-9a-f-]{36}$/);
   const missionUrl = page.url();
 
   // ---- La photo suit la mission ------------------------------------------
   await expect(page.locator(".mission-photo img")).toBeVisible();
+  await expect(page.locator(".mission-photo .photo-credit")).toContainText(
+    "Camille Photographe",
+  );
   await page.screenshot({
     path: testInfo.outputPath("mission-photo.png"),
     fullPage: true,
@@ -184,6 +195,9 @@ test("une mission ne se publie pas sans photo, et l'entreprise en choisit une", 
     .click();
   await expect(page).toHaveURL(new RegExp(missionUrl.split("/").pop()!));
   await expect(page.locator(".mission-photo img")).toBeVisible();
+  await expect(page.locator(".mission-photo .photo-credit")).toContainText(
+    "Camille Photographe",
+  );
 
   // ---- Publication, maintenant possible -----------------------------------
   await page.getByRole("button", { name: "Publier la mission" }).click();
@@ -193,6 +207,29 @@ test("une mission ne se publie pas sans photo, et l'entreprise en choisit une", 
     .click();
   await expect(page.locator(".mission-status").first()).toHaveText(
     "À pourvoir",
+  );
+
+  // ---- Même photo côté intérimaire ---------------------------------------
+  await page.locator('summary[aria-label="Mon compte"]').click();
+  await page.getByRole("button", { name: "Se déconnecter" }).click();
+  await page.goto("/login");
+  await page
+    .getByLabel("Email", { exact: true })
+    .fill(`scoring.fort.${testInfo.project.name}@example.test`);
+  await page.getByLabel("Mot de passe", { exact: true }).fill(PASSWORD);
+  await page.getByRole("button", { name: "Me connecter" }).click();
+  await expect(page).toHaveURL(/\/worker$/);
+  await page.goto("/worker/missions");
+  const card = page.locator(".mission-card", {
+    has: page.getByRole("heading", {
+      name: `Photo conservée ${testInfo.project.name}`,
+    }),
+  });
+  await expect(card.locator(".job-visual")).toBeVisible();
+  await card.click();
+  await expect(page.locator(".detail-hero__photo img")).toBeVisible();
+  await expect(page.locator(".detail-hero__photo .photo-credit")).toContainText(
+    "Camille Photographe",
   );
 
   expect(errors).toEqual([]);

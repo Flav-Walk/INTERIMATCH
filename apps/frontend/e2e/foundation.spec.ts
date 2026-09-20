@@ -342,7 +342,8 @@ test("the allowlisted address gets the company space and its own tour", async ({
     page.getByRole("heading", { name: "Candidatures", level: 1 }),
   ).toBeVisible();
   // L'ecran ne promet plus un moteur « a venir » : il annonce ce qu'il montre.
-  await expect(page.locator(".page-lead")).toContainText("ont postulé");
+  await expect(page.locator(".brand-hero")).toContainText("ont postulé");
+  await expect(page.locator(".brand-hero__mascot")).toHaveCount(1);
   await page.goto("/worker");
   await expect(page).toHaveURL(/\/company$/);
 
@@ -595,6 +596,7 @@ test("the company workspace lists real missions with the maquette layout", async
   await expect(
     page.getByRole("heading", { name: /Prêt à renforcer votre équipe/ }),
   ).toBeVisible();
+  await expect(page.locator(".brand-hero__mascot")).toHaveCount(1);
 
   // Les missions publiées par la fixture sont réellement affichées.
   // L'onglet groupe par statut serveur et s'appelle « Publiées » ; le badge
@@ -628,6 +630,7 @@ test("the company workspace lists real missions with the maquette layout", async
   // Liste complète et recherche depuis l'en-tête.
   await header.getByRole("link", { name: "Missions", exact: true }).click();
   await expect(page).toHaveURL(/\/company\/missions$/);
+  await expect(page.locator(".brand-hero__mascot")).toHaveCount(1);
   await expect(page.locator(".mission-card")).toHaveCount(3);
   await header.getByRole("searchbox").fill("villeurbanne");
   await header.getByRole("searchbox").press("Enter");
@@ -1073,7 +1076,9 @@ test("the establishment is located from its address alone", async ({
   // L'onboarding terminé renvoie vers l'espace entreprise.
   await expect(page).toHaveURL(/\/company$/);
   // L'établissement est persisté : la maquette le reprend dans son bandeau.
-  await expect(page.locator(".hero-badge")).toHaveText("Brasserie du Quai");
+  await expect(page.locator(".brand-hero__eyeline")).toHaveText(
+    "Brasserie du Quai",
+  );
   await expect(
     page.getByRole("link", { name: "Créer une mission" }).first(),
   ).toBeEnabled();

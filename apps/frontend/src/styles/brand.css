@@ -204,6 +204,19 @@
   margin-inline: 0;
 }
 
+/* Même signature visuelle pour l'espace entreprise, avec une largeur alignée
+   sur ses grilles métier plutôt qu'une copie de la mise en page worker. */
+.company-brand-hero {
+  width: 100%;
+  max-width: 1280px;
+  margin: var(--space-5) auto 0;
+  padding-inline: 1.5rem;
+}
+
+.company-brand-hero > .brand-hero {
+  margin-bottom: 0;
+}
+
 .worker-profile form {
   gap: var(--space-3);
 }

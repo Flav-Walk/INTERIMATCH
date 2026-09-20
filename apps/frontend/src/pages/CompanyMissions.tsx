@@ -4,6 +4,7 @@ import { ArrowRight, BriefcaseBusiness, Plus, SearchX, X } from "lucide-react";
 import { errorMessage } from "../services/session";
 import { useAuth } from "../hooks/useAuth";
 import { MissionCard } from "../components/mission/MissionCard";
+import { HeroBanner } from "../components/HeroBanner";
 import {
   listMissions,
   missionTabs,
@@ -63,17 +64,20 @@ export function CompanyMissions() {
 
   return (
     <div className="missions-list-page">
-      <div className="page-hero">
-        <div className="page-hero__inner page-hero__inner--space">
-          <div>
-            <span className="eyeline">Espace entreprise</span>
-            <h1>Vos missions</h1>
-          </div>
-          <Link className="dashboard-hero__cta" to="/company/missions/new">
-            <Plus size={16} aria-hidden="true" />
-            Créer une mission
-          </Link>
-        </div>
+      <div className="company-brand-hero">
+        <HeroBanner
+          compact
+          eyeline="Espace entreprise"
+          title="Vos missions"
+          subtitle="Préparez, publiez et suivez chaque besoin de renfort depuis un seul espace."
+          mascotPose="missions"
+          action={
+            <Link className="brand-hero__link" to="/company/missions/new">
+              <Plus size={16} aria-hidden="true" />
+              Créer une mission
+            </Link>
+          }
+        />
       </div>
 
       <div className="missions-list-body">

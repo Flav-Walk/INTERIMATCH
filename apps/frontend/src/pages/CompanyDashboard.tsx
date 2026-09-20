@@ -5,7 +5,6 @@ import {
   Building2,
   BriefcaseBusiness,
   Plus,
-  Utensils,
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { errorMessage } from "../services/session";
@@ -14,6 +13,7 @@ import { RecentApplications } from "../components/applications/RecentApplication
 import { useCompanyData } from "../hooks/CompanyData";
 import { pendingByMission } from "../services/applications";
 import { PlanningCard } from "../components/mission/PlanningCard";
+import { HeroBanner } from "../components/HeroBanner";
 import {
   listMissions,
   missionTabs,
@@ -86,31 +86,23 @@ export function CompanyDashboard() {
         </p>
       )}
 
-      <div className="dashboard-hero" data-tour="profile-status">
-        <div className="dashboard-hero__inner">
-          <div className="dashboard-hero__body">
-            <span className="hero-badge">
-              {p.establishment_name ?? "Votre établissement"}
-            </span>
-            <h1 className="dashboard-hero__title">
-              {user.first_name ? `Bonjour ${user.first_name},` : "Bonjour,"}
-              <span className="dashboard-hero__sub">
-                Prêt à renforcer votre équipe&nbsp;?
-              </span>
-            </h1>
-            <p className="dashboard-hero__lead">
-              Publiez une mission en quelques minutes et trouvez des talents
-              qualifiés près de chez vous.
-            </p>
-            <Link className="dashboard-hero__cta" to="/company/missions/new">
+      <div className="company-brand-hero" data-tour="profile-status">
+        <HeroBanner
+          eyeline={p.establishment_name ?? "Espace entreprise"}
+          title={
+            user.first_name
+              ? `Bonjour ${user.first_name}, prêt à renforcer votre équipe ?`
+              : "Prêt à renforcer votre équipe ?"
+          }
+          subtitle="Publiez une mission en quelques minutes et suivez les candidatures qualifiées près de chez vous."
+          mascotPose="dashboard"
+          action={
+            <Link className="brand-hero__link" to="/company/missions/new">
               <Plus size={18} aria-hidden="true" />
               Créer une mission
             </Link>
-          </div>
-          <div className="dashboard-hero__media" aria-hidden="true">
-            <Utensils />
-          </div>
-        </div>
+          }
+        />
       </div>
 
       <div className="dashboard-body">

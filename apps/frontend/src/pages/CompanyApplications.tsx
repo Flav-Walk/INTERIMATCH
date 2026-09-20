@@ -10,6 +10,7 @@ import {
   type CompanyApplication,
 } from "../services/applications";
 import { ApplicationStatus as StatusBadge } from "../components/applications/ApplicationStatus";
+import { HeroBanner } from "../components/HeroBanner";
 
 const when = new Intl.DateTimeFormat("fr-FR", {
   weekday: "short",
@@ -107,12 +108,13 @@ export function CompanyApplicationsPage() {
 
   return (
     <section className="page-wide">
-      <span className="eyeline">Espace entreprise</span>
-      <h1>Candidatures</h1>
-      <p className="quiet page-lead">
-        Les intérimaires qui ont postulé à vos missions. Chaque candidature se
-        traite depuis la mission concernée.
-      </p>
+      <HeroBanner
+        compact
+        eyeline="Espace entreprise"
+        title="Candidatures"
+        subtitle="Les intérimaires qui ont postulé à vos missions. Chaque candidature se traite depuis la mission concernée."
+        mascotPose="profile"
+      />
 
       {error && (
         <p className="form-error" role="alert">
