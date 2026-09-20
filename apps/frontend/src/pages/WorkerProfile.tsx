@@ -10,6 +10,7 @@ import { useLocation } from "react-router-dom";
 import {
   Award,
   BriefcaseBusiness,
+  CalendarDays,
   Check,
   MapPin,
   Pencil,
@@ -506,6 +507,7 @@ export function WorkerProfile() {
           <ProfileSection
             title="Votre identité"
             icon={<UserRound size={18} />}
+            className="profile-section--identity"
             missing={missingIn(user.missing_requirements, "Votre identité")}
           >
             <div className="form-grid">
@@ -545,39 +547,42 @@ export function WorkerProfile() {
           <ProfileSection
             title="Votre métier"
             icon={<BriefcaseBusiness size={18} />}
+            className="profile-section--job"
             missing={missingIn(user.missing_requirements, "Votre métier")}
             hint="Le métier principal sert au rapprochement avec les missions."
           >
-            <label>
-              Métier principal
-              <select
-                name="main_job"
-                value={draft.main_job}
-                onChange={(event) => update("main_job", event.target.value)}
-              >
-                <option value="">Choisissez un métier</option>
-                {jobOptions.map((job) => (
-                  <option key={job.value} value={job.value}>
-                    {job.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              Années d’expérience du métier{" "}
-              <span className="field-optional">(facultatif)</span>
-              <input
-                name="years_experience"
-                type="number"
-                min={0}
-                max={60}
-                step="0.5"
-                value={draft.years_experience}
-                onChange={(event) =>
-                  update("years_experience", event.target.value)
-                }
-              />
-            </label>
+            <div className="profile-job-fields">
+              <label>
+                Métier principal
+                <select
+                  name="main_job"
+                  value={draft.main_job}
+                  onChange={(event) => update("main_job", event.target.value)}
+                >
+                  <option value="">Choisissez un métier</option>
+                  {jobOptions.map((job) => (
+                    <option key={job.value} value={job.value}>
+                      {job.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Années d’expérience du métier{" "}
+                <span className="field-optional">(facultatif)</span>
+                <input
+                  name="years_experience"
+                  type="number"
+                  min={0}
+                  max={60}
+                  step="0.5"
+                  value={draft.years_experience}
+                  onChange={(event) =>
+                    update("years_experience", event.target.value)
+                  }
+                />
+              </label>
+            </div>
             <span id="secondary-label" className="choice-label">
               Autres métiers exercés{" "}
               <span className="field-optional">(facultatif)</span>
@@ -651,6 +656,7 @@ export function WorkerProfile() {
           <ProfileSection
             title="Vos expériences"
             icon={<BriefcaseBusiness size={18} />}
+            className="profile-section--records"
             hint="Facultatif, mais une expérience détaillée renforce votre profil."
           >
             <div className="profile-repeat-list">
@@ -672,7 +678,7 @@ export function WorkerProfile() {
                       <Trash2 size={16} aria-hidden="true" />
                     </button>
                   </div>
-                  <label>
+                  <label className="profile-repeat__primary">
                     Poste
                     <input
                       value={experience.job_title}
@@ -746,6 +752,7 @@ export function WorkerProfile() {
           <ProfileSection
             title="Vos diplômes et certifications"
             icon={<Award size={18} />}
+            className="profile-section--records"
             hint="Facultatif · HACCP, permis d’exploitation, mention complémentaire…"
           >
             <div className="profile-repeat-list">
@@ -769,7 +776,7 @@ export function WorkerProfile() {
                       <Trash2 size={16} aria-hidden="true" />
                     </button>
                   </div>
-                  <label>
+                  <label className="profile-repeat__primary">
                     Intitulé
                     <input
                       value={certification.name}
@@ -844,10 +851,11 @@ export function WorkerProfile() {
             id="mobilite"
             title="Votre mobilité"
             icon={<MapPin size={18} />}
+            className="profile-section--wide profile-section--mobility"
             missing={missingIn(user.missing_requirements, "Votre mobilité")}
             hint="Votre ville et votre rayon servent à proposer des missions accessibles."
           >
-            <div className="form-grid">
+            <div className="profile-mobility-fields">
               <label>
                 Ville
                 <input
@@ -869,20 +877,20 @@ export function WorkerProfile() {
                   }
                 />
               </label>
+              <label>
+                Rayon de mobilité (km)
+                <input
+                  name="mobility_radius_km"
+                  type="number"
+                  min={0}
+                  max={250}
+                  value={draft.mobility_radius_km}
+                  onChange={(event) =>
+                    update("mobility_radius_km", event.target.value)
+                  }
+                />
+              </label>
             </div>
-            <label>
-              Rayon de mobilité (km)
-              <input
-                name="mobility_radius_km"
-                type="number"
-                min={0}
-                max={250}
-                value={draft.mobility_radius_km}
-                onChange={(event) =>
-                  update("mobility_radius_km", event.target.value)
-                }
-              />
-            </label>
             <div
               className="choice-group"
               role="radiogroup"
@@ -933,7 +941,7 @@ export function WorkerProfile() {
             id="recherche"
             title="Votre recherche"
             icon={<Search size={18} />}
-            className="profile-section--compact"
+            className="profile-section--wide profile-section--search"
             hint="Mettez votre recherche en pause sans perdre votre profil."
           >
             <label className="profile-search-toggle">
@@ -951,6 +959,16 @@ export function WorkerProfile() {
                   Votre profil peut être rapproché des besoins publiés.
                 </small>
               </span>
+              <span
+                className={
+                  draft.open_to_missions
+                    ? "profile-search-status is-active"
+                    : "profile-search-status"
+                }
+                aria-hidden="true"
+              >
+                {draft.open_to_missions ? "Recherche active" : "En pause"}
+              </span>
             </label>
           </ProfileSection>
         </div>
@@ -959,6 +977,7 @@ export function WorkerProfile() {
           className={`profile-savebar${dirty ? " is-dirty" : ""}`}
         >
           <div className="profile-savebar__message" aria-live="polite">
+            <strong>Modifications du profil</strong>
             {saveError && (
               <p className="form-error" role="alert">
                 {saveError}
@@ -970,7 +989,10 @@ export function WorkerProfile() {
               </p>
             )}
             {!saveError && !saved && dirty && (
-              <p className="quiet">Modifications non enregistrées</p>
+              <p className="quiet">Des changements restent à enregistrer.</p>
+            )}
+            {!saveError && !saved && !dirty && (
+              <p className="quiet">Votre profil est à jour.</p>
             )}
           </div>
           <button className="button" disabled={!dirty || busy}>
@@ -1079,7 +1101,7 @@ function AvailabilitySection({
       <fieldset className="profile-section" disabled={busy}>
         <legend>
           <span className="profile-section__icon" aria-hidden="true">
-            <Sparkles size={18} />
+            <CalendarDays size={18} />
           </span>
           <span>Vos disponibilités</span>
           {missing.length > 0 && (
@@ -1093,11 +1115,16 @@ function AvailabilitySection({
         <div className="availability-layout">
           <div>
             {orderedSlots.length > 0 ? (
-              <ul className="slot-list editable-slots">
+              <ul className="slot-list editable-slots profile-slot-list">
                 {orderedSlots.map((slot) => (
                   <li key={slot.id}>
-                    <span>
-                      {formatSlot(slot)} ·{" "}
+                    <span className="profile-slot-date">
+                      <CalendarDays size={17} aria-hidden="true" />
+                      <strong>{formatSlot(slot)}</strong>
+                    </span>
+                    <span
+                      className={`profile-slot-status is-${slot.status}`}
+                    >
                       {slot.status === "available"
                         ? "Disponible"
                         : "Indisponible"}

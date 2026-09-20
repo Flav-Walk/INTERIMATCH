@@ -145,7 +145,7 @@ export function Home() {
           <div className="home-hero__visual">
             <div className="home-hero__matchy-frame">
               <p>
-                <strong>Matchy vous accompagne</strong>
+                <strong>InteriMatch vous accompagne</strong>
                 <span>Du profil jusqu’à la mission confirmée.</span>
               </p>
               <MatchyMascot pose="missions" includeBackground size={310} />

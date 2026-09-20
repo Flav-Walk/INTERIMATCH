@@ -599,15 +599,26 @@ test("profile lists persist, reject incomplete rows, and allow slot editing", as
     .click();
   await expect(availability.getByRole("alert")).toContainText("chevauche");
   await expect(availability.locator("li")).toHaveCount(1);
-  await availability.scrollIntoViewIfNeeded();
-  await page.screenshot({
-    path: testInfo.outputPath("profile-availability.png"),
-  });
-  expect(
-    await page.evaluate(
-      () => document.documentElement.scrollWidth <= innerWidth,
-    ),
-  ).toBe(true);
+  const reviewViewports =
+    testInfo.project.name === "desktop"
+      ? [
+          { width: 1920, height: 1080 },
+          { width: 1440, height: 900 },
+          { width: 768, height: 1024 },
+        ]
+      : [{ width: 390, height: 844 }];
+  for (const viewport of reviewViewports) {
+    await page.setViewportSize(viewport);
+    await page.screenshot({
+      path: testInfo.outputPath(`profile-${viewport.width}.png`),
+      fullPage: true,
+    });
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+  }
   await availability
     .getByRole("button", { name: /Retirer le créneau/ })
     .click();
