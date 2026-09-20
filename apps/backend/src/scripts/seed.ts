@@ -5,6 +5,7 @@ import { AccountService, passwordHash } from "../auth/service.js";
 import { WorkerService } from "../worker/service.js";
 import { MissionService } from "../missions/service.js";
 import type { Profile } from "../auth/schemas.js";
+import { assertLocalDataTarget } from "../environment-safety.js";
 
 /**
  * Photo déterministe des missions de recette.
@@ -25,6 +26,7 @@ if (config.NODE_ENV === "production" || process.env.ALLOW_DEMO_SEED !== "true")
   throw new Error(
     "Seed réservé au développement : ALLOW_DEMO_SEED=true requis.",
   );
+assertLocalDataTarget(config, "Seed de démonstration");
 const password = process.env.DEMO_PASSWORD;
 if (!password || password.length < 12)
   throw new Error("DEMO_PASSWORD local requis (12 caractères minimum).");

@@ -24,7 +24,11 @@ const db = config.DATABASE_URL ? createDatabase(config) : null;
 const google = createGoogleBridge(config);
 // Un seul géocodeur pour les trois services : comptes, intérimaires, missions.
 const geocoder = createAddressGeocoder();
-const accounts = db ? new AccountService(db, google, geocoder) : undefined;
+const accounts = db
+  ? new AccountService(db, google, geocoder, {
+      allowTestIdentities: config.NODE_ENV !== "production",
+    })
+  : undefined;
 const eventLogger = pino({
   level: config.NODE_ENV === "test" ? "silent" : "info",
 });

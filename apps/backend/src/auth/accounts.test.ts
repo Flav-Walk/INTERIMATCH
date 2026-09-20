@@ -84,6 +84,21 @@ describe("auth and onboarding with real SQL engine", () => {
     expect(c.rows[0].password_hash).toMatch(/^\$argon2id\$/);
     expect(c.rows[0].password_hash).not.toBe(password);
   });
+  it("refuse les identités réservées aux tests lorsque la protection production est active", async () => {
+    const production = new AccountService(db, undefined, geocode, {
+      allowTestIdentities: false,
+    });
+    await expect(
+      production.register("new.qa@example.test", password),
+    ).rejects.toMatchObject({ status: 403, code: "TEST_IDENTITY_FORBIDDEN" });
+    await expect(
+      production.login("worker@example.test", password),
+    ).rejects.toMatchObject({ status: 403, code: "TEST_IDENTITY_FORBIDDEN" });
+    await expect(production.authenticate(worker)).rejects.toMatchObject({
+      status: 403,
+      code: "TEST_IDENTITY_FORBIDDEN",
+    });
+  });
   it("assigns the worker role at signup without asking the user", async () => {
     const r = await auth(request(app).get("/api/v1/me"));
     expect(r.status).toBe(200);

@@ -7,7 +7,11 @@ import { AccountService } from "../auth/service.js";
 import { WorkerService } from "../worker/service.js";
 import { MissionService } from "../missions/service.js";
 import { MissionMediaService } from "../media/service.js";
-import { localFixtureMediaStore } from "../media/testing.js";
+import {
+  fakeUnsplash,
+  localFixtureMediaStore,
+  unsplashPhoto,
+} from "../media/testing.js";
 import { ApplicationService } from "../applications/service.js";
 import { PublicJobOfferService } from "../public-data/service.js";
 import type { Db } from "../db.js";
@@ -85,7 +89,15 @@ await pg.exec(
 const geocode = async () => ({ latitude: 45.75, longitude: 4.85 });
 const accounts = new AccountService(db, undefined, geocode);
 const workers = new WorkerService(db, geocode);
-const missionMedia = new MissionMediaService(localFixtureMediaStore());
+// Doublure locale complète : la sélection, la résolution et le point de
+// comptage sont testables sans clé, quota ou appel réseau vers Unsplash.
+const fakeUnsplashApi = fakeUnsplash((url) => ({
+  body: url.includes("/photos/salle-1") ? unsplashPhoto("salle-1") : {},
+}));
+const missionMedia = new MissionMediaService(
+  localFixtureMediaStore(),
+  fakeUnsplashApi.service,
+);
 const missions = new MissionService(db, geocode, undefined, missionMedia);
 const applications = new ApplicationService(db);
 const publicOffers = new PublicJobOfferService(db);

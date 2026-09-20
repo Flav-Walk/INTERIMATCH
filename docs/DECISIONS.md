@@ -18,17 +18,13 @@ Le §10 du cahier peut faire croire que l’acceptation pourvoit la mission. Ret
 
 ## D04 — Matching explicable
 
-Poids centralisés : compétences 45, localisation 25, expérience 20, complément 10 ; configuration versionnée avec chaque calcul. Avant score : mission ouverte, candidat actif, disponibilité couvrant tout le créneau, aucun conflit d’attribution. Intervalles [début, fin), dates stockées en UTC avec fuseau d’affichage ; gérer les missions passant minuit.
+**Éligibilité ≠ score.** Le moteur commence par les règles bloquantes : recherche de missions active, toutes les compétences obligatoires détenues, disponibilité couvrant entièrement le créneau, mission dans le rayon déclaré et aucun engagement accepté en conflit. Un seul de ces motifs rend le résultat incompatible, quel que soit son score. Les intervalles sont comparés comme des instants UTC et traités en plages semi-ouvertes `[début, fin)`.
 
-Formules initiales à implémenter/tester au Lot 4 :
+Le score ne sert qu’à classer et expliquer les profils restés éligibles. Les dimensions réellement implémentées sont : compétences souhaitées 45, proximité 25, métier 20 et expérience 10. Une dimension sans donnée applicable est retirée du dénominateur plutôt que gratifiée implicitement. Le métier est gradué — principal 100 %, secondaire 60 %, absent 0 % — et n’est pas une règle éliminatoire. Les compétences obligatoires sont, elles, exclusivement une règle d’éligibilité.
 
-- Compétences : 45 × proportion des compétences métier requises présentes. Un prérequis légal/certification bloquant doit être distinct des compétences scorées et testé avant scoring.
-- Localisation : 25 × max(0, 1 − distance/rayon), distance géographique en km. Rayon nul : 25 uniquement à distance nulle. Hors rayon : `outside_zone=true`, score localisation 0, profil toujours consultable.
-- Expérience : 20 × min(années pertinentes / années demandées, 1) ; si aucune expérience requise : 20.
-- Complément : 10 × proportion des compétences souhaitées présentes ; en l’absence de souhait : 10. Remplace la clé `availability` ambiguë de l’exemple du cahier par `complementary`. La disponibilité reste un filtre d’éligibilité, pas une préférence inventée.
-- Si aucune compétence métier requise : sous-score 45 ; données de profil manquantes : pas de bonus implicite. Géolocalisation inconnue : distance et `outside_zone` inconnus, motif explicite, pas de notification automatique avant complétion.
+La géolocalisation inconnue ne permet pas d’affirmer un hors-zone et retire la dimension. Côté worker, un hors-zone bloque la proposition ; côté entreprise, le profil reste consultable afin de permettre un élargissement volontaire. Cette asymétrie est explicite dans le DTO (`outside_zone` et `blockers`).
 
-Les résultats inéligibles gardent leurs raisons et ne sont pas proposés automatiquement. Tri déterministe par score puis identifiant ; paliers calculés sur le score non arrondi. Affichage arrondi uniquement. Seuils configurables : 70, 60, 50 ; sélectionner le premier palier non vide parmi les candidats éligibles dans la zone, sans proposition déjà traitée. Hors zone : affichage et sélection volontaires par l’entreprise. Sous 50 : aucune notification automatique. Aucun déclassement automatique après délai dans le P0 sans règle métier supplémentaire.
+Les résultats inéligibles gardent leurs raisons et ne sont pas proposés automatiquement. Tri déterministe sur le score brut puis l’identifiant ; palier calculé sur le score brut, score public arrondi uniquement à l’affichage. Seuils : 70, 60, 50. Aucun déclassement automatique après délai dans le POC sans règle métier supplémentaire.
 
 ## D05 — Automatisations et emails
 

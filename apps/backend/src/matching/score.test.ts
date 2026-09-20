@@ -151,6 +151,28 @@ describe("couverture des disponibilités", () => {
   it("refuse un intérimaire sans aucun créneau", () => {
     expect(coversMission([], window)).toBe(false);
   });
+
+  it("reproduit la mission Serveur de Test 2 et exige sa couverture jusqu'à la vraie date de fin", () => {
+    const availability = [
+      {
+        starts_at: "2026-09-18T06:00:00.000Z",
+        ends_at: "2026-10-20T08:00:00.000Z",
+        status: "available" as const,
+      },
+    ];
+    expect(
+      coversMission(availability, {
+        starts_at: "2026-09-25T08:00:00.000Z",
+        ends_at: "2027-09-25T21:59:00.000Z",
+      }),
+    ).toBe(false);
+    expect(
+      coversMission(availability, {
+        starts_at: "2026-09-25T08:00:00.000Z",
+        ends_at: "2026-09-25T21:59:00.000Z",
+      }),
+    ).toBe(true);
+  });
 });
 
 describe("critères bloquants", () => {
@@ -253,6 +275,42 @@ describe("critères bloquants", () => {
     );
     expect(r.score).toBeGreaterThanOrEqual(70);
     expect(r.compatible).toBe(false);
+  });
+
+  it("reproduit exactement le profil Test 2 face à Cherche Serveur / Serveuse", () => {
+    const required = [
+      "accueil",
+      "encaissement",
+      "mise-en-place",
+      "prise-commande",
+      "relation-client",
+      "service-salle",
+    ];
+    const result = evaluate(
+      mission({
+        job: "serveur",
+        starts_at: "2026-09-25T08:00:00.000Z",
+        ends_at: "2027-09-25T21:59:00.000Z",
+        required_skill_ids: required,
+        desired_skill_ids: ["hygiene"],
+      }),
+      worker({
+        main_job: "cuisinier",
+        secondary_jobs: ["commis_cuisine"],
+        years_experience: 6,
+        skill_ids: [...required, "hygiene"],
+        availabilities: [
+          {
+            starts_at: "2026-09-18T06:00:00.000Z",
+            ends_at: "2026-10-20T08:00:00.000Z",
+            status: "available",
+          },
+        ],
+      }),
+    );
+    expect(result.score).toBe(78);
+    expect(result.blockers).toEqual(["unavailable"]);
+    expect(result.compatible).toBe(false);
   });
 });
 

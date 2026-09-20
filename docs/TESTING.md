@@ -32,6 +32,14 @@ Propositions : accepter/refuser uniquement les siennes, idempotence, expiration,
 
 Coverage généré et conservé comme livrable final ; pas de pourcentage revendiqué avant exécution. Le Lot 8 consolide les preuves, il ne reporte pas les tests jusque-là.
 
+## Frontière production / test / démo
+
+- Le serveur Playwright et le serveur de démonstration construisent chacun leur propre `PGlite` en mémoire. Ils ne lisent jamais `DATABASE_URL` et n'appellent aucun service distant.
+- `db:seed` exige à la fois `NODE_ENV` hors production, `ALLOW_DEMO_SEED=true` et une URL PostgreSQL dont l'hôte est la boucle locale. Une URL Supabase ou toute autre cible distante est refusée avant ouverture de connexion.
+- Les fixtures France Travail versionnées sont refusées sur une base distante. Un import distant réel exige explicitement `NODE_ENV=production` et un fichier hors du répertoire de fixtures.
+- Le serveur de production refuse les inscriptions, connexions et sessions portant un domaine réservé `.test`. Les tests locaux les autorisent volontairement.
+- Ces barrières protègent les chemins applicatifs et les scripts livrés. Un accès SQL privilégié reste capable d'écrire directement : les droits et procédures Supabase demeurent donc une frontière opérationnelle obligatoire.
+
 ## Lot SL2e — Données publiques France Travail
 
 - **Normaliseur France Travail (`apps/backend/src/public-data/normalizer.test.ts`)** :

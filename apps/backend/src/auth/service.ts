@@ -5,6 +5,7 @@ import { HttpError } from "../errors.js";
 import type { Geocoder } from "../worker/geocode.js";
 import type { Profile, CompanyInput } from "./schemas.js";
 import { missingRules } from "../worker/completion.js";
+import { isReservedTestEmail } from "../environment-safety.js";
 export const digest = (token: string) =>
   createHash("sha256").update(token).digest("hex");
 export const passwordHash = (password: string) =>
@@ -27,7 +28,19 @@ export class AccountService {
      * remplaçable en test : aucune suite n'appelle de service distant.
      */
     private geocode?: Geocoder,
+    private security: { allowTestIdentities?: boolean } = {},
   ) {}
+  private assertIdentityAllowed(email: string) {
+    if (
+      this.security.allowTestIdentities === false &&
+      isReservedTestEmail(email)
+    )
+      throw new HttpError(
+        403,
+        "TEST_IDENTITY_FORBIDDEN",
+        "Cette identité est réservée aux environnements de test.",
+      );
+  }
   async issue(db: Db, profileId: string) {
     const access = token(),
       refresh = token();
@@ -46,6 +59,7 @@ export class AccountService {
     );
   }
   async register(email: string, password: string) {
+    this.assertIdentityAllowed(email);
     const encoded = await passwordHash(password);
     return this.db.transaction(async (db) => {
       try {
@@ -75,6 +89,7 @@ export class AccountService {
     });
   }
   async login(email: string, password: string) {
+    this.assertIdentityAllowed(email);
     const { rows } = await this.db.query<Profile & { password_hash: string }>(
       "SELECT p.*,c.password_hash FROM profiles p JOIN credentials c ON c.profile_id=p.id WHERE p.email=$1",
       [email],
@@ -102,6 +117,7 @@ export class AccountService {
         "Connexion Google indisponible.",
       );
     const identity = await this.googleIdentity(jwt);
+    this.assertIdentityAllowed(identity.email);
     return this.db.transaction(async (db) => {
       await db.query("SELECT pg_advisory_xact_lock(hashtext($1))", [
         identity.id,
@@ -145,16 +161,22 @@ export class AccountService {
     );
     if (!rows[0])
       throw new HttpError(401, "UNAUTHORIZED", "Session invalide ou expirée.");
+    this.assertIdentityAllowed(rows[0].email);
     return rows[0];
   }
   async refresh(refresh: string) {
     return this.db.transaction(async (db) => {
-      const { rows } = await db.query<{ id: string; profile_id: string }>(
-        "SELECT s.id,s.profile_id FROM sessions s JOIN profiles p ON p.id=s.profile_id WHERE s.refresh_hash=$1 AND s.expires_at>now() AND p.active=true FOR UPDATE OF s",
+      const { rows } = await db.query<{
+        id: string;
+        profile_id: string;
+        email: string;
+      }>(
+        "SELECT s.id,s.profile_id,p.email FROM sessions s JOIN profiles p ON p.id=s.profile_id WHERE s.refresh_hash=$1 AND s.expires_at>now() AND p.active=true FOR UPDATE OF s",
         [digest(refresh)],
       );
       if (!rows[0])
         throw new HttpError(401, "UNAUTHORIZED", "Session expirée.");
+      this.assertIdentityAllowed(rows[0].email);
       const access = token();
       await db.query(
         "UPDATE sessions SET access_hash=$1,access_expires_at=now()+interval '15 minutes' WHERE id=$2",

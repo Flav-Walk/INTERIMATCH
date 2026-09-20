@@ -4,6 +4,7 @@ import { readConfig } from "../config.js";
 import { createDatabase } from "../db.js";
 import { PublicJobOfferService } from "../public-data/service.js";
 import { extractRawOffers } from "../public-data/normalizer.js";
+import { assertPublicDataImportTarget } from "../environment-safety.js";
 
 async function main() {
   const filePath = process.argv[2];
@@ -45,6 +46,7 @@ async function main() {
   }
 
   const config = readConfig(process.env);
+  assertPublicDataImportTarget(config, filePath);
   const db = createDatabase(config);
   const service = new PublicJobOfferService(db);
 
