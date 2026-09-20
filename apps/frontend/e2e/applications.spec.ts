@@ -65,7 +65,38 @@ test("un worker postule, l’entreprise accepte et l’état persiste", async ({
     }),
   ).toBeVisible();
 
-  await page.getByRole("button", { name: "Postuler" }).click();
+  let applicationPosts = 0;
+  page.on("request", (request) => {
+    if (
+      request.method() === "POST" &&
+      new URL(request.url()).pathname.endsWith("/workers/me/applications")
+    ) {
+      applicationPosts += 1;
+    }
+  });
+  const applyButton = page.getByRole("button", { name: "Postuler" });
+  await applyButton.click();
+  const confirmation = page.getByRole("dialog", {
+    name: "Confirmer votre candidature ?",
+  });
+  await expect(confirmation).toBeVisible();
+  expect(applicationPosts).toBe(0);
+  await page.keyboard.press("Escape");
+  await expect(confirmation).toBeHidden();
+  await expect(applyButton).toBeFocused();
+  expect(applicationPosts).toBe(0);
+
+  await applyButton.click();
+  await confirmation.getByRole("button", { name: "Annuler" }).click();
+  await expect(confirmation).toBeHidden();
+  await expect(applyButton).toBeFocused();
+  expect(applicationPosts).toBe(0);
+
+  await applyButton.click();
+  await confirmation
+    .getByRole("button", { name: "Confirmer ma candidature" })
+    .click();
+  await expect.poll(() => applicationPosts).toBe(1);
   await expect(
     page.getByText("Candidature envoyée", { exact: false }),
   ).toBeVisible();
@@ -179,6 +210,10 @@ test("une candidature refusée reste visible et ne redevient pas disponible", as
   await page.goto("/worker/missions");
   await page.locator(`a[href="/worker/missions/${missionId}"]`).click();
   await page.getByRole("button", { name: "Postuler" }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Confirmer ma candidature" })
+    .click();
   await expect(
     page.getByText("Candidature envoyée", { exact: false }),
   ).toBeVisible();

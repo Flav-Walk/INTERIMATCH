@@ -1,17 +1,5 @@
 import { Link } from "react-router-dom";
-import {
-  ArrowRight,
-  CalendarDays,
-  Check,
-  ChefHat,
-  Coins,
-  ConciergeBell,
-  GlassWater,
-  MapPin,
-  Users,
-  Utensils,
-  UtensilsCrossed,
-} from "lucide-react";
+import { ArrowRight, CalendarDays, Check, Coins, MapPin } from "lucide-react";
 import {
   missionStatePresentation,
   type Mission,
@@ -22,23 +10,6 @@ import { MatchBadge } from "./MatchBadge";
  * Carte mission : bloc média, badge d'état en surimpression, titre, lieu,
  * créneau, puis pied avec l'effectif et la flèche circulaire.
  */
-
-/**
- * Glyphe du métier. Il occupe la place d'une photographie, que nous n'avons pas
- * encore. Le cadrage et les proportions sont conservés pour qu'un média réel
- * puisse s'y substituer sans toucher au layout.
- */
-function JobGlyph({ job }: { job: string }) {
-  const value = job.toLowerCase();
-  if (value.includes("cuisin") || value.includes("chef"))
-    return <ChefHat aria-hidden="true" />;
-  if (value.includes("bar")) return <GlassWater aria-hidden="true" />;
-  if (value.includes("reception") || value.includes("accueil"))
-    return <ConciergeBell aria-hidden="true" />;
-  if (value.includes("etage")) return <Users aria-hidden="true" />;
-  if (value.includes("plongeur")) return <UtensilsCrossed aria-hidden="true" />;
-  return <Utensils aria-hidden="true" />;
-}
 
 const dayMonth = new Intl.DateTimeFormat("fr-FR", {
   day: "numeric",
@@ -100,7 +71,6 @@ export function MissionCard({
    */
   pendingApplications?: number;
 }) {
-  const seats = Array.from({ length: Math.min(mission.headcount, 3) });
   // L'état affiché vient de la fonction commune, qui croise le statut écrit,
   // les dates et la capacité servie par le serveur.
   const status = missionStatePresentation(mission);
@@ -115,7 +85,19 @@ export function MissionCard({
       to={`${basePath}/${mission.id}`}
     >
       <div className="mission-media">
-        <JobGlyph job={mission.job} />
+        {/* La photo de la mission, et rien d'autre. Les missions créées avant
+            que la photo ne devienne obligatoire n'en ont pas : le cadre reste
+            alors vide plutôt que de recevoir une image générique, qui
+            prétendrait montrer un établissement qu'elle ne connaît pas. */}
+        {mission.media && (
+          <img
+            className="job-visual"
+            src={mission.media.url}
+            alt=""
+            loading="lazy"
+            decoding="async"
+          />
+        )}
         <span className={`mission-status ${status.className}`}>
           {status.label}
         </span>
@@ -152,11 +134,6 @@ export function MissionCard({
         )}
       </div>
       <div className="mission-foot">
-        <span className="avatar-stack" aria-hidden="true">
-          {seats.map((_, index) => (
-            <span key={index} />
-          ))}
-        </span>
         {score === undefined ? (
           mission.capacity ? (
             mission.capacity.full ? (

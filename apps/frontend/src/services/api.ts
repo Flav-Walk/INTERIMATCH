@@ -23,7 +23,13 @@ export function createApiClient(
       throw new ApiError("Chemin API invalide.", 0, "INVALID_PATH");
     const headers = new Headers(options.headers);
     headers.set("Accept", "application/json");
-    if (options.body && !(options.body instanceof FormData))
+    // JSON par défaut, mais sans écraser un type déjà posé par l'appelant :
+    // l'envoi d'une image déclare son propre type, et c'est lui qui compte.
+    if (
+      options.body &&
+      !(options.body instanceof FormData) &&
+      !headers.has("Content-Type")
+    )
       headers.set("Content-Type", "application/json");
     const token = getToken();
     if (token) headers.set("Authorization", `Bearer ${token}`);

@@ -22,6 +22,7 @@ import { missionSchedule } from "../components/mission/MissionCard";
 import { MatchExplanation } from "../components/mission/MatchExplanation";
 import { MatchBadge } from "../components/mission/MatchBadge";
 import { ApplyToMission } from "../components/applications/ApplyToMission";
+import { UnsplashCredit } from "../components/mission/MissionPhotoField";
 
 const payLabels: Record<string, string> = {
   hour: "de l’heure",
@@ -115,6 +116,20 @@ export function WorkerMissionDetail() {
   return (
     <div className="detail-page">
       <div className="detail-hero">
+        {mission.media && (
+          <figure className="detail-hero__photo">
+            <img
+              src={mission.media.url}
+              alt={mission.media.alt ?? ""}
+              decoding="async"
+            />
+            {/* Le crédit voyage avec la photo : Unsplash l'exige partout où
+                l'image est montrée, pas seulement au moment du choix. */}
+            <figcaption>
+              <UnsplashCredit media={mission.media} />
+            </figcaption>
+          </figure>
+        )}
         <div className="detail-hero__inner">
           <Link className="detail-back" to="/worker/missions">
             <ArrowLeft size={15} aria-hidden="true" />

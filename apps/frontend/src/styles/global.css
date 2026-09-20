@@ -2,6 +2,8 @@
 @import "./shell.css";
 @import "./company-applications.css";
 @import "./public-offers.css";
+@import "./brand.css";
+@import "./mission-photo.css";
 * {
   box-sizing: border-box;
 }
@@ -633,6 +635,13 @@ small {
 .welcome-note.ink {
   color: var(--muted);
   margin-bottom: 0;
+}
+/* `p` plafonne la prose à 65ch, pour la longueur de ligne. Un bandeau
+   encadré n'est pas de la prose : plafonné, il s'arrêtait avant le bord du
+   formulaire qu'il commente, et l'écran paraissait désaligné. */
+.form-success,
+p.form-error {
+  max-width: none;
 }
 .form-success {
   background: var(--tint);

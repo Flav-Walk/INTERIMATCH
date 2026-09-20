@@ -31,6 +31,33 @@ export type MissionPhase =
 
 export type NotOpenReason = "draft" | "ended" | "closed" | "cancelled" | "full";
 
+/**
+ * Photo d'une mission.
+ *
+ * Deux origines, et l'écran doit les distinguer : une photo Unsplash oblige à
+ * créditer son auteur, une photo importée par l'établissement non.
+ */
+export type MissionMedia =
+  | { provider: "upload"; url: string; storage_path: string; alt?: string }
+  | {
+      provider: "unsplash";
+      url: string;
+      thumb_url: string;
+      external_id: string;
+      author_name: string;
+      author_url: string;
+      alt?: string;
+    };
+
+/**
+ * Ce que le formulaire ENVOIE : une désignation, pas une description. Le
+ * serveur redérive l'URL d'un import et va chercher la photo Unsplash chez
+ * Unsplash — le navigateur ne peut donc pas imposer l'adresse d'une image.
+ */
+export type MissionMediaInput =
+  | { provider: "upload"; storage_path: string; alt?: string }
+  | { provider: "unsplash"; external_id: string };
+
 export interface Mission {
   id: string;
   title: string;
@@ -56,6 +83,8 @@ export interface Mission {
   status: MissionStatus;
   published_at: string | null;
   demo: boolean;
+  /** Nulle sur les missions créées avant que la photo ne devienne obligatoire. */
+  media: MissionMedia | null;
   skills: MissionSkill[];
 }
 
@@ -426,6 +455,7 @@ export interface MissionInput {
   min_years_experience: number | null;
   required_skill_ids: string[];
   desired_skill_ids: string[];
+  media: MissionMediaInput | null;
 }
 
 export type MissionPatch = Partial<MissionInput>;
@@ -574,6 +604,11 @@ export interface MissionFormValues {
   headcount: string;
   min_years_experience: string;
   skills: Record<string, SkillLevel>;
+  /**
+   * Photo retenue. Le formulaire porte le média COMPLET — il doit l'afficher —
+   * alors que l'API n'en reçoit que la désignation : voir `formToMission`.
+   */
+  media: MissionMedia | null;
 }
 
 /** Date ISO → valeur d'un `datetime-local`, en heure locale. */
@@ -603,6 +638,7 @@ export const emptyMission: MissionFormValues = {
   headcount: "1",
   min_years_experience: "",
   skills: {},
+  media: null,
 };
 
 /** Prérempli le formulaire depuis une mission existante. */
@@ -628,6 +664,7 @@ export function missionToForm(mission: Mission): MissionFormValues {
         ? ""
         : String(Number(mission.min_years_experience)),
     skills,
+    media: mission.media,
   };
 }
 
@@ -654,7 +691,28 @@ export function formToMission(values: MissionFormValues): MissionInput {
     min_years_experience: number(values.min_years_experience),
     required_skill_ids: idsAtLevel(values.skills, "required"),
     desired_skill_ids: idsAtLevel(values.skills, "desired"),
+    media: mediaInput(values.media),
   };
+}
+
+/**
+ * Média du formulaire → média de la requête.
+ *
+ * L'écran connaît l'URL de la photo, la requête ne la transporte pas : le
+ * serveur la redérive du chemin de stockage, et va chercher une photo Unsplash
+ * chez Unsplash. Le navigateur ne peut donc pas imposer l'adresse d'une image.
+ */
+export function mediaInput(
+  media: MissionMedia | null,
+): MissionMediaInput | null {
+  if (!media) return null;
+  return media.provider === "unsplash"
+    ? { provider: "unsplash", external_id: media.external_id }
+    : {
+        provider: "upload",
+        storage_path: media.storage_path,
+        ...(media.alt ? { alt: media.alt } : {}),
+      };
 }
 
 /**
@@ -668,12 +726,35 @@ export function missionDiff(before: MissionInput, after: MissionInput) {
     const a = before[key];
     const b = after[key];
     const same =
-      Array.isArray(a) && Array.isArray(b)
-        ? a.length === b.length && a.every((v, i) => v === b[i])
-        : a === b;
+      key === "media"
+        ? sameMedia(
+            a as MissionMediaInput | null,
+            b as MissionMediaInput | null,
+          )
+        : Array.isArray(a) && Array.isArray(b)
+          ? a.length === b.length && a.every((v, i) => v === b[i])
+          : a === b;
     if (!same) Object.assign(patch, { [key]: b });
   }
   return patch;
+}
+
+/**
+ * Deux désignations de photo valent-elles la même image ?
+ *
+ * Comparer les objets par référence les déclarerait toujours différentes, et
+ * chaque enregistrement renverrait la photo au serveur. Pour un import ce
+ * serait une écriture inutile ; pour Unsplash ce serait pire — leurs conditions
+ * demandent de déclarer l'usage d'une photo AU MOMENT où elle est retenue, et
+ * le redéclarer à chaque modification de titre fausserait ce décompte.
+ */
+function sameMedia(a: MissionMediaInput | null, b: MissionMediaInput | null) {
+  if (a === null || b === null) return a === b;
+  if (a.provider !== b.provider) return false;
+  return a.provider === "unsplash" && b.provider === "unsplash"
+    ? a.external_id === b.external_id
+    : (a as { storage_path: string }).storage_path ===
+        (b as { storage_path: string }).storage_path;
 }
 
 /**
@@ -696,6 +777,10 @@ export function validateMission(values: MissionFormValues) {
   if (!values.city.trim()) errors.city = "Indiquez la ville de la mission.";
   if (!/^\d{5}$/.test(values.postal_code.trim()))
     errors.postal_code = "Un code postal compte cinq chiffres.";
+  // La photo n'est pas un ornement : sans elle, la mission ne pourra pas être
+  // publiée. Le dire au moment de la saisie évite un brouillon sans issue.
+  if (!values.media)
+    errors.media = "Ajoutez une photo pour publier cette mission.";
 
   // Le montant et son unité vont par paire : l'un sans l'autre n'a pas de sens.
   const hasAmount = values.pay_amount.trim() !== "";
@@ -758,4 +843,5 @@ export const missionFieldLabels: Record<keyof MissionFormValues, string> = {
   headcount: "Nombre de personnes",
   min_years_experience: "Expérience minimale",
   skills: "Compétences",
+  media: "Photo de la mission",
 };

@@ -27,6 +27,10 @@ export function PublicOfferCard({
       className="public-offer-card"
       aria-labelledby={`offer-${offer.id}`}
     >
+      {/* AUCUNE IMAGE. Une offre France Travail n'en transporte pas, et lui en
+          donner une — locale ou Unsplash — laisserait croire qu'elle vient de
+          l'établissement ou de la source. La carte se tient par son badge, son
+          intitulé et ses informations. */}
       <div className="public-offer-card__header">
         <div className="public-offer-card__badges">
           <span className="badge badge--france-travail">

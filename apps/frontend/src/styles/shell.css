@@ -393,8 +393,6 @@
   outline: 3px solid var(--forest);
   outline-offset: 2px;
 }
-/* Ratio et position repris de la maquette : la photo viendra remplacer
-   l'aplat sans changer la hauteur ni le cadrage. */
 .mission-media {
   position: relative;
   aspect-ratio: 16 / 7;
@@ -402,11 +400,11 @@
   place-items: center;
   background: var(--tint);
 }
-.mission-media svg {
-  width: 30px;
-  height: 30px;
-  color: var(--forest);
-  opacity: 0.55;
+.job-visual {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 .mission-status {
   position: absolute;
@@ -485,22 +483,6 @@
   border-top: 1px solid var(--border);
   font-size: 0.83rem;
   color: var(--muted);
-}
-.avatar-stack {
-  display: flex;
-}
-.avatar-stack span {
-  width: 25px;
-  height: 25px;
-  margin-right: -8px;
-  border-radius: 50%;
-  border: 2px solid var(--surface);
-  background: var(--tint);
-  display: grid;
-  place-items: center;
-  font-size: 0.62rem;
-  font-weight: 650;
-  color: var(--forest);
 }
 .circle-button {
   margin-left: auto;
@@ -799,12 +781,6 @@
   aspect-ratio: 4 / 3;
   border-radius: var(--radius-card) var(--radius-card) 0 0;
 }
-.mission-card .mission-media svg {
-  width: 40px;
-  height: 40px;
-  opacity: 0.4;
-}
-
 /* Badge statut repositionné top-LEFT (maquette v2) */
 .mission-status {
   top: 12px;

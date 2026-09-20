@@ -31,6 +31,9 @@ import {
   updateAvailability,
   toLocalInput,
 } from "../services/profile";
+import { HeroBanner } from "../components/HeroBanner";
+import { CircularGauge } from "../components/CircularGauge";
+import { workerRequirementProgress } from "../services/completion";
 
 /**
  * Chaque section s'enregistre seule : l'utilisateur peut remplir une partie,
@@ -94,7 +97,9 @@ function Section({
           <p className="quiet section-todo-detail">
             Il reste à renseigner :{" "}
             {missing
-              .map((rule) => requirementLabels[rule].replace(/^Votre |^Au /, ""))
+              .map((rule) =>
+                requirementLabels[rule].replace(/^Votre |^Au /, ""),
+              )
               .join(", ")}
             .
           </p>
@@ -112,7 +117,7 @@ function Section({
           </p>
         )}
         <div className="section-actions">
-          <button className="button" disabled={busy}>
+          <button className="secondary-button" disabled={busy}>
             {busy ? "Enregistrement…" : "Enregistrer"}
           </button>
         </div>
@@ -191,6 +196,9 @@ export function WorkerProfile() {
   if (!user) return null;
   const chosen = new Set((p.skills ?? []).map((s) => s.id));
   const missing = user.missing_requirements ?? [];
+  const requirementProgress = workerRequirementProgress(
+    user.missing_requirements,
+  );
   const slots = p.availabilities ?? [];
   // Un profil ancien peut porter un métier absent du référentiel actuel. Sans
   // cette option, le sélecteur s'afficherait vide et la valeur semblerait perdue.
@@ -200,14 +208,28 @@ export function WorkerProfile() {
       : [...jobs, { value: mainJob, label: mainJob }];
 
   return (
-    <section className="onboarding">
-      <span className="eyeline">Votre espace intérimaire</span>
-      <h1>Votre profil professionnel</h1>
-      <p>
-        Ces informations décident des missions qui vous seront proposées. Chaque
-        bloc s’enregistre séparément : vous pouvez revenir le compléter plus
-        tard.
-      </p>
+    <section className="onboarding worker-profile">
+      <HeroBanner
+        compact
+        eyeline="Votre espace intérimaire"
+        title="Votre profil professionnel"
+        subtitle="Enregistrez chaque rubrique à votre rythme. Les prérequis indiqués servent à déterminer votre accès aux propositions de mission."
+        mascotPose="profile"
+        gauge={
+          requirementProgress !== null ? (
+            <CircularGauge
+              value={requirementProgress}
+              label="Prérequis missions"
+              subtitle={
+                missing.length === 0
+                  ? "Tous réunis"
+                  : `${missing.length} à compléter`
+              }
+              variant="on-dark"
+            />
+          ) : undefined
+        }
+      />
 
       {loadError && (
         <p className="form-error" role="alert">
@@ -215,12 +237,13 @@ export function WorkerProfile() {
         </p>
       )}
 
+      {/* Le bandeau dit déjà que chaque rubrique s'enregistre seule : ne
+          reste ici que ce qu'il n'énonce pas, le sort des champs facultatifs. */}
       <p className="quiet form-legend">
-        Les champs marqués « facultatif » peuvent rester vides. Chaque bloc
-        s’enregistre séparément : vous pouvez revenir le compléter plus tard.
+        Les champs marqués « facultatif » peuvent rester vides.
       </p>
 
-      {missing.length > 0 ? (
+      {user.missing_requirements === undefined ? null : missing.length > 0 ? (
         <section className="side-panel pale" role="status">
           <h2>Il reste à renseigner</h2>
           <ul className="steps-list">
@@ -231,7 +254,9 @@ export function WorkerProfile() {
         </section>
       ) : (
         <p className="form-success" role="status">
-          <Check size={16} aria-hidden="true" /> Votre profil est complet.
+          <Check size={16} aria-hidden="true" /> Tous les prérequis pour
+          recevoir des missions sont réunis. Vous pouvez continuer à enrichir
+          les rubriques facultatives.
         </p>
       )}
 

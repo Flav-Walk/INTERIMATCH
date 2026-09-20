@@ -309,10 +309,32 @@ test.describe("Exploitation des données publiques France Travail", () => {
 
   test("affiche honnêtement les états vide et erreur", async ({ page }) => {
     await setupWorkerSession(page, "empty");
+    // Sans critère : le catalogue est vide, et l'écran ne met pas ce vide sur
+    // le compte d'une recherche que l'utilisateur n'a pas faite.
     await page.goto("/worker/public-offers");
     await expect(
       page.getByRole("heading", {
+        name: "Aucune offre France Travail disponible",
+      }),
+    ).toBeVisible();
+
+    // Avec critère : le message désigne bien la recherche, et propose de la
+    // réinitialiser.
+    await page
+      .getByLabel("Rechercher par métier, intitulé ou entreprise")
+      .fill("sommelier");
+    await page.getByRole("button", { name: "Rechercher" }).click();
+    await expect(
+      page.getByRole("heading", {
         name: "Aucune offre France Travail ne correspond à vos critères",
+      }),
+    ).toBeVisible();
+    await page
+      .getByRole("button", { name: "Voir toutes les offres France Travail" })
+      .click();
+    await expect(
+      page.getByRole("heading", {
+        name: "Aucune offre France Travail disponible",
       }),
     ).toBeVisible();
 

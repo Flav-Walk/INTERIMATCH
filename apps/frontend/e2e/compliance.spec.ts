@@ -35,9 +35,9 @@ test.describe("Conformité légale, SEO et accessibilité (Lot 8)", () => {
         level: 1,
       }),
     ).toBeVisible();
-    await expect(
-      page.locator(".legal-notice-box"),
-    ).toContainText("Accessibilité : non conforme");
+    await expect(page.locator(".legal-notice-box")).toContainText(
+      "Accessibilité : non conforme",
+    );
   });
 
   test("une route inconnue affiche la page 404 avec la directive noindex", async ({

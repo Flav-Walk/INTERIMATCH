@@ -31,6 +31,9 @@ import {
   type WorkerApplication,
 } from "../services/applications";
 import { ConfirmedMissions } from "../components/applications/ConfirmedMissions";
+import { HeroBanner } from "../components/HeroBanner";
+import { CircularGauge } from "../components/CircularGauge";
+import { workerRequirementProgress } from "../services/completion";
 
 /**
  * Rappel de complétion. Il n'apparaît que tant qu'il reste quelque chose à
@@ -136,6 +139,12 @@ export function Dashboard() {
     (application) => missionTemporalState(application.mission) === "running",
   );
   const waiting = awaitingReply(mine);
+  const requirementProgress = worker
+    ? workerRequirementProgress(user.missing_requirements)
+    : null;
+  const readyForMissions = worker
+    ? user.missing_requirements?.length === 0
+    : complete;
 
   return (
     <>
@@ -144,37 +153,54 @@ export function Dashboard() {
       )}
       <div className="workspace">
         <section className="primary">
-          <div className="welcome">
-            <span className="eyeline">
-              {worker
+          <HeroBanner
+            eyeline={
+              worker
                 ? "Espace intérimaire"
-                : (p.establishment_name ?? "Espace entreprise")}
-            </span>
-            <h1>
-              {user.first_name ? `Bonjour ${user.first_name},` : "Bienvenue,"}
-            </h1>
-            <p>
-              {worker
-                ? complete
-                  ? "Prêt pour votre prochain service ? Votre profil est en place."
-                  : "Renseignez votre métier, vos compétences et vos disponibilités pour recevoir des missions adaptées."
+                : (p.establishment_name ?? "Espace entreprise")
+            }
+            title={
+              user.first_name ? `Bonjour ${user.first_name},` : "Bienvenue,"
+            }
+            subtitle={
+              worker
+                ? readyForMissions
+                  ? "Vos prérequis sont réunis : découvrez les missions compatibles avec vos disponibilités."
+                  : "Complétez les prérequis nécessaires pour recevoir des missions adaptées."
                 : complete
                   ? "Votre établissement est prêt pour ses prochains recrutements."
-                  : "Présentez votre établissement pour préparer vos premiers recrutements."}
-            </p>
-            {complete && (
-              <Link
-                className="welcome-action"
-                to={"/" + user.role + "/profile"}
-                data-tour="profile-status"
-              >
-                <Check size={15} aria-hidden="true" />
-                Profil complété · Modifier mon profil
-              </Link>
-            )}
-          </div>
+                  : "Présentez votre établissement pour préparer vos premiers recrutements."
+            }
+            mascotPose="dashboard"
+            gauge={
+              requirementProgress !== null ? (
+                <CircularGauge
+                  value={requirementProgress}
+                  label="Prérequis missions"
+                  subtitle={
+                    readyForMissions
+                      ? "Tous réunis"
+                      : `${user.missing_requirements?.length ?? 0} à compléter`
+                  }
+                  variant="on-dark"
+                />
+              ) : undefined
+            }
+            action={
+              readyForMissions ? (
+                <Link
+                  className="brand-hero__link"
+                  to={`/${user.role}/profile`}
+                  data-tour="profile-status"
+                >
+                  <Check size={15} aria-hidden="true" />
+                  {worker ? "Prérequis réunis" : "Profil renseigné"} · Modifier
+                </Link>
+              ) : undefined
+            }
+          />
 
-          {!complete && (
+          {!readyForMissions && (
             <ProfileStatus
               missing={user.missing_requirements}
               to={"/" + user.role + "/profile"}

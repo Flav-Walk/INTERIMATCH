@@ -93,6 +93,10 @@ test("un intérimaire ne peut pas être engagé deux fois sur le même créneau"
     await page.getByRole("heading", { name: title, exact: true }).click();
     await expect(page).toHaveURL(/\/worker\/missions\/[0-9a-f-]{36}$/);
     await page.getByRole("button", { name: "Postuler" }).click();
+    await page
+      .getByRole("dialog")
+      .getByRole("button", { name: "Confirmer ma candidature" })
+      .click();
     await expect(
       page.getByText(
         "Candidature envoyée. L’entreprise doit maintenant l’examiner.",
@@ -162,7 +166,7 @@ test("un intérimaire ne peut pas être engagé deux fois sur le même créneau"
   const missionBId = missionBHref.split("/").at(-1)!;
   // Chemins absolus : un `baseURL` porteur d'un chemin est ecrase par toute
   // ressource commencant par « / ».
-  const API = "http://127.0.0.1:3001/api/v1";
+  const API = process.env.E2E_API_URL ?? "http://127.0.0.1:3001/api/v1";
   // L'API n'accepte que l'origine du frontend : un appel hors navigateur doit
   // s'annoncer comme tel, sans quoi CORS le refuse avant toute regle metier.
   const api = await playwrightRequest.newContext({

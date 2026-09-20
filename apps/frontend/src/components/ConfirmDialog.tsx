@@ -57,7 +57,7 @@ export function ConfirmDialog({
         <button
           type="button"
           className="secondary-button"
-          onClick={onCancel}
+          onClick={() => ref.current?.close()}
           disabled={busy}
         >
           Annuler

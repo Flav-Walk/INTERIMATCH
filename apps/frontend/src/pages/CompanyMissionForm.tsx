@@ -9,6 +9,7 @@ import {
 } from "../services/session";
 import { useAuth } from "../hooks/useAuth";
 import { SkillPicker } from "../components/mission/SkillPicker";
+import { MissionPhotoField } from "../components/mission/MissionPhotoField";
 import {
   ErrorSummary,
   Field,
@@ -389,6 +390,19 @@ export function CompanyMissionForm() {
             skills={skills}
             value={values.skills}
             onChange={(next) => set("skills", next)}
+          />
+        </fieldset>
+
+        {/* `disabled` n'est pas posé sur ce bloc : l'envoi d'une image a sa
+            propre attente, et neutraliser le champ pendant l'enregistrement de
+            la mission ferait disparaître l'aperçu de la photo choisie. */}
+        <fieldset>
+          <legend>Photo de la mission</legend>
+          <MissionPhotoField
+            value={values.media}
+            error={errors.media}
+            disabled={busy}
+            onChange={(media) => set("media", media)}
           />
         </fieldset>
 

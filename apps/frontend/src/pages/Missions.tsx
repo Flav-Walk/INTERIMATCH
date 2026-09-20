@@ -12,6 +12,7 @@ import { useAuth } from "../hooks/useAuth";
 import { usePageSeo } from "../hooks/usePageSeo";
 import { errorMessage } from "../services/session";
 import { MissionCard } from "../components/mission/MissionCard";
+import { HeroBanner } from "../components/HeroBanner";
 import {
   explainEmpty,
   listOpenMissions,
@@ -91,16 +92,13 @@ export function Missions() {
 
   return (
     <div className="missions-page">
-      <div className="page-hero">
-        <div className="page-hero__inner">
-          <span className="eyeline">Espace intérimaire</span>
-          <h1>Missions disponibles</h1>
-          <p className="page-hero__lead">
-            Les missions qui correspondent à votre profil, à votre zone et à vos
-            disponibilités — de la plus compatible à la moins compatible.
-          </p>
-        </div>
-      </div>
+      <HeroBanner
+        compact
+        eyeline="Espace intérimaire"
+        title="Missions disponibles"
+        subtitle="Les missions compatibles avec votre profil, votre zone et vos disponibilités, classées par le score calculé par InteriMatch."
+        mascotPose="missions"
+      />
 
       <div className="missions-page__body">
         <div className="public-offers-disclaimer" role="note">
@@ -109,8 +107,8 @@ export function Missions() {
             <strong>Recherche élargie :</strong> En complément des missions
             InteriMatch, découvrez les opportunités du réseau public.{" "}
             <Link
+              className="public-offers-disclaimer__link"
               to="/worker/public-offers"
-              style={{ fontWeight: 600, textDecoration: "underline" }}
             >
               Consulter les offres France Travail →
             </Link>

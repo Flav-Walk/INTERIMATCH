@@ -25,6 +25,24 @@ async function signIn(page: Page, email: string) {
   await page.getByRole("button", { name: "Me connecter", exact: true }).click();
 }
 
+/**
+ * Photo d'une mission, importée depuis l'ordinateur.
+ *
+ * Le serveur éphémère stocke en mémoire et sert toujours le même visuel local :
+ * le parcours est donc reproductible, et aucun octet ne sort de la machine.
+ *
+ * Les octets envoyés commencent par la signature JPEG, parce que le serveur
+ * décide du type sur les OCTETS et non sur l'en-tête déclaré.
+ */
+async function choisirPhotoImportee(page: Page) {
+  await page.locator('.photo-field input[type="file"]').setInputFiles({
+    name: "salle.jpg",
+    mimeType: "image/jpeg",
+    buffer: Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46]),
+  });
+  await expect(page.locator(".photo-field__preview img")).toBeVisible();
+}
+
 const tour = (page: Page) => page.getByRole("dialog");
 
 async function completeTour(page: Page) {
@@ -124,6 +142,10 @@ test("a new account becomes an intérimaire, is toured once, and cannot reach th
   // CAS 2 : aucune sélection de rôle, arrivée directe dans l'espace intérimaire.
   await expect(page).toHaveURL(/\/worker$/);
   await expect(page.getByRole("heading", { name: "Bienvenue," })).toBeVisible();
+  await expect(
+    page.getByRole("navigation", { name: "Navigation principale" }),
+  ).toHaveCount(1);
+  await expect(page.locator(".app-header__nav-link.is-active")).toHaveCount(1);
 
   const dialog = tour(page);
   await expect(dialog).toBeVisible();
@@ -154,10 +176,28 @@ test("a new account becomes an intérimaire, is toured once, and cannot reach th
 
   // La visite reste rejouable à la demande.
   await openAccount(page);
-  await page.getByRole("button", { name: "Revoir la visite" }).click();
-  await expect(tour(page)).toBeVisible();
+  const replayTour = page.getByRole("button", { name: "Revoir la visite" });
+  await replayTour.click();
+  const replayedTour = tour(page);
+  await expect(replayedTour).toBeVisible();
+  const tourCard = replayedTour.locator(".tour-card");
+  await expect(tourCard).toBeFocused();
+  // Le clavier reste dans la modale, y compris aux deux extrémités.
+  await page.keyboard.press("Shift+Tab");
+  await expect(
+    replayedTour.getByRole("button", { name: "Suivant" }),
+  ).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(
+    replayedTour.getByRole("button", { name: "Passer" }),
+  ).toBeFocused();
+  await page.keyboard.press("ArrowRight");
+  await expect(replayedTour).toContainText("Étape 2 sur");
+  await page.keyboard.press("ArrowLeft");
+  await expect(replayedTour).toContainText("Étape 1 sur");
   await page.keyboard.press("Escape");
-  await expect(tour(page)).toBeHidden();
+  await expect(replayedTour).toBeHidden();
+  await expect(page.locator('summary[aria-label="Mon compte"]')).toBeFocused();
 
   // CAS 4 : l'URL de l'espace entreprise ne donne pas accès à l'espace entreprise.
   for (const path of ["/company", "/company/candidates", "/entreprise"]) {
@@ -171,6 +211,7 @@ test("a new account becomes an intérimaire, is toured once, and cannot reach th
   // Le profil se complète depuis l'espace, il n'en bloque jamais l'accès.
   await page.getByRole("link", { name: "Mon profil", exact: true }).click();
   await expect(page).toHaveURL(/\/worker\/profile$/);
+  await expect(page.locator(".app-header__nav-link.is-active")).toHaveCount(1);
 
   // L'utilisateur ne saisit jamais de coordonnées : elles sont dérivées côté serveur.
   await expect(page.getByLabel("Latitude", { exact: true })).toHaveCount(0);
@@ -218,14 +259,30 @@ test("a new account becomes an intérimaire, is toured once, and cannot reach th
   await expect(slots.getByRole("listitem")).toHaveCount(1);
 
   // Le serveur a constaté que tout le nécessaire est présent.
-  await expect(page.getByText("Votre profil est complet.")).toBeVisible();
+  await expect(
+    page.getByText(/Tous les prérequis pour recevoir des missions sont réunis/),
+  ).toBeVisible();
+
+  // La visite reste accessible depuis une page intérieure. Elle rejoint le
+  // tableau de bord, où se trouvent ses ancres, sans laisser un bouton inerte.
+  await openAccount(page);
+  const replayFromProfile = page.getByRole("button", {
+    name: "Revoir la visite",
+  });
+  await expect(replayFromProfile).toBeEnabled();
+  await replayFromProfile.click();
+  await expect(page).toHaveURL(/\/worker$/);
+  await expect(tour(page)).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(tour(page)).toBeHidden();
+  await expect(page.locator('summary[aria-label="Mon compte"]')).toBeFocused();
 
   // Le tableau de bord reflète les vraies données.
   await page.getByRole("link", { name: "Tableau de bord" }).click();
   await expect(
     page.getByRole("heading", { name: "Bonjour Jimmy," }),
   ).toBeVisible();
-  await expect(page.getByText("Profil complété")).toBeVisible();
+  await expect(page.getByText("Prérequis réunis")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Lyon" })).toBeVisible();
   await expect(page.getByText(/jusqu’à 15 km/)).toBeVisible();
   await expect(page.getByText(/1 créneau à venir/)).toBeVisible();
@@ -470,7 +527,9 @@ test("profile lists persist, reject incomplete rows, and allow slot editing", as
   await page.reload();
   await expect(availability.locator("li")).toContainText("Disponible");
   await expect(availability.locator("li")).toContainText("11");
-  await expect(page.getByText("Votre profil est complet.")).toBeVisible();
+  await expect(
+    page.getByText(/Tous les prérequis pour recevoir des missions sont réunis/),
+  ).toBeVisible();
   await availability
     .getByLabel("Début", { exact: true })
     .fill("2027-08-10T12:00");
@@ -719,6 +778,7 @@ test("a company drafts, edits and publishes a mission", async ({
   ])
     await expect(page.locator(`[name="${forbidden}"]`)).toHaveCount(0);
 
+  // La photo manque encore : le formulaire le dit avant tout envoi.
   // Un envoi incomplet est retenu côté navigateur. Le récapitulatif annonce
   // combien de points bloquent et mène à chacun — sur un formulaire long, le
   // seul message posé sous un champ hors écran donnait l'impression que le
@@ -728,6 +788,9 @@ test("a company drafts, edits and publishes a mission", async ({
   await expect(recap).toBeVisible();
   await expect(recap).toContainText("points à corriger");
   await expect(recap).toContainText("Donnez un intitulé à la mission.");
+  await expect(recap).toContainText(
+    "Ajoutez une photo pour publier cette mission.",
+  );
   // Il prend le focus de lui-même, pour être lu à voix haute.
   await expect(recap).toBeFocused();
   // Le détail reste aussi au pied du champ concerné.
@@ -772,7 +835,13 @@ test("a company drafts, edits and publishes a mission", async ({
   await expect(
     page.getByText(/Précisez si ce montant est horaire/),
   ).toHaveCount(0);
-  await expect(page.locator(".form-summary")).toHaveCount(0);
+  // Le récapitulatif ne disparaît pas pour autant : la photo, désormais
+  // obligatoire, reste à fournir. Il ne doit plus signaler QUE cela — corriger
+  // un point ne doit ni effacer les autres, ni les laisser se confondre.
+  await expect(page.locator(".form-summary")).toContainText(
+    "Ajoutez une photo pour publier cette mission.",
+  );
+  await expect(page.locator(".field-error")).toHaveCount(0);
 
   // Une compétence ne peut porter qu'un seul niveau : choisir « souhaitée »
   // après « obligatoire » remplace le choix au lieu de s'y ajouter.
@@ -787,6 +856,11 @@ test("a company drafts, edits and publishes a mission", async ({
   await expect(
     page.getByRole("radio", { name: "Service en salle : souhaitée" }),
   ).not.toBeChecked();
+
+  // ---- La photo, désormais obligatoire -----------------------------------
+  // Importée depuis l'ordinateur : cette voie ne dépend d'aucun service
+  // extérieur, et reste donc disponible même si la bibliothèque est en panne.
+  await choisirPhotoImportee(page);
 
   await page.screenshot({
     path: testInfo.outputPath("mission-form.png"),
@@ -1031,6 +1105,7 @@ test("the company dashboard reflects mission changes without reloading", async (
   await page.getByLabel("Fin").fill("2028-01-01T02:00");
   await page.getByLabel("Ville").fill("Lyon");
   await page.getByLabel("Code postal").fill("69002");
+  await choisirPhotoImportee(page);
   await page.getByRole("button", { name: "Enregistrer le brouillon" }).click();
   await expect(page).toHaveURL(/\/company\/missions\/[0-9a-f-]{36}$/);
   const missionUrl = page.url();
@@ -1141,6 +1216,7 @@ test("a published mission becomes visible to an intérimaire", async ({
     await page
       .getByRole("radio", { name: "Mise en place : souhaitée" })
       .check();
+    await choisirPhotoImportee(page);
     await page
       .getByRole("button", { name: "Enregistrer le brouillon" })
       .click();
@@ -1268,6 +1344,7 @@ test("matching connects a published mission to a compatible intérimaire", async
   await page
     .getByRole("radio", { name: "Relation client : souhaitée" })
     .check();
+  await choisirPhotoImportee(page);
   await page.getByRole("button", { name: "Enregistrer le brouillon" }).click();
   await page.waitForURL(/\/company\/missions\/[0-9a-f-]{36}$/);
   const missionUrl = page.url();
@@ -1397,6 +1474,10 @@ test("matching connects a published mission to a compatible intérimaire", async
     name: "Votre candidature",
   });
   await workerApplication.getByRole("button", { name: "Postuler" }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Confirmer ma candidature" })
+    .click();
   await expect(workerApplication).toContainText("En attente");
   await expect(workerApplication).toContainText("Candidature envoyée");
 
@@ -1430,6 +1511,10 @@ test("matching connects a published mission to a compatible intérimaire", async
   await page
     .getByRole("region", { name: "Votre candidature" })
     .getByRole("button", { name: "Postuler" })
+    .click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Confirmer ma candidature" })
     .click();
   await expect(
     page.getByRole("region", { name: "Votre candidature" }),

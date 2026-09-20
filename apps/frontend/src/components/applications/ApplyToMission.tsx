@@ -22,6 +22,7 @@ import {
   type Application,
 } from "../../services/applications";
 import { ApplicationStatus } from "./ApplicationStatus";
+import { ConfirmDialog } from "../ConfirmDialog";
 
 const stateMessages: Record<Application["status"], string> = {
   pending: "Candidature envoyée. L’entreprise doit maintenant l’examiner.",
@@ -233,6 +234,7 @@ export function ApplyToMission({
   const [application, setApplication] = useState<Application | null>(null);
   const [loading, setLoading] = useState(true);
   const [applying, setApplying] = useState(false);
+  const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -281,17 +283,36 @@ export function ApplyToMission({
       }
     } finally {
       setApplying(false);
+      setConfirming(false);
     }
   }
 
   return (
-    <ApplicationAction
-      application={application}
-      loading={loading}
-      applying={applying}
-      error={error}
-      onApply={() => void apply()}
-      mission={mission}
-    />
+    <>
+      <ApplicationAction
+        application={application}
+        loading={loading}
+        applying={applying}
+        error={error}
+        onApply={() => setConfirming(true)}
+        mission={mission}
+      />
+      {confirming && (
+        <ConfirmDialog
+          open
+          title="Confirmer votre candidature ?"
+          confirmLabel="Confirmer ma candidature"
+          busyLabel="Envoi en cours…"
+          busy={applying}
+          onConfirm={() => void apply()}
+          onCancel={() => setConfirming(false)}
+        >
+          <p>
+            Vous allez transmettre votre candidature pour « {mission.title} ».
+            L’entreprise pourra alors consulter votre profil.
+          </p>
+        </ConfirmDialog>
+      )}
+    </>
   );
 }

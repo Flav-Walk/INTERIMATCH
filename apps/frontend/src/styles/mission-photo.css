@@ -1,0 +1,326 @@
+/* ---- Photo d'une mission : champ, bibliothèque, affichage ---- */
+
+.photo-field {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.photo-field__label {
+  margin: 0;
+  font-weight: 650;
+}
+
+.photo-field__hint {
+  margin: 0;
+}
+
+.photo-field__empty {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-5);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  background: var(--tint);
+}
+
+.photo-field__preview {
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--tint);
+}
+
+.photo-field__preview img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 7;
+  object-fit: cover;
+}
+
+.photo-field__preview figcaption {
+  display: grid;
+  gap: 2px;
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--text-xs);
+}
+
+.photo-field__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+/* Les deux commandes doivent se ressembler exactement, alors que l'une est un
+   `button` et l'autre un `label` : seul le bouton hérite de l'alignement par
+   défaut du navigateur. Il est donc posé ici pour les deux.
+   Le champ fichier natif est masqué ; le label porte l'apparence et reste
+   atteignable au clavier, puisque le champ conserve le focus. */
+.photo-field__actions > .secondary-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+}
+
+.photo-field__upload {
+  cursor: pointer;
+}
+
+.photo-field__upload:focus-within {
+  outline: 3px solid var(--forest);
+  outline-offset: 2px;
+}
+
+.photo-credit {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--text-xs);
+}
+
+.photo-credit a {
+  color: inherit;
+}
+
+/* ---- Bibliothèque ---- */
+
+.photo-library {
+  width: min(880px, calc(100vw - 2rem));
+  max-height: min(86vh, 860px);
+  padding: var(--space-5);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink);
+  overflow: auto;
+}
+
+.photo-library::backdrop {
+  background: oklch(0.2 0.03 165 / 0.55);
+}
+
+.photo-library__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.photo-library__head h2 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.photo-library__close {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 40px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--ink);
+}
+
+.photo-library__search {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.photo-library__input {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1 1 240px;
+}
+
+.photo-library__input svg {
+  position: absolute;
+  left: var(--space-3);
+  color: var(--muted);
+  pointer-events: none;
+}
+
+.photo-library__input input {
+  width: 100%;
+  padding: 10px var(--space-3) 10px 36px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--background);
+  color: var(--ink);
+}
+
+.photo-library__suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.photo-chip {
+  min-height: 34px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  color: var(--muted);
+  font-size: var(--text-xs);
+}
+
+.photo-chip[aria-pressed="true"] {
+  border-color: var(--forest);
+  background: var(--tint);
+  color: var(--forest);
+  font-weight: 650;
+}
+
+.photo-library__error {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-sm);
+  background: var(--tint);
+}
+
+.photo-library__error p {
+  margin: 0 0 var(--space-2);
+}
+
+.photo-library__error p:last-child {
+  margin-bottom: 0;
+}
+
+.photo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.photo-grid__pick {
+  position: relative;
+  display: block;
+  width: 100%;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--tint);
+  cursor: pointer;
+}
+
+.photo-grid__pick img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+}
+
+.photo-grid__pick:hover img,
+.photo-grid__pick:focus-visible img {
+  transform: scale(1.03);
+}
+
+.photo-grid__pick img {
+  transition: transform var(--fast) var(--ease-out);
+}
+
+/* Le libellé porte le nom de l'auteur : il nomme l'action pour un lecteur
+   d'écran sans encombrer la grille. */
+.photo-grid__label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.photo-library__legal {
+  margin: var(--space-4) 0 0;
+}
+
+/* ---- Photo affichée sur une mission ---- */
+
+.mission-photo {
+  margin: 0 0 var(--space-4);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+/* Plafonnée en hauteur : sur un large écran, le seul ratio laissait la photo
+   occuper la moitié de la page et repoussait le titre sous la ligne de flottaison. */
+.mission-photo img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 6;
+  max-height: 260px;
+  object-fit: cover;
+}
+
+.mission-photo figcaption:not(:empty) {
+  padding: var(--space-2) var(--space-4);
+  background: var(--tint);
+}
+
+.mission-photo__missing {
+  margin: 0 0 var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  color: var(--muted);
+}
+
+.detail-hero__photo {
+  margin: 0;
+}
+
+.detail-hero__photo img {
+  display: block;
+  width: 100%;
+  max-height: 320px;
+  object-fit: cover;
+}
+
+.detail-hero__photo figcaption:not(:empty) {
+  padding: var(--space-2) clamp(1rem, 4vw, 3rem);
+  background: oklch(0 0 0 / 0.25);
+}
+
+.detail-hero__photo .photo-credit,
+.detail-hero__photo .photo-credit a {
+  color: oklch(0.92 0.02 160);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .photo-grid__pick img {
+    transition: none;
+  }
+
+  .photo-grid__pick:hover img,
+  .photo-grid__pick:focus-visible img {
+    transform: none;
+  }
+}
+
+@media (width < 620px) {
+  .photo-library {
+    width: 100vw;
+    max-width: 100vw;
+    max-height: 100dvh;
+    margin: 0;
+    border-radius: 0;
+  }
+
+  .photo-field__actions .secondary-button {
+    flex: 1 1 100%;
+    justify-content: center;
+  }
+}

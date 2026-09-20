@@ -14,6 +14,7 @@ import {
   type PublicJobOffer,
 } from "../services/publicOffers";
 import { PublicOfferCard } from "../components/public-offers/PublicOfferCard";
+import { HeroBanner } from "../components/HeroBanner";
 
 function SkeletonGrid() {
   return (
@@ -87,21 +88,25 @@ export function WorkerPublicOffers() {
 
   return (
     <div className="missions-page">
-      <div className="page-hero">
-        <div className="page-hero__inner">
-          <span className="eyeline">
-            Espace intérimaire · Données publiques
-          </span>
-          <h1>Offres France Travail</h1>
-          <p className="page-hero__lead">
-            Opportunités externes dans l'hôtellerie-restauration issues du
-            réseau public France Travail, consultables en complément de vos
-            missions InteriMatch.
-          </p>
-        </div>
-      </div>
+      <HeroBanner
+        compact
+        eyeline="Espace intérimaire · Données publiques"
+        title="Offres France Travail"
+        subtitle="Des opportunités externes issues du réseau public, à consulter en complément des missions InteriMatch, sans score de compatibilité."
+        mascotPose="missions"
+      />
 
       <div className="missions-page__body">
+        {import.meta.env.VITE_DEMO_MODE === "true" && (
+          <div className="public-offers-demo-note" role="note">
+            <Info size={18} aria-hidden="true" />
+            <div>
+              <strong>Démonstration locale :</strong> ce catalogue provient de
+              fixtures importées dans la base locale. Il ne s’agit pas du flux
+              France Travail en direct.
+            </div>
+          </div>
+        )}
         <div className="public-offers-disclaimer" role="note">
           <Info size={20} aria-hidden="true" />
           <div>
@@ -212,7 +217,14 @@ export function WorkerPublicOffers() {
           ) : (
             <div className="empty">
               <BriefcaseBusiness aria-hidden="true" />
-              <h2>Aucune offre France Travail ne correspond à vos critères</h2>
+              {/* Sans critère saisi, parler de « critères » ferait porter le
+                  vide à une recherche qui n'a pas eu lieu : le catalogue est
+                  simplement vide, et l'écran doit le dire tel quel. */}
+              <h2>
+                {activeSearch || activeLocation
+                  ? "Aucune offre France Travail ne correspond à vos critères"
+                  : "Aucune offre France Travail disponible"}
+              </h2>
               <p>
                 {activeSearch || activeLocation
                   ? "Essayez d'élargir votre recherche ou de réinitialiser les filtres."

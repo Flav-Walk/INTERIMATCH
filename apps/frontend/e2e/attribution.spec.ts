@@ -72,6 +72,10 @@ test("la dernière place attribuée ferme le recrutement, des deux côtés", asy
     await signIn(page, compte(role), "worker");
     await page.goto(`/worker/missions/${missionId}`);
     await page.getByRole("button", { name: "Postuler" }).click();
+    await page
+      .getByRole("dialog")
+      .getByRole("button", { name: "Confirmer ma candidature" })
+      .click();
     await expect(
       page.getByText(
         "Candidature envoyée. L’entreprise doit maintenant l’examiner.",

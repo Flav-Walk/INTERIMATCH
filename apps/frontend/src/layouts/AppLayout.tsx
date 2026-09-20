@@ -18,7 +18,6 @@ import {
   MapPin,
   Search,
   ShieldCheck,
-  Sprout,
   UserCircle,
 } from "lucide-react";
 import { useRef, useState, type FormEvent, type ReactNode } from "react";
@@ -32,6 +31,7 @@ import {
   type User,
 } from "../services/session";
 import { GuidedTour } from "../components/GuidedTour";
+import { Logo } from "../components/Logo";
 import {
   CURRENT_TOUR_VERSION,
   shouldRunTour,
@@ -193,8 +193,7 @@ export function AppLayout() {
             className="app-header__logo"
             to={user ? destination(user) : "/"}
           >
-            <Sprout size={22} aria-hidden="true" />
-            <span className="app-header__brand">InteriMatch</span>
+            <Logo variant="light" />
           </NavLink>
 
           {user ? (
@@ -283,14 +282,12 @@ export function AppLayout() {
                         type="button"
                         onClick={() => {
                           account.current?.removeAttribute("open");
+                          account.current
+                            ?.querySelector<HTMLElement>("summary")
+                            ?.focus();
+                          if (!onDashboard) navigate(destination(user));
                           setReplay(true);
                         }}
-                        disabled={!onDashboard}
-                        title={
-                          onDashboard
-                            ? undefined
-                            : "Disponible depuis votre tableau de bord"
-                        }
                       >
                         <LifeBuoy size={16} aria-hidden="true" />
                         Revoir la visite
@@ -323,8 +320,7 @@ export function AppLayout() {
       </main>
       <footer className="shell-footer">
         <span className="shell-brand">
-          <Sprout size={19} aria-hidden="true" />
-          InteriMatch
+          <Logo variant="forest" />
         </span>
         <nav aria-label="Informations légales" className="footer-links">
           <NavLink to="/mentions-legales">Mentions légales</NavLink>

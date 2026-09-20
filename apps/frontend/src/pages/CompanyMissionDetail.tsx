@@ -27,6 +27,7 @@ import {
 } from "../services/missions";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { missionSchedule } from "../components/mission/MissionCard";
+import { UnsplashCredit } from "../components/mission/MissionPhotoField";
 import {
   MissionApplications,
   missionCapacityLabel,
@@ -205,6 +206,25 @@ export function CompanyMissionDetail() {
         <ArrowLeft size={15} aria-hidden="true" />
         Vos missions
       </Link>
+
+      {mission.media ? (
+        <figure className="mission-photo">
+          <img
+            src={mission.media.url}
+            alt={mission.media.alt ?? ""}
+            decoding="async"
+          />
+          <figcaption>
+            <UnsplashCredit media={mission.media} />
+          </figcaption>
+        </figure>
+      ) : (
+        // Dit une seule fois ce qui manque, et ce que cela empêche.
+        <p className="mission-photo__missing" role="status">
+          Cette mission n’a pas encore de photo : ajoutez-en une pour pouvoir la
+          publier.
+        </p>
+      )}
 
       <div className="section-head">
         <h1>{mission.title}</h1>

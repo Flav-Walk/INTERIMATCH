@@ -46,6 +46,7 @@ const mission = (over: Partial<Mission> = {}): Mission => ({
   status: "open",
   published_at: null,
   demo: false,
+  media: null,
   skills: [],
   ...over,
 });
@@ -597,6 +598,7 @@ describe("corps envoyé à l'API", () => {
       "ends_at",
       "headcount",
       "job",
+      "media",
       "min_years_experience",
       "pay_amount",
       "pay_unit",
@@ -693,6 +695,13 @@ describe("validations de saisie", () => {
     ends_at: "2027-03-15T02:00",
     city: "Lyon",
     postal_code: "69002",
+    // Une mission complète porte désormais sa photo : sans elle, elle ne
+    // pourrait pas être publiée.
+    media: {
+      provider: "upload",
+      url: "https://storage.test/missions/c1/photo.jpg",
+      storage_path: "missions/c1/photo.jpg",
+    },
   });
 
   it("accepte un formulaire complet", () => {
@@ -705,10 +714,12 @@ describe("validations de saisie", () => {
       "city",
       "ends_at",
       "job",
+      "media",
       "postal_code",
       "starts_at",
       "title",
     ]);
+    expect(errors.media).toBe("Ajoutez une photo pour publier cette mission.");
   });
 
   it("refuse une fin antérieure au début", () => {
