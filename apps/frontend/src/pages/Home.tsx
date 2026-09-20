@@ -3,70 +3,96 @@ import {
   ArrowRight,
   Briefcase,
   CalendarCheck,
-  ChefHat,
   ClipboardList,
   MapPin,
   ShieldCheck,
   Sparkles,
   Users,
 } from "lucide-react";
+import { MatchyMascot } from "../components/MatchyMascot";
 import { useAuth } from "../hooks/useAuth";
 import { usePageSeo } from "../hooks/usePageSeo";
 import { destination } from "../services/session";
 
 const WORKER_FEATURES = [
   {
-    icon: <MapPin size={22} aria-hidden="true" />,
-    title: "Missions près de chez vous",
-    desc: "Uniquement des établissements en région Auvergne-Rhône-Alpes.",
+    icon: <MapPin size={21} aria-hidden="true" />,
+    title: "Des missions dans votre zone",
+    desc: "Les besoins publiés en Auvergne-Rhône-Alpes sont rapprochés de votre mobilité.",
   },
   {
-    icon: <Sparkles size={22} aria-hidden="true" />,
-    title: "Matching intelligent",
-    desc: "Vos compétences et disponibilités sont croisés automatiquement avec les besoins.",
+    icon: <Sparkles size={21} aria-hidden="true" />,
+    title: "Un rapprochement expliqué",
+    desc: "Métier, compétences et distance rendent chaque proposition compréhensible.",
   },
   {
-    icon: <CalendarCheck size={22} aria-hidden="true" />,
-    title: "Flexibilité totale",
-    desc: "Choisissez vos missions, refusez sans justification, gérez votre agenda.",
+    icon: <CalendarCheck size={21} aria-hidden="true" />,
+    title: "Votre agenda reste le vôtre",
+    desc: "Vous renseignez vos créneaux et choisissez les missions auxquelles postuler.",
   },
 ];
 
 const COMPANY_FEATURES = [
   {
-    icon: <Users size={22} aria-hidden="true" />,
-    title: "Des profils qualifiés HCR",
-    desc: "Cuisiniers, serveurs, réceptionnistes — des professionnels vérifiés par leurs compétences.",
+    icon: <Users size={21} aria-hidden="true" />,
+    title: "Des profils adaptés au besoin",
+    desc: "Les compétences, disponibilités et mobilité renseignées alimentent le rapprochement.",
   },
   {
-    icon: <ClipboardList size={22} aria-hidden="true" />,
-    title: "Publiez en 3 minutes",
-    desc: "Décrivez le poste, les horaires et les compétences : les candidatures arrivent.",
+    icon: <ClipboardList size={21} aria-hidden="true" />,
+    title: "Un besoin décrit précisément",
+    desc: "Poste, horaires, lieu et compétences structurent chaque mission publiée.",
   },
   {
-    icon: <ShieldCheck size={22} aria-hidden="true" />,
-    title: "Conforme et sécurisé",
-    desc: "Connexion chiffrée, données minimisées : un profil n’est transmis qu’une fois la candidature déposée.",
+    icon: <ShieldCheck size={21} aria-hidden="true" />,
+    title: "Des échanges maîtrisés",
+    desc: "L’établissement examine les candidatures reçues et décide de l’attribution.",
   },
 ];
 
 const HOW_STEPS = [
   {
     num: "01",
-    title: "Créez votre profil",
-    desc: "Compétences, disponibilités, zone géographique.",
+    title: "Construisez votre profil",
+    desc: "Métier, compétences, mobilité et disponibilités.",
   },
   {
     num: "02",
-    title: "Recevez les missions",
-    desc: "Seules les missions qui correspondent à votre profil apparaissent.",
+    title: "Découvrez les missions",
+    desc: "Le rapprochement met en avant celles qui correspondent à votre situation.",
   },
   {
     num: "03",
-    title: "Postulez en un clic",
-    desc: "L’établissement reçoit votre candidature immédiatement.",
+    title: "Candidatez simplement",
+    desc: "L’établissement reçoit votre candidature et vous retrouvez son suivi dans votre espace.",
   },
 ];
+
+function FeatureList({
+  features,
+  tone = "forest",
+}: {
+  features: typeof WORKER_FEATURES;
+  tone?: "forest" | "orange";
+}) {
+  return (
+    <ul className="home-feature-list">
+      {features.map((feature) => (
+        <li key={feature.title}>
+          <span
+            className={`home-feature-list__icon home-feature-list__icon--${tone}`}
+          >
+            {feature.icon}
+          </span>
+          <div>
+            <h3>{feature.title}</h3>
+            <p>{feature.desc}</p>
+          </div>
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 export function Home() {
   usePageSeo({
@@ -79,171 +105,119 @@ export function Home() {
 
   return (
     <div className="home">
-      {/* ══════════════════════════════════════════════════════════════════
-          HERO
-      ══════════════════════════════════════════════════════════════════ */}
       <section className="home-hero" aria-labelledby="hero-title">
+        <span className="home-hero__arch home-hero__arch--one" aria-hidden />
+        <span className="home-hero__arch home-hero__arch--two" aria-hidden />
         <div className="home-hero__inner">
           <div className="home-hero__body">
             <span className="home-hero__eyeline">
-              <ChefHat size={14} aria-hidden="true" />
-              Intérim Hôtellerie · Restauration · AURA
+              Hôtellerie · Restauration · Auvergne-Rhône-Alpes
             </span>
-
             <h1 id="hero-title" className="home-hero__title">
               Les bonnes personnes,
               <span className="home-hero__accent"> au bon moment.</span>
             </h1>
-
             <p className="home-hero__lead">
-              InteriMatch connecte les établissements HCR d’Auvergne-Rhône-Alpes
-              avec des intérimaires qualifiés — en quelques minutes, sans
-              intermédiaire.
+              InteriMatch rapproche les besoins des établissements HCR et les
+              profils disponibles, avec des critères visibles et un suivi
+              simple de chaque candidature.
             </p>
-
             {user ? (
               <Link
                 className="home-cta home-cta--primary"
                 to={destination(user)}
-                aria-label="Accéder à mon espace InteriMatch"
               >
                 Retrouver mon espace
                 <ArrowRight size={18} aria-hidden="true" />
               </Link>
             ) : (
               <div className="home-hero__ctas">
-                <Link
-                  className="home-cta home-cta--primary"
-                  to="/register"
-                  aria-label="Créer un compte intérimaire ou établissement"
-                >
-                  Rejoindre InteriMatch
+                <Link className="home-cta home-cta--primary" to="/register">
+                  Créer mon profil
                   <ArrowRight size={18} aria-hidden="true" />
                 </Link>
-                <Link
-                  className="home-cta home-cta--ghost"
-                  to="/login"
-                  aria-label="Se connecter à mon compte existant"
-                >
-                  J’ai déjà un compte
+                <Link className="home-cta home-cta--ghost" to="/login">
+                  Me connecter
                 </Link>
               </div>
             )}
           </div>
-
-          {/* Illustration décorative */}
-          <div className="home-hero__visual" aria-hidden="true">
-            <div className="home-hero__orb" />
-            <ChefHat />
+          <div className="home-hero__visual">
+            <div className="home-hero__matchy-frame">
+              <p>
+                <strong>Matchy vous accompagne</strong>
+                <span>Du profil jusqu’à la mission confirmée.</span>
+              </p>
+              <MatchyMascot pose="missions" includeBackground size={310} />
+            </div>
           </div>
         </div>
       </section>
 
-      {/* ══════════════════════════════════════════════════════════════════
-          POUR LES INTÉRIMAIRES
-      ══════════════════════════════════════════════════════════════════ */}
-      <section className="home-section" aria-labelledby="worker-title">
-        <div className="home-section__inner">
-          <div className="home-section__head">
+      <section className="home-section home-path" aria-labelledby="worker-title">
+        <div className="home-section__inner home-path__inner">
+          <div className="home-path__intro">
             <span className="home-section__tag">Intérimaires</span>
-            <h2 id="worker-title">Trouvez des missions qui vous ressemblent</h2>
+            <h2 id="worker-title">Votre profil ouvre le bon chemin</h2>
             <p>
-              Plus besoin de démarcher. Votre profil parle pour vous — les
-              missions compatibles arrivent directement.
+              Plus votre situation est précise, plus les propositions sont
+              faciles à comprendre et à choisir.
             </p>
+            {!user && (
+              <Link className="home-cta home-cta--outline" to="/register">
+                <Briefcase size={16} aria-hidden="true" />
+                Créer mon profil intérimaire
+              </Link>
+            )}
           </div>
-
-          <div className="home-features">
-            {WORKER_FEATURES.map((f) => (
-              <div key={f.title} className="home-feature-card">
-                <div className="home-feature-card__icon">{f.icon}</div>
-                <h3 className="home-feature-card__title">{f.title}</h3>
-                <p className="home-feature-card__desc">{f.desc}</p>
-              </div>
-            ))}
-          </div>
-
-          {!user && (
-            <Link
-              className="home-cta home-cta--outline"
-              to="/register"
-              aria-label="Créer un compte intérimaire HCR"
-            >
-              <Briefcase size={16} aria-hidden="true" />
-              Créer mon profil intérimaire
-            </Link>
-          )}
+          <FeatureList features={WORKER_FEATURES} />
         </div>
       </section>
 
-      {/* ══════════════════════════════════════════════════════════════════
-          POUR LES ÉTABLISSEMENTS
-      ══════════════════════════════════════════════════════════════════ */}
       <section
-        className="home-section home-section--tinted"
+        className="home-section home-section--tinted home-path home-path--company"
         aria-labelledby="company-title"
       >
-        <div className="home-section__inner">
-          <div className="home-section__head">
+        <div className="home-section__inner home-path__inner">
+          <div className="home-path__intro">
             <span className="home-section__tag home-section__tag--orange">
               Établissements
             </span>
-            <h2 id="company-title">
-              Renforcez votre équipe en quelques minutes
-            </h2>
+            <h2 id="company-title">Un recrutement lisible, de bout en bout</h2>
             <p>
-              Décrivez votre besoin, recevez des profils compatibles. Sans
-              agence, sans délai, sans surprise.
+              Décrivez la mission, consultez les candidatures et attribuez les
+              postes depuis le même espace.
             </p>
-          </div>
-
-          <div className="home-features">
-            {COMPANY_FEATURES.map((f) => (
-              <div key={f.title} className="home-feature-card">
-                <div className="home-feature-card__icon home-feature-card__icon--orange">
-                  {f.icon}
-                </div>
-                <h3 className="home-feature-card__title">{f.title}</h3>
-                <p className="home-feature-card__desc">{f.desc}</p>
+            {!user && (
+              <div className="home-company-access">
+                <span>Vous disposez déjà d’un accès établissement ?</span>
+                <Link className="home-cta home-cta--outline" to="/login">
+                  <Users size={16} aria-hidden="true" />
+                  Accéder à l’espace entreprise
+                </Link>
               </div>
-            ))}
+            )}
           </div>
-
-          {!user && (
-            <Link
-              className="home-cta home-cta--outline"
-              to="/register"
-              aria-label="Créer un compte établissement HCR"
-            >
-              <Users size={16} aria-hidden="true" />
-              Inscrire mon établissement
-            </Link>
-          )}
+          <FeatureList features={COMPANY_FEATURES} tone="orange" />
         </div>
       </section>
 
-      {/* ══════════════════════════════════════════════════════════════════
-          COMMENT ÇA MARCHE
-      ══════════════════════════════════════════════════════════════════ */}
-      <section className="home-section" aria-labelledby="how-title">
-        <div className="home-section__inner">
+      <section className="home-section home-how" aria-labelledby="how-title">
+        <div className="home-section__inner home-how__inner">
           <div className="home-section__head">
-            <h2 id="how-title">Comment ça marche</h2>
-            <p>Trois étapes pour trouver votre prochaine mission.</p>
+            <span className="home-section__tag">Le parcours intérimaire</span>
+            <h2 id="how-title">Trois étapes, sans détour</h2>
+            <p>Chaque étape correspond à une action réellement disponible.</p>
           </div>
-
-          <ol
-            className="home-steps"
-            aria-label="Étapes pour rejoindre InteriMatch"
-          >
-            {HOW_STEPS.map((s) => (
-              <li key={s.num} className="home-step">
+          <ol className="home-steps" aria-label="Étapes pour utiliser InteriMatch">
+            {HOW_STEPS.map((step) => (
+              <li key={step.num} className="home-step">
                 <span className="home-step__num" aria-hidden="true">
-                  {s.num}
+                  {step.num}
                 </span>
                 <div>
-                  <h3 className="home-step__title">{s.title}</h3>
-                  <p className="home-step__desc">{s.desc}</p>
+                  <h3 className="home-step__title">{step.title}</h3>
+                  <p className="home-step__desc">{step.desc}</p>
                 </div>
               </li>
             ))}
@@ -251,23 +225,21 @@ export function Home() {
         </div>
       </section>
 
-      {/* ══════════════════════════════════════════════════════════════════
-          CTA FINAL
-      ══════════════════════════════════════════════════════════════════ */}
       {!user && (
         <section className="home-final-cta" aria-labelledby="final-cta-title">
           <div className="home-final-cta__inner">
-            <h2 id="final-cta-title">Prêt à rejoindre InteriMatch&nbsp;?</h2>
-            <p>
-              Intérimaire ou établissement — votre compte est créé en moins de 2
-              minutes.
-            </p>
-            <Link
-              className="home-cta home-cta--primary"
-              to="/register"
-              aria-label="Créer mon compte InteriMatch gratuitement"
-            >
-              Démarrer gratuitement
+            <span className="home-final-cta__icon" aria-hidden="true">
+              <Sparkles size={22} />
+            </span>
+            <div>
+              <h2 id="final-cta-title">Prêt à construire votre profil ?</h2>
+              <p>
+                Commencez par vos informations professionnelles, puis complétez
+                vos disponibilités à votre rythme.
+              </p>
+            </div>
+            <Link className="home-cta home-cta--primary" to="/register">
+              Créer mon compte intérimaire
               <ArrowRight size={18} aria-hidden="true" />
             </Link>
           </div>

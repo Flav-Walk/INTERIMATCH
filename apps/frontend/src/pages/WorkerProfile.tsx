@@ -1,17 +1,31 @@
 import {
   useEffect,
+  useMemo,
   useRef,
   useState,
   type FormEvent,
   type ReactNode,
 } from "react";
 import { useLocation } from "react-router-dom";
-import { Check, Plus, Trash2, Pencil } from "lucide-react";
+import {
+  Award,
+  BriefcaseBusiness,
+  Check,
+  MapPin,
+  Pencil,
+  Plus,
+  Search,
+  Sparkles,
+  Trash2,
+  UserRound,
+} from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import {
   api,
   errorMessage,
   type Availability,
+  type Certification,
+  type Experience,
   type ReferenceValue,
   type Skill,
   type User,
@@ -19,161 +33,253 @@ import {
 import {
   addAvailability,
   formatSlot,
+  humaniseError,
   missingIn,
+  partial,
   patchWorker,
   putCertifications,
   putExperiences,
   putSkills,
-  humaniseError,
-  partial,
   removeAvailability,
   requirementLabels,
-  updateAvailability,
   toLocalInput,
+  updateAvailability,
 } from "../services/profile";
 import { HeroBanner } from "../components/HeroBanner";
 import { CircularGauge } from "../components/CircularGauge";
+import { useUnsavedChanges } from "../components/form/Field";
 import { workerRequirementProgress } from "../services/completion";
+import "../styles/profile.css";
 
-/**
- * Chaque section s'enregistre seule : l'utilisateur peut remplir une partie,
- * quitter, revenir et retrouver ses données. `onboarding_completed` reste faux
- * tant que le serveur n'a pas constaté que tout le nécessaire est présent.
- */
-function Section({
+type DraftExperience = Omit<Experience, "id">;
+type DraftCertification = Omit<Certification, "id">;
+
+export interface WorkerProfileDraft {
+  first_name: string;
+  last_name: string;
+  phone: string;
+  main_job: string;
+  secondary_jobs: string[];
+  years_experience: string;
+  skill_ids: string[];
+  experiences: DraftExperience[];
+  certifications: DraftCertification[];
+  city: string;
+  postal_code: string;
+  mobility_radius_km: string;
+  has_driving_licence: boolean;
+  has_vehicle: boolean;
+  open_to_missions: boolean;
+}
+
+type SaveGroup = "worker" | "skills" | "experiences" | "certifications";
+
+const EMPTY_DRAFT: WorkerProfileDraft = {
+  first_name: "",
+  last_name: "",
+  phone: "",
+  main_job: "",
+  secondary_jobs: [],
+  years_experience: "",
+  skill_ids: [],
+  experiences: [],
+  certifications: [],
+  city: "",
+  postal_code: "",
+  mobility_radius_km: "",
+  has_driving_licence: false,
+  has_vehicle: false,
+  open_to_missions: true,
+};
+
+export function workerProfileDraft(user: User | null): WorkerProfileDraft {
+  if (!user) return { ...EMPTY_DRAFT };
+  const profile = user.profile;
+  return {
+    first_name: user.first_name ?? "",
+    last_name: user.last_name ?? "",
+    phone: profile.phone ?? "",
+    main_job: profile.main_job ?? "",
+    secondary_jobs: [...(profile.secondary_jobs ?? [])],
+    years_experience:
+      profile.years_experience === null ||
+      profile.years_experience === undefined
+        ? ""
+        : String(profile.years_experience),
+    skill_ids: (profile.skills ?? []).map((skill) => skill.id),
+    experiences: (profile.experiences ?? []).map(
+      ({ job_title, employer, years }) => ({
+        job_title,
+        employer,
+        years: Number(years),
+      }),
+    ),
+    certifications: (profile.certifications ?? []).map(
+      ({ name, issuer, obtained_on }) => ({
+        name,
+        issuer: issuer ?? "",
+        obtained_on,
+      }),
+    ),
+    city: profile.city ?? "",
+    postal_code: profile.postal_code ?? "",
+    mobility_radius_km:
+      profile.mobility_radius_km === null ||
+      profile.mobility_radius_km === undefined
+        ? ""
+        : String(profile.mobility_radius_km),
+    has_driving_licence: profile.has_driving_licence ?? false,
+    has_vehicle: profile.has_vehicle ?? false,
+    open_to_missions: profile.open_to_missions ?? true,
+  };
+}
+
+const stable = (value: unknown) => JSON.stringify(value);
+const sorted = (values: string[]) => [...values].sort();
+
+export function changedProfileGroups(
+  baseline: WorkerProfileDraft,
+  draft: WorkerProfileDraft,
+): SaveGroup[] {
+  const workerKeys: (keyof WorkerProfileDraft)[] = [
+    "first_name",
+    "last_name",
+    "phone",
+    "main_job",
+    "secondary_jobs",
+    "years_experience",
+    "city",
+    "postal_code",
+    "mobility_radius_km",
+    "has_driving_licence",
+    "has_vehicle",
+    "open_to_missions",
+  ];
+  const groups: SaveGroup[] = [];
+  if (
+    workerKeys.some((key) => {
+      const before = baseline[key];
+      const after = draft[key];
+      const normalise = (value: WorkerProfileDraft[typeof key]) =>
+        Array.isArray(value)
+          ? [...value].sort((a, b) =>
+              stable(a).localeCompare(stable(b)),
+            )
+          : value;
+      return stable(normalise(before)) !== stable(normalise(after));
+    })
+  )
+    groups.push("worker");
+  if (stable(sorted(baseline.skill_ids)) !== stable(sorted(draft.skill_ids)))
+    groups.push("skills");
+  if (stable(baseline.experiences) !== stable(draft.experiences))
+    groups.push("experiences");
+  if (stable(baseline.certifications) !== stable(draft.certifications))
+    groups.push("certifications");
+  return groups;
+}
+
+function workerPayload(draft: WorkerProfileDraft) {
+  const years = draft.years_experience.trim();
+  const radius = draft.mobility_radius_km.trim();
+  return {
+    ...partial({
+      first_name: draft.first_name.trim(),
+      last_name: draft.last_name.trim(),
+      main_job: draft.main_job,
+      city: draft.city.trim(),
+      postal_code: draft.postal_code.trim(),
+      mobility_radius_km: radius === "" ? undefined : Number(radius),
+    }),
+    phone: draft.phone.trim() || null,
+    secondary_jobs: draft.secondary_jobs,
+    years_experience: years === "" ? null : Number(years),
+    has_driving_licence: draft.has_driving_licence,
+    has_vehicle: draft.has_driving_licence && draft.has_vehicle,
+    open_to_missions: draft.open_to_missions,
+  };
+}
+
+function ProfileSection({
   id,
   title,
+  icon,
   hint,
   missing = [],
-  onSave,
+  className = "",
   children,
 }: {
-  /** Ancre, pour qu'un lien puisse mener droit à ce bloc. */
   id?: string;
   title: string;
+  icon: ReactNode;
   hint?: string;
-  /** Exigences de complétion que ce bloc porte et qui ne sont pas remplies. */
   missing?: (keyof typeof requirementLabels)[];
-  onSave: (form: FormData) => Promise<User | void>;
+  className?: string;
   children: ReactNode;
 }) {
-  const { setUser } = useAuth();
-  const [busy, setBusy] = useState(false),
-    [error, setError] = useState(""),
-    [saved, setSaved] = useState(false);
-
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setBusy(true);
-    setError("");
-    setSaved(false);
-    try {
-      const updated = await onSave(new FormData(event.currentTarget));
-      if (updated) setUser(updated);
-      setSaved(true);
-    } catch (e) {
-      setError(humaniseError(errorMessage(e)));
-    } finally {
-      setBusy(false);
-    }
-  }
-
   return (
-    <form
+    <fieldset
       id={id}
-      onSubmit={(e) => void submit(e)}
-      onInput={() => saved && setSaved(false)}
+      className={`profile-section ${className}`.trim()}
     >
-      <fieldset>
-        <legend>
-          {title}
-          {/* Dire ici ce qui manque évite de renvoyer à la liste du haut, puis
-              de laisser chercher le bloc concerné parmi six. */}
-          {missing.length > 0 && (
-            <span className="section-todo">À compléter</span>
-          )}
-        </legend>
+      <legend>
+        <span className="profile-section__icon" aria-hidden="true">
+          {icon}
+        </span>
+        <span>{title}</span>
         {missing.length > 0 && (
-          <p className="quiet section-todo-detail">
-            Il reste à renseigner :{" "}
-            {missing
-              .map((rule) =>
-                requirementLabels[rule].replace(/^Votre |^Au /, ""),
-              )
-              .join(", ")}
-            .
-          </p>
+          <span className="section-todo">À compléter</span>
         )}
-        {hint && <p className="quiet">{hint}</p>}
-        {children}
-        {error && (
-          <p className="form-error" role="alert">
-            {error}
-          </p>
-        )}
-        {saved && (
-          <p className="form-success" role="status">
-            Enregistré.
-          </p>
-        )}
-        <div className="section-actions">
-          <button className="secondary-button" disabled={busy}>
-            {busy ? "Enregistrement…" : "Enregistrer"}
-          </button>
-        </div>
-      </fieldset>
-    </form>
+      </legend>
+      {missing.length > 0 && (
+        <p className="quiet section-todo-detail">
+          Il reste à renseigner :{" "}
+          {missing
+            .map((rule) =>
+              requirementLabels[rule].replace(/^Votre |^Au /, ""),
+            )
+            .join(", ")}
+          .
+        </p>
+      )}
+      {hint && <p className="quiet profile-section__hint">{hint}</p>}
+      {children}
+    </fieldset>
   );
 }
 
-const str = (f: FormData, n: string) => String(f.get(n) ?? "").trim();
-/** Champ numérique effaçable : le serveur accepte null (expérience, téléphone). */
-const optionalNumber = (f: FormData, n: string) => {
-  const raw = str(f, n);
-  return raw === "" ? null : Number(raw);
-};
-
-/**
- * Champ numérique non effaçable : le serveur n'accepte pas null pour le rayon
- * de mobilité. Laissé vide, il est simplement omis de la modification partielle
- * plutôt qu'envoyé comme une valeur invalide.
- */
-const numberOrOmit = (f: FormData, n: string) => {
-  const raw = str(f, n);
-  return raw === "" ? undefined : Number(raw);
-};
+function toggle(values: string[], value: string, checked: boolean) {
+  return checked
+    ? values.includes(value)
+      ? values
+      : [...values, value]
+    : values.filter((item) => item !== value);
+}
 
 export function WorkerProfile() {
-  const { user } = useAuth();
+  const { user, setUser } = useAuth();
   const { hash } = useLocation();
-  const [skills, setSkills] = useState<Skill[]>([]),
-    [jobs, setJobs] = useState<ReferenceValue[]>([]),
-    [loadError, setLoadError] = useState("");
-  const p = user?.profile ?? {};
-  // Les options arrivent après le profil : defaultValue ne réappliquerait pas
-  // le métier enregistré lors de leur chargement. Garder le select contrôlé.
-  const [mainJob, setMainJob] = useState(p.main_job ?? "");
-  const [experiences, setExperiences] = useState(
-    () => p.experiences ?? [{ job_title: "", employer: "", years: 0 }],
-  );
-  const [certifications, setCertifications] = useState(
-    () => p.certifications ?? [],
-  );
-  // Permis et véhicule sont liés par une règle métier : le véhicule suppose le
-  // permis. Deux cases à cocher indépendantes laissaient exprimer l'inverse.
-  const [licence, setLicence] = useState(p.has_driving_licence ?? false);
-  const [vehicle, setVehicle] = useState(p.has_vehicle ?? false);
+  const [skills, setSkills] = useState<Skill[]>([]);
+  const [jobs, setJobs] = useState<ReferenceValue[]>([]);
+  const [loadError, setLoadError] = useState("");
+  const [draft, setDraft] = useState(() => workerProfileDraft(user));
+  const [baseline, setBaseline] = useState(() => workerProfileDraft(user));
+  const [busy, setBusy] = useState(false);
+  const [saveError, setSaveError] = useState("");
+  const [saved, setSaved] = useState(false);
+  const initialisedUser = useRef<string | null>(null);
 
-  /**
-   * Un lien peut viser un bloc précis — « modifier mes disponibilités » depuis
-   * un écran vide, par exemple. React Router ne suit pas les ancres de
-   * lui-même : sans cela, on atterrirait en haut d'un long formulaire, à
-   * charge de retrouver le bloc annoncé.
-   */
+  useEffect(() => {
+    if (!user || initialisedUser.current === user.id) return;
+    const initial = workerProfileDraft(user);
+    setDraft(initial);
+    setBaseline(initial);
+    initialisedUser.current = user.id;
+  }, [user]);
+
   useEffect(() => {
     if (!hash) return;
-    const target = document.getElementById(hash.slice(1));
-    target?.scrollIntoView({
+    document.getElementById(hash.slice(1))?.scrollIntoView({
       block: "start",
       behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
         ? "auto"
@@ -186,26 +292,150 @@ export function WorkerProfile() {
       api<Skill[]>("/skills"),
       api<{ jobs: ReferenceValue[] }>("/reference"),
     ])
-      .then(([s, r]) => {
-        setSkills(s);
-        setJobs(r.jobs);
+      .then(([skillList, reference]) => {
+        setSkills(skillList);
+        setJobs(reference.jobs);
       })
-      .catch((e) => setLoadError(errorMessage(e)));
+      .catch((error) => setLoadError(errorMessage(error)));
   }, []);
 
+  const dirtyGroups = useMemo(
+    () => changedProfileGroups(baseline, draft),
+    [baseline, draft],
+  );
+  const dirty = dirtyGroups.length > 0;
+  useUnsavedChanges(dirty && !busy);
+
   if (!user) return null;
-  const chosen = new Set((p.skills ?? []).map((s) => s.id));
+  const profile = user.profile;
   const missing = user.missing_requirements ?? [];
   const requirementProgress = workerRequirementProgress(
     user.missing_requirements,
   );
-  const slots = p.availabilities ?? [];
-  // Un profil ancien peut porter un métier absent du référentiel actuel. Sans
-  // cette option, le sélecteur s'afficherait vide et la valeur semblerait perdue.
+  const slots = profile.availabilities ?? [];
   const jobOptions =
-    !mainJob || jobs.some((j) => j.value === mainJob)
+    !draft.main_job || jobs.some((job) => job.value === draft.main_job)
       ? jobs
-      : [...jobs, { value: mainJob, label: mainJob }];
+      : [
+          ...jobs,
+          { value: draft.main_job, label: draft.main_job },
+        ];
+
+  function update<K extends keyof WorkerProfileDraft>(
+    key: K,
+    value: WorkerProfileDraft[K],
+  ) {
+    setDraft((current) => ({ ...current, [key]: value }));
+    setSaved(false);
+    setSaveError("");
+  }
+
+  function validate() {
+    if (
+      draft.experiences.some(
+        (experience) =>
+          !experience.job_title.trim() || !experience.employer.trim(),
+      )
+    )
+      throw new Error(
+        "Renseignez le poste et l’établissement de chaque expérience, ou retirez la ligne.",
+      );
+    if (
+      draft.certifications.some(
+        (certification) => !certification.name.trim(),
+      )
+    )
+      throw new Error(
+        "Renseignez l’intitulé de chaque certification, ou retirez la ligne.",
+      );
+  }
+
+  async function saveProfile(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (busy || !dirty) return;
+    setBusy(true);
+    setSaveError("");
+    setSaved(false);
+    const pending = [...dirtyGroups];
+    let nextBaseline = baseline;
+    let completed = 0;
+    try {
+      validate();
+      for (const group of pending) {
+        let updated: User;
+        if (group === "worker") {
+          updated = await patchWorker(workerPayload(draft));
+        } else if (group === "skills") {
+          updated = await putSkills(draft.skill_ids);
+        } else if (group === "experiences") {
+          updated = await putExperiences(
+            draft.experiences.map((experience) => ({
+              job_title: experience.job_title.trim(),
+              employer: experience.employer.trim(),
+              years: Number(experience.years),
+            })),
+          );
+        } else {
+          updated = await putCertifications(
+            draft.certifications.map((certification) => ({
+              name: certification.name.trim(),
+              issuer: certification.issuer.trim(),
+              obtained_on: certification.obtained_on || null,
+            })),
+          );
+        }
+        completed += 1;
+        setUser(updated);
+        const persisted = workerProfileDraft(updated);
+        const savedExperiences = draft.experiences.map((experience) => ({
+          job_title: experience.job_title.trim(),
+          employer: experience.employer.trim(),
+          years: Number(experience.years),
+        }));
+        const savedCertifications = draft.certifications.map(
+          (certification) => ({
+            name: certification.name.trim(),
+            issuer: certification.issuer.trim(),
+            obtained_on: certification.obtained_on || null,
+          }),
+        );
+        nextBaseline = {
+          ...nextBaseline,
+          ...(group === "worker"
+            ? {
+                first_name: persisted.first_name,
+                last_name: persisted.last_name,
+                phone: persisted.phone,
+                main_job: persisted.main_job,
+                secondary_jobs: persisted.secondary_jobs,
+                years_experience: persisted.years_experience,
+                city: persisted.city,
+                postal_code: persisted.postal_code,
+                mobility_radius_km: persisted.mobility_radius_km,
+                has_driving_licence: persisted.has_driving_licence,
+                has_vehicle: persisted.has_vehicle,
+                open_to_missions: persisted.open_to_missions,
+              }
+            : group === "skills"
+              ? { skill_ids: [...draft.skill_ids] }
+              : group === "experiences"
+                ? { experiences: savedExperiences }
+                : { certifications: savedCertifications }),
+        };
+        setBaseline(nextBaseline);
+      }
+      setSaved(true);
+    } catch (error) {
+      const message = humaniseError(errorMessage(error));
+      setSaveError(
+        completed > 0
+          ? `Certaines modifications ont été enregistrées. Il reste des changements à sauvegarder. ${message}`
+          : message,
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
 
   return (
     <section className="onboarding worker-profile">
@@ -213,7 +443,7 @@ export function WorkerProfile() {
         compact
         eyeline="Votre espace intérimaire"
         title="Votre profil professionnel"
-        subtitle="Enregistrez chaque rubrique à votre rythme. Les prérequis indiqués servent à déterminer votre accès aux propositions de mission."
+        subtitle="Un profil clair aide InteriMatch à rapprocher vos compétences, votre mobilité et vos disponibilités des bonnes missions."
         mascotPose="profile"
         gauge={
           requirementProgress !== null ? (
@@ -231,457 +461,537 @@ export function WorkerProfile() {
         }
       />
 
+      <div className="profile-overview">
+        <div>
+          <p className="eyeline">Votre profil en un coup d’œil</p>
+          <h2>
+            {draft.first_name || draft.last_name
+              ? `${draft.first_name} ${draft.last_name}`.trim()
+              : "Complétez vos informations"}
+          </h2>
+          <p className="quiet">
+            {draft.main_job || "Métier principal à renseigner"}
+            {draft.city ? ` · ${draft.city}` : ""}
+          </p>
+        </div>
+        {user.missing_requirements === undefined ? null : missing.length > 0 ? (
+          <div className="profile-overview__todo" role="status">
+            <strong>{missing.length} prérequis à compléter</strong>
+            <span>Ils sont signalés dans les rubriques concernées.</span>
+            <div className="profile-overview__missing">
+              {missing.map((rule) => (
+                <span key={rule}>{requirementLabels[rule]}</span>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <p className="profile-overview__ready" role="status">
+            <Check size={17} aria-hidden="true" />
+            Tous les prérequis pour recevoir des missions sont réunis.
+          </p>
+        )}
+      </div>
+
       {loadError && (
         <p className="form-error" role="alert">
           {loadError}
         </p>
       )}
 
-      {/* Le bandeau dit déjà que chaque rubrique s'enregistre seule : ne
-          reste ici que ce qu'il n'énonce pas, le sort des champs facultatifs. */}
-      <p className="quiet form-legend">
-        Les champs marqués « facultatif » peuvent rester vides.
-      </p>
-
-      {user.missing_requirements === undefined ? null : missing.length > 0 ? (
-        <section className="side-panel pale" role="status">
-          <h2>Il reste à renseigner</h2>
-          <ul className="steps-list">
-            {missing.map((rule) => (
-              <li key={rule}>{requirementLabels[rule]}</li>
-            ))}
-          </ul>
-        </section>
-      ) : (
-        <p className="form-success" role="status">
-          <Check size={16} aria-hidden="true" /> Tous les prérequis pour
-          recevoir des missions sont réunis. Vous pouvez continuer à enrichir
-          les rubriques facultatives.
-        </p>
-      )}
-
-      <Section
-        title="Votre identité"
-        missing={missingIn(user.missing_requirements, "Votre identité")}
-        onSave={(f) =>
-          patchWorker({
-            ...partial({
-              first_name: str(f, "first_name"),
-              last_name: str(f, "last_name"),
-            }),
-            phone: str(f, "phone") || null,
-          })
-        }
+      <form
+        className="profile-editor"
+        onSubmit={(event) => void saveProfile(event)}
       >
-        <div className="form-grid">
-          <label>
-            Prénom
-            <input
-              name="first_name"
-              maxLength={120}
-              defaultValue={user.first_name}
-            />
-          </label>
-          <label>
-            Nom
-            <input
-              name="last_name"
-              maxLength={120}
-              defaultValue={user.last_name}
-            />
-          </label>
-        </div>
-        <label>
-          Téléphone (facultatif)
-          <input name="phone" type="tel" defaultValue={p.phone ?? ""} />
-        </label>
-        <p className="quiet">Email du compte : {user.email}</p>
-      </Section>
-
-      <Section
-        title="Votre métier"
-        missing={missingIn(user.missing_requirements, "Votre métier")}
-        hint="Le métier principal sert au rapprochement avec les missions."
-        onSave={(f) =>
-          patchWorker({
-            // Le métier principal n'est envoyé que s'il est choisi : on peut
-            // ainsi modifier les seuls métiers secondaires sans être bloqué,
-            // et la valeur déjà enregistrée reste intacte.
-            ...partial({ main_job: mainJob }),
-            secondary_jobs: f.getAll("secondary_jobs").map(String),
-            years_experience: optionalNumber(f, "years_experience"),
-          })
-        }
-      >
-        <label>
-          Métier principal
-          <select
-            name="main_job"
-            value={mainJob}
-            onChange={(event) => setMainJob(event.target.value)}
+        <div className="profile-grid">
+          <ProfileSection
+            title="Votre identité"
+            icon={<UserRound size={18} />}
+            missing={missingIn(user.missing_requirements, "Votre identité")}
           >
-            <option value="">Choisissez un métier</option>
-            {jobOptions.map((j) => (
-              <option key={j.value} value={j.value}>
-                {j.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <span id="secondary-label">Autres métiers exercés (facultatif)</span>
-        <div
-          className="skill-options"
-          role="group"
-          aria-labelledby="secondary-label"
-        >
-          {jobs.map((j) => (
-            <label key={j.value}>
+            <div className="form-grid">
+              <label>
+                Prénom
+                <input
+                  name="first_name"
+                  maxLength={120}
+                  value={draft.first_name}
+                  onChange={(event) => update("first_name", event.target.value)}
+                />
+              </label>
+              <label>
+                Nom
+                <input
+                  name="last_name"
+                  maxLength={120}
+                  value={draft.last_name}
+                  onChange={(event) => update("last_name", event.target.value)}
+                />
+              </label>
+            </div>
+            <label>
+              Téléphone <span className="field-optional">(facultatif)</span>
               <input
-                type="checkbox"
-                name="secondary_jobs"
-                value={j.value}
-                defaultChecked={(p.secondary_jobs ?? []).includes(j.value)}
+                name="phone"
+                type="tel"
+                value={draft.phone}
+                onChange={(event) => update("phone", event.target.value)}
               />
-              {j.label}
             </label>
-          ))}
-        </div>
-        <label>
-          Années d’expérience du métier (facultatif)
-          <input
-            name="years_experience"
-            type="number"
-            min={0}
-            max={60}
-            step="0.5"
-            defaultValue={p.years_experience ?? ""}
-          />
-        </label>
-      </Section>
+            <p className="quiet profile-account-email">
+              Email du compte · {user.email}
+            </p>
+          </ProfileSection>
 
-      <Section
-        id="competences"
-        title="Vos compétences"
-        missing={missingIn(user.missing_requirements, "Vos compétences")}
-        hint="Au moins une compétence est nécessaire : c’est le critère le plus important du rapprochement."
-        onSave={(f) => putSkills(f.getAll("skill_ids").map(String))}
-      >
-        <div className="skill-options" role="group" aria-label="Compétences">
-          {skills.map((s) => (
-            <label key={s.id}>
-              <input
-                type="checkbox"
-                name="skill_ids"
-                value={s.id}
-                defaultChecked={chosen.has(s.id)}
-              />
-              {s.name}
-            </label>
-          ))}
-        </div>
-      </Section>
-
-      <Section
-        title="Vos expériences"
-        hint="Facultatif, mais une expérience détaillée renforce votre profil."
-        onSave={() => {
-          if (
-            experiences.some((e) => !e.job_title.trim() || !e.employer.trim())
-          )
-            throw new Error(
-              "Renseignez le poste et l’établissement de chaque expérience, ou retirez la ligne.",
-            );
-          return putExperiences(
-            experiences.map((e) => ({
-              job_title: e.job_title.trim(),
-              employer: e.employer.trim(),
-              years: Number(e.years),
-            })),
-          );
-        }}
-      >
-        {experiences.map((e, i) => (
-          <div className="repeat-row" key={i}>
+          <ProfileSection
+            title="Votre métier"
+            icon={<BriefcaseBusiness size={18} />}
+            missing={missingIn(user.missing_requirements, "Votre métier")}
+            hint="Le métier principal sert au rapprochement avec les missions."
+          >
             <label>
-              Poste
-              <input
-                value={e.job_title}
-                maxLength={120}
-                onChange={(ev) =>
-                  setExperiences(
-                    experiences.map((x, j) =>
-                      j === i ? { ...x, job_title: ev.target.value } : x,
-                    ),
-                  )
-                }
-              />
+              Métier principal
+              <select
+                name="main_job"
+                value={draft.main_job}
+                onChange={(event) => update("main_job", event.target.value)}
+              >
+                <option value="">Choisissez un métier</option>
+                {jobOptions.map((job) => (
+                  <option key={job.value} value={job.value}>
+                    {job.label}
+                  </option>
+                ))}
+              </select>
             </label>
             <label>
-              Établissement
+              Années d’expérience du métier{" "}
+              <span className="field-optional">(facultatif)</span>
               <input
-                value={e.employer}
-                maxLength={120}
-                onChange={(ev) =>
-                  setExperiences(
-                    experiences.map((x, j) =>
-                      j === i ? { ...x, employer: ev.target.value } : x,
-                    ),
-                  )
-                }
-              />
-            </label>
-            <label>
-              Années
-              <input
+                name="years_experience"
                 type="number"
                 min={0}
                 max={60}
                 step="0.5"
-                value={e.years}
-                onChange={(ev) =>
-                  setExperiences(
-                    experiences.map((x, j) =>
-                      j === i ? { ...x, years: Number(ev.target.value) } : x,
-                    ),
-                  )
+                value={draft.years_experience}
+                onChange={(event) =>
+                  update("years_experience", event.target.value)
                 }
               />
             </label>
+            <span id="secondary-label" className="choice-label">
+              Autres métiers exercés{" "}
+              <span className="field-optional">(facultatif)</span>
+            </span>
+            <div
+              className="profile-chip-options"
+              role="group"
+              aria-labelledby="secondary-label"
+            >
+              {jobs.map((job) => (
+                <label key={job.value}>
+                  <input
+                    type="checkbox"
+                    name="secondary_jobs"
+                    value={job.value}
+                    checked={draft.secondary_jobs.includes(job.value)}
+                    onChange={(event) =>
+                      update(
+                        "secondary_jobs",
+                        toggle(
+                          draft.secondary_jobs,
+                          job.value,
+                          event.target.checked,
+                        ),
+                      )
+                    }
+                  />
+                  <span>{job.label}</span>
+                </label>
+              ))}
+            </div>
+          </ProfileSection>
+
+          <ProfileSection
+            id="competences"
+            title="Vos compétences"
+            icon={<Sparkles size={18} />}
+            className="profile-section--wide"
+            missing={missingIn(user.missing_requirements, "Vos compétences")}
+            hint="Au moins une compétence est nécessaire : c’est le critère principal du rapprochement."
+          >
+            <div
+              className="profile-chip-options"
+              role="group"
+              aria-label="Compétences"
+            >
+              {skills.map((skill) => (
+                <label key={skill.id}>
+                  <input
+                    type="checkbox"
+                    name="skill_ids"
+                    value={skill.id}
+                    checked={draft.skill_ids.includes(skill.id)}
+                    onChange={(event) =>
+                      update(
+                        "skill_ids",
+                        toggle(
+                          draft.skill_ids,
+                          skill.id,
+                          event.target.checked,
+                        ),
+                      )
+                    }
+                  />
+                  <span>{skill.name}</span>
+                </label>
+              ))}
+            </div>
+          </ProfileSection>
+
+          <ProfileSection
+            title="Vos expériences"
+            icon={<BriefcaseBusiness size={18} />}
+            hint="Facultatif, mais une expérience détaillée renforce votre profil."
+          >
+            <div className="profile-repeat-list">
+              {draft.experiences.map((experience, index) => (
+                <div className="profile-repeat" key={index}>
+                  <div className="profile-repeat__head">
+                    <strong>Expérience {index + 1}</strong>
+                    <button
+                      type="button"
+                      className="icon-button"
+                      aria-label={`Retirer l’expérience ${index + 1}`}
+                      onClick={() =>
+                        update(
+                          "experiences",
+                          draft.experiences.filter((_, item) => item !== index),
+                        )
+                      }
+                    >
+                      <Trash2 size={16} aria-hidden="true" />
+                    </button>
+                  </div>
+                  <label>
+                    Poste
+                    <input
+                      value={experience.job_title}
+                      maxLength={120}
+                      onChange={(event) =>
+                        update(
+                          "experiences",
+                          draft.experiences.map((item, itemIndex) =>
+                            itemIndex === index
+                              ? { ...item, job_title: event.target.value }
+                              : item,
+                          ),
+                        )
+                      }
+                    />
+                  </label>
+                  <label>
+                    Établissement
+                    <input
+                      value={experience.employer}
+                      maxLength={120}
+                      onChange={(event) =>
+                        update(
+                          "experiences",
+                          draft.experiences.map((item, itemIndex) =>
+                            itemIndex === index
+                              ? { ...item, employer: event.target.value }
+                              : item,
+                          ),
+                        )
+                      }
+                    />
+                  </label>
+                  <label>
+                    Années
+                    <input
+                      type="number"
+                      min={0}
+                      max={60}
+                      step="0.5"
+                      value={experience.years}
+                      onChange={(event) =>
+                        update(
+                          "experiences",
+                          draft.experiences.map((item, itemIndex) =>
+                            itemIndex === index
+                              ? { ...item, years: Number(event.target.value) }
+                              : item,
+                          ),
+                        )
+                      }
+                    />
+                  </label>
+                </div>
+              ))}
+            </div>
             <button
               type="button"
-              className="icon-button"
-              aria-label={`Retirer l’expérience ${i + 1}`}
+              className="secondary-button compact-button"
               onClick={() =>
-                setExperiences(experiences.filter((_, j) => j !== i))
+                update("experiences", [
+                  ...draft.experiences,
+                  { job_title: "", employer: "", years: 0 },
+                ])
               }
             >
-              <Trash2 size={16} aria-hidden="true" />
+              <Plus size={16} aria-hidden="true" /> Ajouter une expérience
             </button>
-          </div>
-        ))}
-        <button
-          type="button"
-          className="secondary-button"
-          onClick={() =>
-            setExperiences([
-              ...experiences,
-              { job_title: "", employer: "", years: 0 },
-            ])
-          }
-        >
-          <Plus size={16} aria-hidden="true" /> Ajouter une expérience
-        </button>
-      </Section>
+          </ProfileSection>
 
-      <Section
-        title="Vos diplômes et certifications"
-        hint="Facultatif. HACCP, permis d’exploitation, mention complémentaire…"
-        onSave={() => {
-          if (certifications.some((c) => !c.name.trim()))
-            throw new Error(
-              "Renseignez l’intitulé de chaque certification, ou retirez la ligne.",
-            );
-          return putCertifications(
-            certifications.map((c) => ({
-              name: c.name.trim(),
-              issuer: (c.issuer ?? "").trim(),
-              obtained_on: c.obtained_on || null,
-            })),
-          );
-        }}
-      >
-        {certifications.map((c, i) => (
-          <div className="repeat-row" key={i}>
-            <label>
-              Intitulé
-              <input
-                value={c.name}
-                maxLength={120}
-                onChange={(ev) =>
-                  setCertifications(
-                    certifications.map((x, j) =>
-                      j === i ? { ...x, name: ev.target.value } : x,
-                    ),
-                  )
-                }
-              />
-            </label>
-            <label>
-              Organisme
-              <input
-                value={c.issuer ?? ""}
-                maxLength={120}
-                onChange={(ev) =>
-                  setCertifications(
-                    certifications.map((x, j) =>
-                      j === i ? { ...x, issuer: ev.target.value } : x,
-                    ),
-                  )
-                }
-              />
-            </label>
-            <label>
-              Obtenu le
-              <input
-                type="date"
-                value={c.obtained_on ?? ""}
-                onChange={(ev) =>
-                  setCertifications(
-                    certifications.map((x, j) =>
-                      j === i ? { ...x, obtained_on: ev.target.value } : x,
-                    ),
-                  )
-                }
-              />
-            </label>
+          <ProfileSection
+            title="Vos diplômes et certifications"
+            icon={<Award size={18} />}
+            hint="Facultatif · HACCP, permis d’exploitation, mention complémentaire…"
+          >
+            <div className="profile-repeat-list">
+              {draft.certifications.map((certification, index) => (
+                <div className="profile-repeat" key={index}>
+                  <div className="profile-repeat__head">
+                    <strong>Certification {index + 1}</strong>
+                    <button
+                      type="button"
+                      className="icon-button"
+                      aria-label={`Retirer la certification ${index + 1}`}
+                      onClick={() =>
+                        update(
+                          "certifications",
+                          draft.certifications.filter(
+                            (_, item) => item !== index,
+                          ),
+                        )
+                      }
+                    >
+                      <Trash2 size={16} aria-hidden="true" />
+                    </button>
+                  </div>
+                  <label>
+                    Intitulé
+                    <input
+                      value={certification.name}
+                      maxLength={120}
+                      onChange={(event) =>
+                        update(
+                          "certifications",
+                          draft.certifications.map((item, itemIndex) =>
+                            itemIndex === index
+                              ? { ...item, name: event.target.value }
+                              : item,
+                          ),
+                        )
+                      }
+                    />
+                  </label>
+                  <label>
+                    Organisme
+                    <input
+                      value={certification.issuer}
+                      maxLength={120}
+                      onChange={(event) =>
+                        update(
+                          "certifications",
+                          draft.certifications.map((item, itemIndex) =>
+                            itemIndex === index
+                              ? { ...item, issuer: event.target.value }
+                              : item,
+                          ),
+                        )
+                      }
+                    />
+                  </label>
+                  <label>
+                    Obtenu le
+                    <input
+                      type="date"
+                      value={certification.obtained_on ?? ""}
+                      onChange={(event) =>
+                        update(
+                          "certifications",
+                          draft.certifications.map((item, itemIndex) =>
+                            itemIndex === index
+                              ? {
+                                  ...item,
+                                  obtained_on: event.target.value || null,
+                                }
+                              : item,
+                          ),
+                        )
+                      }
+                    />
+                  </label>
+                </div>
+              ))}
+            </div>
             <button
               type="button"
-              className="icon-button"
-              aria-label={`Retirer la certification ${i + 1}`}
+              className="secondary-button compact-button"
               onClick={() =>
-                setCertifications(certifications.filter((_, j) => j !== i))
+                update("certifications", [
+                  ...draft.certifications,
+                  { name: "", issuer: "", obtained_on: null },
+                ])
               }
             >
-              <Trash2 size={16} aria-hidden="true" />
+              <Plus size={16} aria-hidden="true" /> Ajouter une certification
             </button>
-          </div>
-        ))}
-        <button
-          type="button"
-          className="secondary-button"
-          onClick={() =>
-            setCertifications([
-              ...certifications,
-              { name: "", issuer: "", obtained_on: null },
-            ])
-          }
-        >
-          <Plus size={16} aria-hidden="true" /> Ajouter une certification
-        </button>
-      </Section>
+          </ProfileSection>
 
-      <Section
-        id="mobilite"
-        title="Votre mobilité"
-        missing={missingIn(user.missing_requirements, "Votre mobilité")}
-        hint="Indiquez simplement votre ville : les coordonnées nécessaires au rapprochement sont retrouvées automatiquement."
-        onSave={(f) =>
-          patchWorker({
-            ...partial({
-              city: str(f, "city"),
-              postal_code: str(f, "postal_code"),
-              mobility_radius_km: numberOrOmit(f, "mobility_radius_km"),
-            }),
-            has_driving_licence: licence,
-            has_vehicle: licence && vehicle,
-          })
-        }
-      >
-        <div className="form-grid">
-          <label>
-            Ville
-            <input name="city" defaultValue={p.city ?? ""} />
-          </label>
-          <label>
-            Code postal
-            <input
-              name="postal_code"
-              inputMode="numeric"
-              pattern="[0-9]{5}"
-              maxLength={5}
-              defaultValue={p.postal_code ?? ""}
-            />
-          </label>
+          <ProfileSection
+            id="mobilite"
+            title="Votre mobilité"
+            icon={<MapPin size={18} />}
+            missing={missingIn(user.missing_requirements, "Votre mobilité")}
+            hint="Votre ville et votre rayon servent à proposer des missions accessibles."
+          >
+            <div className="form-grid">
+              <label>
+                Ville
+                <input
+                  name="city"
+                  value={draft.city}
+                  onChange={(event) => update("city", event.target.value)}
+                />
+              </label>
+              <label>
+                Code postal
+                <input
+                  name="postal_code"
+                  inputMode="numeric"
+                  pattern="[0-9]{5}"
+                  maxLength={5}
+                  value={draft.postal_code}
+                  onChange={(event) =>
+                    update("postal_code", event.target.value)
+                  }
+                />
+              </label>
+            </div>
+            <label>
+              Rayon de mobilité (km)
+              <input
+                name="mobility_radius_km"
+                type="number"
+                min={0}
+                max={250}
+                value={draft.mobility_radius_km}
+                onChange={(event) =>
+                  update("mobility_radius_km", event.target.value)
+                }
+              />
+            </label>
+            <div
+              className="choice-group"
+              role="radiogroup"
+              aria-labelledby="licence-label"
+            >
+              <span id="licence-label" className="choice-label">
+                Permis de conduire
+              </span>
+              <label>
+                <input
+                  type="radio"
+                  name="licence"
+                  checked={draft.has_driving_licence}
+                  onChange={() => update("has_driving_licence", true)}
+                />
+                J’ai le permis
+              </label>
+              <label>
+                <input
+                  type="radio"
+                  name="licence"
+                  checked={!draft.has_driving_licence}
+                  onChange={() =>
+                    setDraft((current) => ({
+                      ...current,
+                      has_driving_licence: false,
+                      has_vehicle: false,
+                    }))
+                  }
+                />
+                Je n’ai pas le permis
+              </label>
+            </div>
+            <label className="choice-single">
+              <input
+                type="checkbox"
+                checked={draft.has_driving_licence && draft.has_vehicle}
+                disabled={!draft.has_driving_licence}
+                onChange={(event) =>
+                  update("has_vehicle", event.target.checked)
+                }
+              />
+              J’ai un véhicule
+            </label>
+          </ProfileSection>
+
+          <ProfileSection
+            id="recherche"
+            title="Votre recherche"
+            icon={<Search size={18} />}
+            className="profile-section--compact"
+            hint="Mettez votre recherche en pause sans perdre votre profil."
+          >
+            <label className="profile-search-toggle">
+              <input
+                type="checkbox"
+                name="open_to_missions"
+                checked={draft.open_to_missions}
+                onChange={(event) =>
+                  update("open_to_missions", event.target.checked)
+                }
+              />
+              <span>
+                <strong>Je recherche des missions</strong>
+                <small>
+                  Votre profil peut être rapproché des besoins publiés.
+                </small>
+              </span>
+            </label>
+          </ProfileSection>
         </div>
-        <label>
-          Rayon de mobilité (km)
-          <input
-            name="mobility_radius_km"
-            type="number"
-            min={0}
-            max={250}
-            defaultValue={p.mobility_radius_km ?? ""}
-          />
-        </label>
 
         <div
-          className="choice-group"
-          role="radiogroup"
-          aria-labelledby="licence-label"
+          className={`profile-savebar${dirty ? " is-dirty" : ""}`}
         >
-          <span id="licence-label" className="choice-label">
-            Permis de conduire
-          </span>
-          <label>
-            <input
-              type="radio"
-              name="licence"
-              checked={licence}
-              onChange={() => setLicence(true)}
-            />
-            J’ai le permis
-          </label>
-          <label>
-            <input
-              type="radio"
-              name="licence"
-              checked={!licence}
-              onChange={() => {
-                // Le véhicule suppose le permis : on retire l'un avec l'autre
-                // plutôt que de laisser deux réponses contradictoires.
-                setLicence(false);
-                setVehicle(false);
-              }}
-            />
-            Je n’ai pas le permis
-          </label>
+          <div className="profile-savebar__message" aria-live="polite">
+            {saveError && (
+              <p className="form-error" role="alert">
+                {saveError}
+              </p>
+            )}
+            {saved && !dirty && (
+              <p className="form-success" role="status">
+                <Check size={16} aria-hidden="true" /> Profil enregistré.
+              </p>
+            )}
+            {!saveError && !saved && dirty && (
+              <p className="quiet">Modifications non enregistrées</p>
+            )}
+          </div>
+          <button className="button" disabled={!dirty || busy}>
+            {busy ? "Enregistrement…" : "Enregistrer les modifications"}
+          </button>
         </div>
-        <label className="choice-single">
-          <input
-            type="checkbox"
-            checked={licence && vehicle}
-            disabled={!licence}
-            onChange={(event) => setVehicle(event.target.checked)}
-          />
-          J’ai un véhicule
-        </label>
-        {!licence && (
-          <p className="quiet">
-            Le véhicule suppose le permis. Indiquez « J’ai le permis » pour
-            pouvoir le signaler.
-          </p>
-        )}
-      </Section>
+      </form>
 
       <AvailabilitySection
         slots={slots}
         missing={missingIn(user.missing_requirements, "Vos disponibilités")}
       />
-
-      <Section
-        id="recherche"
-        title="Votre recherche"
-        hint="Mettez votre recherche en pause sans perdre votre profil."
-        onSave={(f) =>
-          patchWorker({ open_to_missions: f.get("open_to_missions") === "on" })
-        }
-      >
-        <div className="skill-options">
-          <label>
-            <input
-              type="checkbox"
-              name="open_to_missions"
-              defaultChecked={p.open_to_missions ?? true}
-            />
-            Je recherche actuellement des missions
-          </label>
-        </div>
-      </Section>
     </section>
   );
 }
 
-/** Chaque créneau se gère individuellement, quel que soit son statut. */
+function formValue(form: FormData, name: string) {
+  return String(form.get(name) ?? "").trim();
+}
+
+/** Les disponibilités restent autonomes : chacune est persistée immédiatement. */
 function AvailabilitySection({
   slots,
   missing,
@@ -696,7 +1006,7 @@ function AvailabilitySection({
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [editing, setEditing] = useState<Availability | null>(null);
-  const sorted = [...slots].sort(
+  const orderedSlots = [...slots].sort(
     (a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at),
   );
 
@@ -714,19 +1024,21 @@ function AvailabilitySection({
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = event.currentTarget;
-    const f = new FormData(form);
+    const values = new FormData(form);
     setBusy(true);
     setError("");
     setMessage("");
     try {
-      const starts_at = new Date(str(f, "starts_at")).toISOString();
-      const ends_at = new Date(str(f, "ends_at")).toISOString();
+      const starts_at = new Date(
+        formValue(values, "starts_at"),
+      ).toISOString();
+      const ends_at = new Date(formValue(values, "ends_at")).toISOString();
       if (Date.parse(ends_at) <= Date.parse(starts_at))
         throw new Error("La fin doit suivre le début du créneau.");
       const slot = {
         starts_at,
         ends_at,
-        status: str(f, "status") as Availability["status"],
+        status: formValue(values, "status") as Availability["status"],
       };
       if (editing) await updateAvailability(editing.id, slot);
       else await addAvailability(slot);
@@ -734,8 +1046,8 @@ function AvailabilitySection({
       setMessage(editing ? "Créneau modifié." : "Créneau ajouté.");
       setEditing(null);
       form.reset();
-    } catch (e) {
-      setError(humaniseError(errorMessage(e)));
+    } catch (caught) {
+      setError(humaniseError(errorMessage(caught)));
     } finally {
       setBusy(false);
     }
@@ -750,92 +1062,108 @@ function AvailabilitySection({
       await refresh();
       if (editing?.id === id) setEditing(null);
       setMessage("Créneau supprimé.");
-    } catch (e) {
-      setError(humaniseError(errorMessage(e)));
+    } catch (caught) {
+      setError(humaniseError(errorMessage(caught)));
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <form id="disponibilites" ref={formRef} onSubmit={(e) => void save(e)}>
-      <fieldset disabled={busy}>
+    <form
+      id="disponibilites"
+      className="profile-availability"
+      ref={formRef}
+      onSubmit={(event) => void save(event)}
+    >
+      <fieldset className="profile-section" disabled={busy}>
         <legend>
-          Vos disponibilités
+          <span className="profile-section__icon" aria-hidden="true">
+            <Sparkles size={18} />
+          </span>
+          <span>Vos disponibilités</span>
           {missing.length > 0 && (
             <span className="section-todo">À compléter</span>
           )}
         </legend>
-        <p className="quiet">
-          Au moins un créneau disponible à venir est nécessaire. Les heures sont
-          celles de votre navigateur.
+        <p className="quiet profile-section__hint">
+          Ces créneaux sont enregistrés séparément et immédiatement. Les heures
+          affichées sont celles de votre navigateur.
         </p>
-        {sorted.length > 0 ? (
-          <ul className="slot-list editable-slots">
-            {sorted.map((slot) => (
-              <li key={slot.id}>
-                <span>
-                  {formatSlot(slot)} ·{" "}
-                  {slot.status === "available" ? "Disponible" : "Indisponible"}
-                  {Date.parse(slot.ends_at) <= Date.now() ? " · Terminé" : ""}
-                </span>
-                <div className="slot-actions">
-                  <button
-                    type="button"
-                    className="icon-button"
-                    aria-label={`Modifier le créneau ${formatSlot(slot)}`}
-                    onClick={() => edit(slot)}
-                  >
-                    <Pencil size={16} aria-hidden="true" />
-                  </button>
-                  <button
-                    type="button"
-                    className="icon-button"
-                    aria-label={`Retirer le créneau ${formatSlot(slot)}`}
-                    onClick={() => void drop(slot.id)}
-                  >
-                    <Trash2 size={16} aria-hidden="true" />
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="quiet">Aucun créneau enregistré pour le moment.</p>
-        )}
-        <div key={editing?.id ?? "new"}>
-          {editing && <p>Modification du créneau sélectionné</p>}
-          <div className="form-grid">
+        <div className="availability-layout">
+          <div>
+            {orderedSlots.length > 0 ? (
+              <ul className="slot-list editable-slots">
+                {orderedSlots.map((slot) => (
+                  <li key={slot.id}>
+                    <span>
+                      {formatSlot(slot)} ·{" "}
+                      {slot.status === "available"
+                        ? "Disponible"
+                        : "Indisponible"}
+                      {Date.parse(slot.ends_at) <= Date.now()
+                        ? " · Terminé"
+                        : ""}
+                    </span>
+                    <div className="slot-actions">
+                      <button
+                        type="button"
+                        className="icon-button"
+                        aria-label={`Modifier le créneau ${formatSlot(slot)}`}
+                        onClick={() => edit(slot)}
+                      >
+                        <Pencil size={16} aria-hidden="true" />
+                      </button>
+                      <button
+                        type="button"
+                        className="icon-button"
+                        aria-label={`Retirer le créneau ${formatSlot(slot)}`}
+                        onClick={() => void drop(slot.id)}
+                      >
+                        <Trash2 size={16} aria-hidden="true" />
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="quiet">Aucun créneau enregistré pour le moment.</p>
+            )}
+          </div>
+          <div className="availability-editor" key={editing?.id ?? "new"}>
+            {editing && <strong>Modifier le créneau sélectionné</strong>}
+            <div className="form-grid">
+              <label>
+                Début
+                <input
+                  name="starts_at"
+                  type="datetime-local"
+                  required
+                  defaultValue={toLocalInput(editing?.starts_at)}
+                />
+              </label>
+              <label>
+                Fin
+                <input
+                  name="ends_at"
+                  type="datetime-local"
+                  required
+                  defaultValue={toLocalInput(editing?.ends_at)}
+                />
+              </label>
+            </div>
             <label>
-              Début
-              <input
-                name="starts_at"
-                type="datetime-local"
-                required
-                defaultValue={toLocalInput(editing?.starts_at)}
-              />
-            </label>
-            <label>
-              Fin
-              <input
-                name="ends_at"
-                type="datetime-local"
-                required
-                defaultValue={toLocalInput(editing?.ends_at)}
-              />
+              Statut
+              <select
+                aria-label="Statut"
+                name="status"
+                defaultValue={editing?.status ?? "available"}
+              >
+                <option value="available">Disponible</option>
+                <option value="unavailable">Indisponible</option>
+              </select>
             </label>
           </div>
-          <label>
-            Statut
-            <select
-              aria-label="Statut"
-              name="status"
-              defaultValue={editing?.status ?? "available"}
-            >
-              <option value="available">Disponible</option>
-              <option value="unavailable">Indisponible</option>
-            </select>
-          </label>
         </div>
         {error && (
           <p className="form-error" role="alert">

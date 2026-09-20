@@ -51,6 +51,7 @@ const candidate = (page: Page, name: string) =>
 
 test("la dernière place attribuée ferme le recrutement, des deux côtés", async ({
   page,
+  browser,
 }, testInfo) => {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
@@ -189,6 +190,63 @@ test("la dernière place attribuée ferme le recrutement, des deux côtés", asy
   await expect(
     confirmees.locator(".mission-context-status.is-confirmed"),
   ).toHaveCount(1);
+
+  // Régression CSS : une nouvelle page n'a encore chargé ni la fiche mission,
+  // ni ApplicationStatus. ConfirmedMissions doit donc posséder sa feuille au
+  // premier dashboard, puis garder exactement le même rendu après reload et
+  // après un aller-retour vers la mission.
+  const directContext = await browser.newContext({
+    baseURL: new URL(page.url()).origin,
+    viewport: page.viewportSize() ?? { width: 1280, height: 800 },
+  });
+  const direct = await directContext.newPage();
+  await signIn(direct, compte("retenu"), "worker");
+  const directConfirmed = direct.getByRole("region", {
+    name: "Vos prochaines missions",
+  });
+  await expect(directConfirmed).toContainText(titre);
+  await expect(
+    directConfirmed.getByRole("link", { name: "Mes candidatures" }),
+  ).toHaveCount(0);
+  const cssSignature = () =>
+    directConfirmed.evaluate((region) => {
+      const card = getComputedStyle(region);
+      const item = getComputedStyle(region.querySelector("li")!);
+      const badge = getComputedStyle(
+        region.querySelector(".mission-context-status")!,
+      );
+      return {
+        borderStyle: card.borderStyle,
+        borderRadius: card.borderRadius,
+        itemDisplay: item.display,
+        badgeDisplay: badge.display,
+        badgeRadius: badge.borderRadius,
+      };
+    });
+  const directStyle = await cssSignature();
+  expect(directStyle.borderStyle).toBe("solid");
+  expect(directStyle.badgeDisplay).toBe("flex");
+  await direct.screenshot({
+    path: testInfo.outputPath("06-dashboard-direct.png"),
+    fullPage: true,
+  });
+
+  await direct.reload();
+  await expect(directConfirmed).toContainText(titre);
+  expect(await cssSignature()).toEqual(directStyle);
+
+  await directConfirmed.getByRole("link", { name: "Voir la mission" }).click();
+  await expect(direct).toHaveURL(new RegExp(`/worker/missions/${missionId}$`));
+  await direct.goBack();
+  await expect(direct).toHaveURL(/\/worker$/);
+  await expect(directConfirmed).toContainText(titre);
+  expect(await cssSignature()).toEqual(directStyle);
+  expect(
+    await direct.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+  await directContext.close();
 
   await page.goto("/worker/applications");
   const sienne = page.getByRole("listitem").filter({ hasText: titre });

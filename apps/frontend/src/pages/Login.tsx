@@ -1,4 +1,4 @@
-import { useId, useState, type FormEvent } from "react";
+import { useEffect, useId, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { usePageSeo } from "../hooks/usePageSeo";
@@ -6,8 +6,14 @@ import { destination, errorMessage } from "../services/session";
 import { getSupabase, supabaseConfigured } from "../services/supabase";
 import { PasswordField } from "../components/PasswordField";
 import { PasswordStrength } from "../components/PasswordStrength";
+import { Logo } from "../components/Logo";
+import { MatchyMascot } from "../components/MatchyMascot";
 import { MIN_PASSWORD_LENGTH } from "../services/password";
 export function Login({ register = false }: { register?: boolean }) {
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }, [register]);
+
   usePageSeo({
     title: register
       ? "Créer un compte · InteriMatch"
@@ -64,25 +70,43 @@ export function Login({ register = false }: { register?: boolean }) {
   return (
     <div className="auth-grid">
       <section className="auth-story">
-        <span>Hôtellerie & restauration</span>
-        <h1>
-          {register
-            ? "Votre prochain chapitre commence ici."
-            : "Heureux de vous retrouver."}
-        </h1>
-        <p>
-          Les bons talents. Les bonnes missions. Et le plaisir de travailler
-          ensemble.
-        </p>
-        <div className="story-line">
-          InteriMatch / Votre espace professionnel
+        <Logo variant="light" className="auth-story__logo" />
+        <div className="auth-story__copy">
+          <span className="auth-story__eyeline">
+            Hôtellerie · restauration
+          </span>
+          <h1>
+            {register
+              ? "Faites entrer les bonnes missions dans votre parcours."
+              : "Votre prochain service commence ici."}
+          </h1>
+          <p>
+            Compétences, disponibilités et besoins se rencontrent dans un même
+            espace professionnel.
+          </p>
+        </div>
+        <div className="auth-story__scene">
+          <span className="auth-story__arch" aria-hidden="true" />
+          <MatchyMascot
+            pose={register ? "profile" : "dashboard"}
+            includeBackground
+            size={250}
+          />
         </div>
       </section>
-      <section className="form-panel">
-        <h2>{register ? "Créer mon compte" : "Me connecter"}</h2>
+      <section
+        className="form-panel"
+        aria-labelledby={register ? "register-title" : "login-title"}
+      >
+        <p className="form-panel__eyeline">
+          {register ? "Bienvenue" : "Bon retour parmi nous"}
+        </p>
+        <h2 id={register ? "register-title" : "login-title"}>
+          {register ? "Créer mon compte" : "Me connecter"}
+        </h2>
         <p>
           {register
-            ? "Quelques informations pour commencer. Vous choisirez ensuite votre espace."
+            ? "Créez votre profil intérimaire. Les accès établissement sont attribués selon le dispositif prévu par InteriMatch."
             : "Retrouvez votre profil et préparez vos prochains services."}
         </p>
         {/* Sans configuration Google, ce bouton ne menait qu'à un message

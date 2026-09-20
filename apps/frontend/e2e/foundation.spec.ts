@@ -16,6 +16,7 @@ async function register(page: Page, email: string) {
   await page
     .getByRole("button", { name: "Créer mon compte", exact: true })
     .click();
+  await expect(page).toHaveURL(/\/(worker|company)$/, { timeout: 15_000 });
 }
 
 async function signIn(page: Page, email: string) {
@@ -105,11 +106,63 @@ async function makeEmployable(
 const section = (page: Page, name: string) => page.getByRole("group", { name });
 
 async function save(page: Page, name: string) {
-  await section(page, name)
-    .getByRole("button", { name: "Enregistrer" })
+  await expect(section(page, name)).toBeVisible();
+  await page
+    .getByRole("button", { name: "Enregistrer les modifications" })
     .click();
-  await expect(section(page, name).getByText("Enregistré.")).toBeVisible();
+  await expect(page.getByText("Profil enregistré.")).toBeVisible();
 }
+
+test("public landing, login and registration share the InteriMatch identity", async ({
+  page,
+}, testInfo) => {
+  await page.goto("/");
+  await expect(
+    page.getByRole("heading", { name: "Les bonnes personnes, au bon moment." }),
+  ).toBeVisible();
+  await expect(page.locator(".home-hero .matchy-mascot")).toBeVisible();
+  await expect(page.getByText("Publiez en 3 minutes")).toHaveCount(0);
+  await expect(page.getByText(/professionnels vérifiés/)).toHaveCount(0);
+  await page.screenshot({
+    path: testInfo.outputPath("landing.png"),
+    fullPage: true,
+  });
+
+  await page
+    .getByRole("link", { name: "Créer mon profil", exact: true })
+    .click();
+  await expect(page).toHaveURL(/\/register$/);
+  await expect(page.locator(".auth-story .brand-wordmark")).toContainText(
+    "InteriMatch",
+  );
+  await expect(page.locator(".auth-story .matchy-mascot")).toBeVisible();
+  await expect(page.getByText(/Créez votre profil intérimaire/)).toBeVisible();
+  await expect(page.getByRole("radio")).toHaveCount(0);
+  await page.screenshot({
+    path: testInfo.outputPath("register.png"),
+    fullPage: true,
+  });
+
+  await page.goto("/");
+  await page
+    .getByRole("link", { name: "Accéder à l’espace entreprise" })
+    .click();
+  await expect(page).toHaveURL(/\/login$/);
+  await expect(page.locator(".auth-story .brand-wordmark")).toContainText(
+    "InteriMatch",
+  );
+  await expect(page.locator(".auth-story .matchy-mascot")).toBeVisible();
+  await page.screenshot({
+    path: testInfo.outputPath("login.png"),
+    fullPage: true,
+  });
+
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+});
 
 // CAS 1 — accès anonyme à une route protégée.
 test("anonymous access to a protected route redirects to sign-in", async ({
@@ -484,13 +537,17 @@ test("profile lists persist, reject incomplete rows, and allow slot editing", as
     .getByLabel("Établissement", { exact: true })
     .first()
     .fill("");
-  await experiences.getByRole("button", { name: "Enregistrer" }).click();
-  await expect(experiences.getByRole("alert")).toBeVisible();
+  await page
+    .getByRole("button", { name: "Enregistrer les modifications" })
+    .click();
+  await expect(page.getByRole("alert")).toBeVisible();
   await page.reload();
   await expect(experiences.getByLabel("Poste", { exact: true })).toHaveCount(2);
   await certs.getByLabel("Intitulé").first().fill("");
-  await certs.getByRole("button", { name: "Enregistrer" }).click();
-  await expect(certs.getByRole("alert")).toBeVisible();
+  await page
+    .getByRole("button", { name: "Enregistrer les modifications" })
+    .click();
+  await expect(page.getByRole("alert")).toBeVisible();
   await page.reload();
   await expect(certs.getByLabel("Intitulé")).toHaveCount(2);
 
@@ -653,6 +710,74 @@ test("the company workspace lists real missions with the maquette layout", async
     ),
   ).toBe(true);
   expect(errors).toEqual([]);
+});
+
+test("profile global save preserves pending groups after a partial failure", async ({
+  page,
+}, testInfo) => {
+  await register(page, `profile.draft.${crypto.randomUUID()}@example.test`);
+  await completeTour(page);
+  await page.goto("/worker/profile");
+
+  const saveProfile = page.getByRole("button", {
+    name: "Enregistrer les modifications",
+  });
+  await expect(saveProfile).toBeDisabled();
+  await page.screenshot({
+    path: testInfo.outputPath("profile.png"),
+    fullPage: true,
+  });
+
+  await section(page, "Votre identité")
+    .getByLabel("Prénom", { exact: true })
+    .fill("Ariane");
+  const firstSkill = section(page, "Vos compétences")
+    .getByRole("checkbox")
+    .first();
+  await firstSkill.check();
+  await expect(saveProfile).toBeEnabled();
+
+  let rejectSkills = true;
+  await page.route("**/api/v1/workers/me/skills", async (route) => {
+    if (!rejectSkills) return route.continue();
+    await route.fulfill({
+      status: 500,
+      contentType: "application/json",
+      body: JSON.stringify({ error: "Échec simulé des compétences." }),
+    });
+  });
+
+  await saveProfile.click();
+  await expect(page.getByRole("alert")).toContainText(
+    "Certaines modifications ont été enregistrées",
+  );
+  await expect(
+    section(page, "Votre identité").getByLabel("Prénom", { exact: true }),
+  ).toHaveValue("Ariane");
+  await expect(firstSkill).toBeChecked();
+  await expect(saveProfile).toBeEnabled();
+
+  rejectSkills = false;
+  await saveProfile.click();
+  await expect(page.getByText("Profil enregistré.")).toBeVisible();
+  await expect(saveProfile).toBeDisabled();
+
+  // Une disponibilité reste autonome même lorsqu'un autre champ est en
+  // brouillon : son action ne déclenche pas la sauvegarde globale.
+  await section(page, "Votre identité")
+    .getByLabel("Téléphone (facultatif)")
+    .fill("+33611111111");
+  const availability = section(page, "Vos disponibilités");
+  await availability.getByLabel("Début", { exact: true }).fill("2028-04-12T10:00");
+  await availability.getByLabel("Fin", { exact: true }).fill("2028-04-12T18:00");
+  await availability
+    .getByRole("button", { name: "Ajouter ce créneau" })
+    .click();
+  await expect(availability.getByText("Créneau ajouté.")).toBeVisible();
+  await expect(
+    section(page, "Votre identité").getByLabel("Téléphone (facultatif)"),
+  ).toHaveValue("+33611111111");
+  await expect(saveProfile).toBeEnabled();
 });
 
 // Régression signalée en recette : « Please select an item in the list ».
