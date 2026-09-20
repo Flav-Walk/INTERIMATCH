@@ -151,6 +151,20 @@ describe("missions — validation du contrat", () => {
     ).toBe(false);
   });
 
+  it("refuse une fin identique au début", () => {
+    const instant = "2026-09-25T16:00:00.000Z";
+    expect(
+      missionCreateSchema.safeParse({
+        title: "x",
+        job: "serveur",
+        city: "Lyon",
+        postal_code: "69002",
+        starts_at: instant,
+        ends_at: instant,
+      }).success,
+    ).toBe(false);
+  });
+
   it("refuse un métier hors référentiel et un code postal invalide", () => {
     expect(draftFails({ job: "astronaute" })).toBe(true);
     expect(draftFails({ postal_code: "690" })).toBe(true);
@@ -386,6 +400,43 @@ const publishMission = (id: string, token = boss) =>
   auth(request(app).post(`/api/v1/missions/${id}/publish`), token).send({});
 
 describe("missions — création par l'API", () => {
+  it.each([
+    {
+      label: "le même jour",
+      starts_at: "2026-09-25T08:00:00.000Z",
+      ends_at: "2026-09-25T21:59:00.000Z",
+    },
+    {
+      label: "en traversant minuit",
+      starts_at: "2026-09-25T16:00:00.000Z",
+      ends_at: "2026-09-26T00:00:00.000Z",
+    },
+  ])("conserve exactement les dates $label", async ({ starts_at, ends_at }) => {
+    const r = await postMission(body({ starts_at, ends_at }));
+
+    expect(r.status).toBe(201);
+    expect(new Date(r.body.starts_at).toISOString()).toBe(starts_at);
+    expect(new Date(r.body.ends_at).toISOString()).toBe(ends_at);
+  });
+
+  it.each([
+    {
+      label: "antérieure",
+      starts_at: "2026-09-25T16:00:00.000Z",
+      ends_at: "2026-09-25T08:00:00.000Z",
+    },
+    {
+      label: "identique",
+      starts_at: "2026-09-25T16:00:00.000Z",
+      ends_at: "2026-09-25T16:00:00.000Z",
+    },
+  ])("refuse une fin $label au début", async ({ starts_at, ends_at }) => {
+    const r = await postMission(body({ starts_at, ends_at }));
+
+    expect(r.status).toBe(400);
+    expect(r.body.error.message).toBe("La fin doit suivre le début.");
+  });
+
   it("crée un brouillon et le renvoie entier", async () => {
     const r = await postMission(
       body({ title: "Chef de rang — service du soir" }),
@@ -471,6 +522,20 @@ describe("missions — modification", () => {
     expect(r.status).toBe(200);
     expect(r.body.title).toBe("Après");
     expect(r.body.headcount).toBe(4);
+  });
+
+  it("conserve exactement les dates modifiées sans ajouter un an", async () => {
+    const id = await fresh({
+      starts_at: "2026-09-25T08:00:00.000Z",
+      ends_at: "2027-09-25T21:59:00.000Z",
+    });
+    const starts_at = "2026-09-25T08:00:00.000Z";
+    const ends_at = "2026-09-25T21:59:00.000Z";
+    const r = await patchMission(id, { starts_at, ends_at });
+
+    expect(r.status).toBe(200);
+    expect(new Date(r.body.starts_at).toISOString()).toBe(starts_at);
+    expect(new Date(r.body.ends_at).toISOString()).toBe(ends_at);
   });
 
   it("laisse intacts les champs absents de la requête", async () => {
