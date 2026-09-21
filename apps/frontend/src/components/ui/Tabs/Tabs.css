@@ -1,6 +1,6 @@
 /* ── Tabs.css ────────────────────────────────────────────── */
 
-.tabs {
+.im-tabs {
   display: flex;
   flex-direction: column;
   gap: var(--sp-5);
@@ -13,7 +13,7 @@
    ::after fait 1px de large : scaleX(n) lui donne n px. Seul `transform`
    est animé (jamais width/left) → pas de recalcul de layout. */
 
-.tabs__list {
+.im-tabs__list {
   position: relative;
   display: flex;
   gap: var(--sp-1);
@@ -23,7 +23,7 @@
   box-shadow: inset 0 -1px 0 var(--c-ink-100);
 }
 
-.tabs__list::after {
+.im-tabs__list::after {
   content: '';
   position: absolute;
   left: 0;
@@ -37,13 +37,13 @@
 }
 
 /* Transition activée après la première mesure (pas de glissement au chargement) */
-.tabs__list[data-ready='true']::after {
+.im-tabs__list[data-ready='true']::after {
   transition: transform var(--dur-normal) var(--ease-spring);
 }
 
 /* ── Onglet ──────────────────────────────────────────────── */
 
-.tabs__trigger {
+.im-tabs__trigger {
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
@@ -65,32 +65,32 @@
               background var(--dur-fast) var(--ease-out);
 }
 
-.tabs__trigger:hover:not(:disabled) {
+.im-tabs__trigger:hover:not(:disabled) {
   color: var(--c-ink-950);
   background: var(--c-forest-50);
 }
 
-.tabs__trigger[aria-selected='true'] {
+.im-tabs__trigger[aria-selected='true'] {
   color: var(--c-forest-900);
 }
 
-.tabs__trigger:focus-visible {
+.im-tabs__trigger:focus-visible {
   outline: 2px solid var(--c-forest-500);
   outline-offset: -2px;
 }
 
-.tabs__trigger:disabled {
+.im-tabs__trigger:disabled {
   opacity: 0.45;
   cursor: not-allowed;
 }
 
 /* ── Panneau ─────────────────────────────────────────────── */
 
-.tabs__panel:not([hidden]) {
+.im-tabs__panel:not([hidden]) {
   animation: im-fade-in var(--dur-normal) var(--ease-out) both;
 }
 
-.tabs__panel:focus-visible {
+.im-tabs__panel:focus-visible {
   outline: 2px solid var(--c-forest-500);
   outline-offset: 4px;
   border-radius: var(--r-sm);

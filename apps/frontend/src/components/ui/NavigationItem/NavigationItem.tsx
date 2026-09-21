@@ -43,19 +43,19 @@ export function NavigationItem({
   className = '',
   ...rest
 }: NavigationItemProps) {
-  const classes = ['nav-item', isActive ? 'nav-item--active' : '', className]
+  const classes = ['im-nav-item', isActive ? 'im-nav-item--active' : '', className]
     .filter(Boolean)
     .join(' ');
 
   const content = (
     <>
-      <Icon className="nav-item__icon" size={18} aria-hidden="true" />
-      <span className="nav-item__label">{label}</span>
+      <Icon className="im-nav-item__icon" size={18} aria-hidden="true" />
+      <span className="im-nav-item__label">{label}</span>
       {badge !== undefined && badge > 0 && (
-        <span className="nav-item__badge">
+        <span className="im-nav-item__badge">
           {badge > BADGE_MAX ? `${BADGE_MAX}+` : badge}
           {/* Contexte pour les lecteurs d'écran : « Candidatures 3 en attente » */}
-          {badgeLabel && <span className="nav-item__sr"> {badgeLabel}</span>}
+          {badgeLabel && <span className="im-nav-item__sr"> {badgeLabel}</span>}
         </span>
       )}
     </>

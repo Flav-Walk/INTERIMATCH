@@ -1,6 +1,6 @@
 /* ── MissionCard.css ─────────────────────────────────────── */
 
-.mission-card {
+.im-mission-card {
   display:         flex;
   flex-direction:  column;
   background:      var(--c-surface);
@@ -19,44 +19,44 @@
 }
 
 /* Hover — lift discret (pas de scale) */
-.mission-card:hover {
+.im-mission-card:hover {
   box-shadow:  var(--shadow-hover);
   border-color: color-mix(in oklch, var(--c-forest-500) 20%, transparent);
   transform:   translateY(-3px);
 }
 
-.mission-card:focus-visible {
+.im-mission-card:focus-visible {
   outline:      2px solid var(--c-forest-500);
   outline-offset: 2px;
   box-shadow:   var(--shadow-focus);
 }
 
-.mission-card:active {
+.im-mission-card:active {
   transform: translateY(-1px);
   box-shadow: var(--shadow-sm);
 }
 
 /* ── Inactif (filled / cancelled) ────────────────────────── */
 
-.mission-card--inactive {
+.im-mission-card--inactive {
   opacity: 0.6;
   pointer-events: none;
 }
-.mission-card--inactive:hover {
+.im-mission-card--inactive:hover {
   transform: none;
   box-shadow: var(--shadow-card);
   border-color: transparent;
 }
 
 /* Skeleton : pas de lift au survol, pas de clic */
-.mission-card--skeleton {
+.im-mission-card--skeleton {
   cursor: default;
   pointer-events: none;
 }
 
 /* ── MEDIA ───────────────────────────────────────────────── */
 
-.mission-card__media {
+.im-mission-card__media {
   position:   relative;
   height:     180px;
   overflow:   hidden;
@@ -69,42 +69,42 @@
 }
 
 /* Palette par métier : fond + couleur du glyphe (currentColor) */
-.mission-card__media--serveur   { --job-bg: var(--c-job-serveur-bg);   --job-fg: var(--c-job-serveur-fg); }
-.mission-card__media--chef      { --job-bg: var(--c-job-chef-bg);      --job-fg: var(--c-job-chef-fg); }
-.mission-card__media--barman    { --job-bg: var(--c-job-barman-bg);    --job-fg: var(--c-job-barman-fg); }
-.mission-card__media--reception { --job-bg: var(--c-job-reception-bg); --job-fg: var(--c-job-reception-fg); }
-.mission-card__media--plongeur  { --job-bg: var(--c-job-plongeur-bg);  --job-fg: var(--c-job-plongeur-fg); }
-.mission-card__media--default   { --job-bg: var(--c-job-default-bg);   --job-fg: var(--c-job-default-fg); }
+.im-mission-card__media--serveur   { --job-bg: var(--c-job-serveur-bg);   --job-fg: var(--c-job-serveur-fg); }
+.im-mission-card__media--chef      { --job-bg: var(--c-job-chef-bg);      --job-fg: var(--c-job-chef-fg); }
+.im-mission-card__media--barman    { --job-bg: var(--c-job-barman-bg);    --job-fg: var(--c-job-barman-fg); }
+.im-mission-card__media--reception { --job-bg: var(--c-job-reception-bg); --job-fg: var(--c-job-reception-fg); }
+.im-mission-card__media--plongeur  { --job-bg: var(--c-job-plongeur-bg);  --job-fg: var(--c-job-plongeur-fg); }
+.im-mission-card__media--default   { --job-bg: var(--c-job-default-bg);   --job-fg: var(--c-job-default-fg); }
 
-.mission-card__media[class*="mission-card__media--"] {
+.im-mission-card__media[class*="im-mission-card__media--"] {
   background: var(--job-bg);
   color:      var(--job-fg);
 }
 
-.mission-card:hover .mission-card__media {
+.im-mission-card:hover .im-mission-card__media {
   filter: brightness(1.04);
 }
 
-.mission-card__glyph {
+.im-mission-card__glyph {
   width:  96px;
   height: 96px;
   opacity: 0.8;
   transition: transform var(--dur-slow) var(--ease-spring);
 }
 
-.mission-card:hover .mission-card__glyph {
+.im-mission-card:hover .im-mission-card__glyph {
   transform: scale(1.06) translateY(-3px);
 }
 
 /* Badges positionnés dans le media */
-.mission-card__status-wrap {
+.im-mission-card__status-wrap {
   position: absolute;
   top:  var(--sp-3);
   left: var(--sp-3);
   z-index: 2;
 }
 
-.mission-card__match-wrap {
+.im-mission-card__match-wrap {
   position: absolute;
   top:   var(--sp-3);
   right: var(--sp-3);
@@ -113,7 +113,7 @@
 
 /* ── BODY ────────────────────────────────────────────────── */
 
-.mission-card__body {
+.im-mission-card__body {
   padding:   var(--sp-5) var(--sp-5) var(--sp-3);
   display:   flex;
   flex-direction: column;
@@ -121,7 +121,7 @@
   flex:      1;
 }
 
-.mission-card__title {
+.im-mission-card__title {
   font-family: var(--font-display);
   font-size:   var(--fs-md);
   font-weight: 800;
@@ -137,14 +137,14 @@
   overflow: hidden;
 }
 
-.mission-card__meta {
+.im-mission-card__meta {
   list-style: none;
   display:    flex;
   flex-direction: column;
   gap: var(--sp-1);
 }
 
-.mission-card__meta li {
+.im-mission-card__meta li {
   display:     flex;
   align-items: center;
   gap:         var(--sp-2);
@@ -153,14 +153,14 @@
   color:       var(--c-ink-500);
 }
 
-.mission-card__meta li svg {
+.im-mission-card__meta li svg {
   color: var(--c-ink-400);
   flex-shrink: 0;
 }
 
 /* ── FOOTER ──────────────────────────────────────────────── */
 
-.mission-card__foot {
+.im-mission-card__foot {
   display:        flex;
   align-items:    center;
   padding:        var(--sp-3) var(--sp-5) var(--sp-5);
@@ -169,7 +169,7 @@
   margin-top:     auto;
 }
 
-.mission-card__salary {
+.im-mission-card__salary {
   display:     flex;
   align-items: center;
   gap:         var(--sp-1);
@@ -179,11 +179,11 @@
   color:       var(--c-forest-500);
 }
 
-.mission-card__salary svg {
+.im-mission-card__salary svg {
   color: var(--c-forest-500);
 }
 
-.mission-card__salary--unknown {
+.im-mission-card__salary--unknown {
   font-family: var(--font-ui);
   font-weight: 500;
   color:       var(--c-ink-400);
@@ -193,7 +193,7 @@
 }
 
 /* Candidatures en attente : statut d'alerte, pas un CTA → ambre, pas orange */
-.mission-card__pending {
+.im-mission-card__pending {
   font-size:   var(--fs-xs);
   font-weight: 600;
   color:       var(--c-warning);
@@ -203,7 +203,7 @@
 }
 
 /* Flèche — révèle au hover */
-.mission-card__arrow {
+.im-mission-card__arrow {
   margin-left: auto;
   display:     flex;
   align-items: center;
@@ -213,7 +213,7 @@
     transform var(--dur-normal) var(--ease-spring);
 }
 
-.mission-card:hover .mission-card__arrow {
+.im-mission-card:hover .im-mission-card__arrow {
   color:     var(--c-forest-500);
   transform: translateX(4px);
 }
@@ -221,8 +221,8 @@
 /* ── RESPONSIVE ──────────────────────────────────────────── */
 
 @media (max-width: 560px) {
-  .mission-card__media { height: 140px; }
-  .mission-card__glyph { width: 72px; height: 72px; }
-  .mission-card__body  { padding: var(--sp-4) var(--sp-4) var(--sp-3); }
-  .mission-card__foot  { padding: var(--sp-3) var(--sp-4) var(--sp-4); }
+  .im-mission-card__media { height: 140px; }
+  .im-mission-card__glyph { width: 72px; height: 72px; }
+  .im-mission-card__body  { padding: var(--sp-4) var(--sp-4) var(--sp-3); }
+  .im-mission-card__foot  { padding: var(--sp-3) var(--sp-4) var(--sp-4); }
 }

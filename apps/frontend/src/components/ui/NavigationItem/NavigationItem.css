@@ -1,6 +1,6 @@
 /* ── NavigationItem.css ──────────────────────────────────── */
 
-.nav-item {
+.im-nav-item {
   /* Couleur de la barre d'état actif. Vert par défaut : l'orange est réservé
      aux CTA. Pour passer à l'orange : --nav-active-bar: var(--c-orange-500). */
   --nav-active-bar: var(--c-forest-500);
@@ -31,7 +31,7 @@
 
 /* ── Survol : léger décalage vers la droite ──────────────── */
 
-.nav-item:hover {
+.im-nav-item:hover {
   background: var(--c-forest-50);
   color: var(--c-ink-950);
   transform: translateX(2px);
@@ -39,14 +39,14 @@
 
 /* ── Actif : fond vert léger, texte fort, barre gauche 3px ── */
 
-.nav-item--active,
-.nav-item--active:hover {
+.im-nav-item--active,
+.im-nav-item--active:hover {
   background: var(--c-forest-100);
   color: var(--c-forest-900);
 }
 
 /* La barre apparaît par scaleY (transform seul, pas de height animé) */
-.nav-item::before {
+.im-nav-item::before {
   content: '';
   position: absolute;
   left: 0;
@@ -59,24 +59,24 @@
   transition: transform var(--dur-normal) var(--ease-spring);
 }
 
-.nav-item--active::before {
+.im-nav-item--active::before {
   transform: scaleY(1);
 }
 
 /* ── Focus clavier ───────────────────────────────────────── */
 
-.nav-item:focus-visible {
+.im-nav-item:focus-visible {
   outline: 2px solid var(--c-forest-500);
   outline-offset: 2px;
 }
 
 /* ── Contenu ─────────────────────────────────────────────── */
 
-.nav-item__icon {
+.im-nav-item__icon {
   flex-shrink: 0;
 }
 
-.nav-item__label {
+.im-nav-item__label {
   flex: 1;
   min-width: 0;
   overflow: hidden;
@@ -85,7 +85,7 @@
 }
 
 /* Pastille numérique */
-.nav-item__badge {
+.im-nav-item__badge {
   flex-shrink: 0;
   min-width: 20px;
   padding: 2px var(--sp-2);
@@ -101,7 +101,7 @@
 }
 
 /* Texte réservé aux lecteurs d'écran (visuellement masqué) */
-.nav-item__sr {
+.im-nav-item__sr {
   position: absolute;
   width: 1px;
   height: 1px;

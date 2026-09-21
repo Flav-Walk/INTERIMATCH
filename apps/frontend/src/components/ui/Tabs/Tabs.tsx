@@ -84,7 +84,7 @@ export function Tabs({
 
   return (
     <TabsContext.Provider value={{ baseId, value: current, setValue }}>
-      <div className={['tabs', className].filter(Boolean).join(' ')}>{children}</div>
+      <div className={['im-tabs', className].filter(Boolean).join(' ')}>{children}</div>
     </TabsContext.Provider>
   );
 }
@@ -164,7 +164,7 @@ export function TabsList({ className = '', children, onKeyDown, ...rest }: TabsL
       {...rest}
       ref={listRef}
       role="tablist"
-      className={['tabs__list', className].filter(Boolean).join(' ')}
+      className={['im-tabs__list', className].filter(Boolean).join(' ')}
       onKeyDown={handleKeyDown}
     >
       {children}
@@ -200,7 +200,7 @@ export function TabsTrigger({
       aria-controls={panelId(ctx.baseId, value)}
       /* Tabindex itinérant : seul l'onglet actif est dans l'ordre de tabulation */
       tabIndex={selected ? 0 : -1}
-      className={['tabs__trigger', className].filter(Boolean).join(' ')}
+      className={['im-tabs__trigger', className].filter(Boolean).join(' ')}
       onClick={e => {
         onClick?.(e);
         if (!e.defaultPrevented) ctx.setValue(value);
@@ -238,7 +238,7 @@ export function TabsContent({
       aria-labelledby={tabId(ctx.baseId, value)}
       tabIndex={0}
       hidden={!selected}
-      className={['tabs__panel', className].filter(Boolean).join(' ')}
+      className={['im-tabs__panel', className].filter(Boolean).join(' ')}
     >
       {selected || keepMounted ? children : null}
     </div>

@@ -1,4 +1,4 @@
-.status-badge {
+.im-status-badge {
   display:      inline-flex;
   align-items:  center;
   padding:      3px var(--sp-3);
@@ -15,37 +15,37 @@
 }
 
 /* Missions */
-.status-badge--open {
+.im-status-badge--open {
   background: color-mix(in oklch, var(--c-white) 90%, transparent);
   color: var(--c-forest-800);
 }
-.status-badge--draft {
+.im-status-badge--draft {
   background: color-mix(in oklch, var(--c-ink-100) 85%, transparent);
   color: var(--c-ink-700);
 }
-.status-badge--filled {
+.im-status-badge--filled {
   background: var(--c-forest-800);
   color: var(--c-white);
 }
-.status-badge--completed {
+.im-status-badge--completed {
   background: color-mix(in oklch, var(--c-forest-500) 88%, transparent);
   color: var(--c-white);
 }
-.status-badge--cancelled {
+.im-status-badge--cancelled {
   background: color-mix(in oklch, var(--c-ink-950) 75%, transparent);
   color: var(--c-white);
 }
 
 /* Candidatures */
-.status-badge--pending {
+.im-status-badge--pending {
   background: var(--c-warning-bg);
   color: var(--c-warning);
 }
-.status-badge--accepted {
+.im-status-badge--accepted {
   background: var(--c-success-bg);
   color: var(--c-success);
 }
-.status-badge--rejected {
+.im-status-badge--rejected {
   background: var(--c-error-bg);
   color: var(--c-error);
 }

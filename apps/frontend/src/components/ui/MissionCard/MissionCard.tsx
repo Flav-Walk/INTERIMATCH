@@ -13,7 +13,7 @@ import './MissionCard.css';
 
 /* ── Métier → palette ────────────────────────────────────────
    Les couleurs vivent dans tokens.css (--c-job-*) et sont appliquées
-   par les classes .mission-card__media--<métier>. */
+   par les classes .im-mission-card__media--<métier>. */
 
 type JobKey = 'serveur' | 'chef' | 'barman' | 'reception' | 'plongeur' | 'default';
 
@@ -120,8 +120,8 @@ export function MissionCard({
     <Link
       to={`${basePath}/${mission.id}`}
       className={[
-        'mission-card',
-        isInactive ? 'mission-card--inactive' : '',
+        'im-mission-card',
+        isInactive ? 'im-mission-card--inactive' : '',
         'anim-fade-up',
       ].filter(Boolean).join(' ')}
       style={{ animationDelay: `${animIndex * 50}ms` }}
@@ -129,20 +129,20 @@ export function MissionCard({
     >
       {/* ── MEDIA ───────────────────────────────────────── */}
       <div
-        className={`mission-card__media mission-card__media--${jobKey}`}
+        className={`im-mission-card__media im-mission-card__media--${jobKey}`}
         aria-hidden="true"
       >
-        <div className="mission-card__glyph">
+        <div className="im-mission-card__glyph">
           <JobGlyph jobKey={jobKey} />
         </div>
 
         {/* Badge statut — coin supérieur gauche */}
-        <div className="mission-card__status-wrap">
+        <div className="im-mission-card__status-wrap">
           <StatusBadge status={mission.status} />
         </div>
 
         {/* Badge match — coin supérieur droit */}
-        <div className="mission-card__match-wrap">
+        <div className="im-mission-card__match-wrap">
           {score !== undefined ? (
             <MatchBadge score={score} animated />
           ) : !isInactive ? (
@@ -152,13 +152,13 @@ export function MissionCard({
       </div>
 
       {/* ── BODY ─────────────────────────────────────────── */}
-      <div className="mission-card__body">
-        <h3 className="mission-card__title">
+      <div className="im-mission-card__body">
+        <h3 className="im-mission-card__title">
           {mission.title || mission.job}
         </h3>
 
         {/* Méta */}
-        <ul className="mission-card__meta" aria-label="Détails de la mission">
+        <ul className="im-mission-card__meta" aria-label="Détails de la mission">
           <li>
             <MapPin size={13} aria-hidden="true" />
             {mission.city}
@@ -177,25 +177,25 @@ export function MissionCard({
       </div>
 
       {/* ── FOOTER ───────────────────────────────────────── */}
-      <div className="mission-card__foot">
-        <span className="mission-card__salary">
+      <div className="im-mission-card__foot">
+        <span className="im-mission-card__salary">
           {hasSalary ? (
             <>
               <Euro size={13} aria-hidden="true" />
               {mission.pay_amount} €/{mission.pay_unit}
             </>
           ) : (
-            <span className="mission-card__salary--unknown">Salaire à définir</span>
+            <span className="im-mission-card__salary--unknown">Salaire à définir</span>
           )}
         </span>
 
         {pendingApplications !== undefined && pendingApplications > 0 && (
-          <span className="mission-card__pending" aria-label={`${pendingApplications} candidature(s) en attente`}>
+          <span className="im-mission-card__pending" aria-label={`${pendingApplications} candidature(s) en attente`}>
             {pendingApplications} en attente
           </span>
         )}
 
-        <span className="mission-card__arrow" aria-hidden="true">
+        <span className="im-mission-card__arrow" aria-hidden="true">
           <ArrowRight size={16} />
         </span>
       </div>
@@ -208,18 +208,18 @@ export function MissionCard({
 export function MissionCardSkeleton({ index = 0 }: { index?: number }) {
   return (
     <div
-      className="mission-card mission-card--skeleton anim-fade-in"
+      className="im-mission-card im-mission-card--skeleton anim-fade-in"
       style={{ animationDelay: `${index * 40}ms` }}
       aria-busy="true"
       aria-label="Chargement d'une mission…"
     >
-      <div className="mission-card__media skeleton" />
-      <div className="mission-card__body" style={{ gap: 'var(--sp-3)' }}>
+      <div className="im-mission-card__media skeleton" />
+      <div className="im-mission-card__body" style={{ gap: 'var(--sp-3)' }}>
         <div className="skeleton" style={{ height: '20px', width: '70%', borderRadius: 'var(--r-sm)' }} />
         <div className="skeleton" style={{ height: '14px', width: '50%', borderRadius: 'var(--r-sm)' }} />
         <div className="skeleton" style={{ height: '14px', width: '40%', borderRadius: 'var(--r-sm)' }} />
       </div>
-      <div className="mission-card__foot">
+      <div className="im-mission-card__foot">
         <div className="skeleton" style={{ height: '14px', width: '60px', borderRadius: 'var(--r-sm)' }} />
       </div>
     </div>

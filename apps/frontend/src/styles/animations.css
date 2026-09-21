@@ -120,8 +120,8 @@
   .im-stagger-item {
     animation: none;
   }
-  .match-badge--animated,
-  .match-badge--animated.match-badge--high {
+  .im-match-badge--animated,
+  .im-match-badge--animated.im-match-badge--high {
     animation: none;
   }
 }

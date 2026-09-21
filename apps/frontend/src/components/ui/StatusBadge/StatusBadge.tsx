@@ -38,8 +38,8 @@ export function StatusBadge({ status, className = '' }: StatusBadgeProps) {
   return (
     <span
       className={[
-        'status-badge',
-        `status-badge--${config.variant}`,
+        'im-status-badge',
+        `im-status-badge--${config.variant}`,
         className,
       ].filter(Boolean).join(' ')}
       role="status"

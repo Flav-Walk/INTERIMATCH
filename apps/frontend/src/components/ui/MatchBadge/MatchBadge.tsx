@@ -52,26 +52,26 @@ export function MatchBadge({
   return (
     <span
       className={[
-        'match-badge',
-        `match-badge--${level}`,
-        `match-badge--${size}`,
-        animated ? 'match-badge--animated' : '',
+        'im-match-badge',
+        `im-match-badge--${level}`,
+        `im-match-badge--${size}`,
+        animated ? 'im-match-badge--animated' : '',
         className,
       ].filter(Boolean).join(' ')}
       aria-label={`Score de compatibilité : ${clampedScore}%`}
       role="status"
     >
       {/* Indicateur rond */}
-      <span className="match-badge__dot" aria-hidden="true" />
+      <span className="im-match-badge__dot" aria-hidden="true" />
 
       {/* Score */}
-      <span className="match-badge__score">
+      <span className="im-match-badge__score">
         {clampedScore}%
       </span>
 
       {/* Label optionnel */}
       {withLabel && (
-        <span className="match-badge__label">
+        <span className="im-match-badge__label">
           {LEVEL_LABELS[level]}
         </span>
       )}
@@ -84,7 +84,7 @@ export function MatchBadge({
 export function MatchBadgeSkeleton({ size = 'md' }: { size?: MatchSize }) {
   return (
     <span
-      className={`match-badge match-badge--skeleton match-badge--${size}`}
+      className={`im-match-badge im-match-badge--skeleton im-match-badge--${size}`}
       aria-busy="true"
       aria-label="Calcul du score de compatibilité…"
     />

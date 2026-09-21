@@ -38,11 +38,11 @@ export function Button({
   return (
     <button
       className={[
-        'btn',
-        `btn--${variant}`,
-        `btn--${size}`,
-        loading   ? 'btn--loading'   : '',
-        fullWidth ? 'btn--fullwidth' : '',
+        'im-btn',
+        `im-btn--${variant}`,
+        `im-btn--${size}`,
+        loading   ? 'im-btn--loading'   : '',
+        fullWidth ? 'im-btn--fullwidth' : '',
         className,
       ].filter(Boolean).join(' ')}
       disabled={isDisabled}
@@ -52,24 +52,24 @@ export function Button({
     >
       {/* Icône gauche — masquée en loading */}
       {!loading && iconLeft && (
-        <span className="btn__icon btn__icon--left" aria-hidden="true">
+        <span className="im-btn__icon im-btn__icon--left" aria-hidden="true">
           {iconLeft}
         </span>
       )}
 
       {/* Spinner en loading */}
       {loading && (
-        <span className="btn__spinner" aria-hidden="true">
+        <span className="im-btn__spinner" aria-hidden="true">
           <Loader2 size={size === 'sm' ? 14 : size === 'lg' ? 18 : 16} />
         </span>
       )}
 
       {/* Label */}
-      <span className="btn__label">{children}</span>
+      <span className="im-btn__label">{children}</span>
 
       {/* Icône droite */}
       {!loading && iconRight && (
-        <span className="btn__icon btn__icon--right" aria-hidden="true">
+        <span className="im-btn__icon im-btn__icon--right" aria-hidden="true">
           {iconRight}
         </span>
       )}

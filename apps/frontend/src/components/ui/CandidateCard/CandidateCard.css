@@ -1,6 +1,6 @@
 /* ── CandidateCard.css ───────────────────────────────────── */
 
-.candidate-card {
+.im-candidate-card {
   display:         flex;
   flex-direction:  column;
   background:      var(--c-surface);
@@ -18,31 +18,31 @@
   will-change: transform, box-shadow;
 }
 
-.candidate-card:hover {
+.im-candidate-card:hover {
   box-shadow:   var(--shadow-hover);
   border-color: color-mix(in oklch, var(--c-forest-500) 20%, transparent);
   transform:    translateY(-3px);
 }
 
-.candidate-card:focus-visible {
+.im-candidate-card:focus-visible {
   outline:      2px solid var(--c-forest-500);
   outline-offset: 2px;
   box-shadow:   var(--shadow-focus);
 }
 
-.candidate-card:active {
+.im-candidate-card:active {
   transform: translateY(-1px);
 }
 
 /* Skeleton : pas de lift au survol, pas de clic */
-.candidate-card--skeleton {
+.im-candidate-card--skeleton {
   cursor: default;
   pointer-events: none;
 }
 
 /* ── AVATAR ZONE ─────────────────────────────────────────── */
 
-.candidate-card__avatar-zone {
+.im-candidate-card__avatar-zone {
   position:        relative;
   height:          160px;
   background:      var(--c-forest-50);
@@ -52,7 +52,7 @@
   flex-shrink:     0;
 }
 
-.candidate-card__avatar {
+.im-candidate-card__avatar {
   width:           72px;
   height:          72px;
   border-radius:   50%;
@@ -63,16 +63,16 @@
 }
 
 /* Couleur d'avatar : 4 variantes déterministes (voir getAvatarVariant) */
-.candidate-card__avatar--1 { background: var(--c-avatar-1); color: var(--c-white); }
-.candidate-card__avatar--2 { background: var(--c-avatar-2); color: var(--c-white); }
-.candidate-card__avatar--3 { background: var(--c-avatar-3); color: var(--c-white); }
-.candidate-card__avatar--4 { background: var(--c-avatar-4); color: var(--c-white); }
+.im-candidate-card__avatar--1 { background: var(--c-avatar-1); color: var(--c-white); }
+.im-candidate-card__avatar--2 { background: var(--c-avatar-2); color: var(--c-white); }
+.im-candidate-card__avatar--3 { background: var(--c-avatar-3); color: var(--c-white); }
+.im-candidate-card__avatar--4 { background: var(--c-avatar-4); color: var(--c-white); }
 
-.candidate-card:hover .candidate-card__avatar {
+.im-candidate-card:hover .im-candidate-card__avatar {
   transform: scale(1.08);
 }
 
-.candidate-card__initials {
+.im-candidate-card__initials {
   font-family:   var(--font-display);
   font-size:     var(--fs-xl);
   font-weight:   900;
@@ -82,13 +82,13 @@
 }
 
 /* Badges dans l'avatar zone */
-.candidate-card__match {
+.im-candidate-card__match {
   position: absolute;
   top:   var(--sp-3);
   right: var(--sp-3);
 }
 
-.candidate-card__app-status {
+.im-candidate-card__app-status {
   position: absolute;
   top:   var(--sp-3);
   left:  var(--sp-3);
@@ -96,7 +96,7 @@
 
 /* ── BODY ────────────────────────────────────────────────── */
 
-.candidate-card__body {
+.im-candidate-card__body {
   padding: var(--sp-4) var(--sp-5) var(--sp-3);
   display: flex;
   flex-direction: column;
@@ -104,7 +104,7 @@
   flex:    1;
 }
 
-.candidate-card__name {
+.im-candidate-card__name {
   font-family:    var(--font-display);
   font-size:      var(--fs-md);
   font-weight:    800;
@@ -114,20 +114,20 @@
   line-height:    var(--lh-tight);
 }
 
-.candidate-card__job {
+.im-candidate-card__job {
   font-size:   var(--fs-sm);
   font-weight: 600;
   color:       var(--c-forest-500);
 }
 
-.candidate-card__meta {
+.im-candidate-card__meta {
   list-style: none;
   display:    flex;
   flex-direction: column;
   gap:        var(--sp-1);
 }
 
-.candidate-card__meta li {
+.im-candidate-card__meta li {
   display:     flex;
   align-items: center;
   gap:         var(--sp-2);
@@ -136,13 +136,13 @@
   color:       var(--c-ink-500);
 }
 
-.candidate-card__meta li svg {
+.im-candidate-card__meta li svg {
   color:      var(--c-ink-400);
   flex-shrink: 0;
 }
 
 /* Compétences */
-.candidate-card__skills {
+.im-candidate-card__skills {
   list-style: none;
   display:    flex;
   flex-wrap:  wrap;
@@ -150,7 +150,7 @@
   margin-top: var(--sp-1);
 }
 
-.candidate-card__skill-pill {
+.im-candidate-card__skill-pill {
   font-size:    var(--fs-xs);
   font-weight:  600;
   padding:      2px var(--sp-2);
@@ -162,14 +162,14 @@
   white-space:  nowrap;
 }
 
-.candidate-card__skill-pill--more {
+.im-candidate-card__skill-pill--more {
   background: var(--c-ink-100);
   color:      var(--c-ink-500);
 }
 
 /* ── FOOTER ──────────────────────────────────────────────── */
 
-.candidate-card__foot {
+.im-candidate-card__foot {
   display:     flex;
   align-items: center;
   padding:     var(--sp-3) var(--sp-5) var(--sp-4);
@@ -178,7 +178,7 @@
   gap:         var(--sp-2);
 }
 
-.candidate-card__cta {
+.im-candidate-card__cta {
   font-size:   var(--fs-xs);
   font-weight: 700;
   letter-spacing: var(--ls-wider);
@@ -187,7 +187,7 @@
   transition:  color var(--dur-fast) var(--ease-out);
 }
 
-.candidate-card__arrow {
+.im-candidate-card__arrow {
   margin-left: auto;
   color:       var(--c-ink-400);
   display:     flex;
@@ -196,8 +196,8 @@
     transform var(--dur-normal) var(--ease-spring);
 }
 
-.candidate-card:hover .candidate-card__cta  { color: var(--c-forest-800); }
-.candidate-card:hover .candidate-card__arrow {
+.im-candidate-card:hover .im-candidate-card__cta  { color: var(--c-forest-800); }
+.im-candidate-card:hover .im-candidate-card__arrow {
   color:     var(--c-forest-500);
   transform: translateX(4px);
 }

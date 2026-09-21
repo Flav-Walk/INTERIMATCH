@@ -25,24 +25,24 @@ export function EmptyState({
 }: EmptyStateProps) {
   return (
     <div
-      className={['empty-state', `empty-state--${size}`, className].filter(Boolean).join(' ')}
+      className={['im-empty-state', `im-empty-state--${size}`, className].filter(Boolean).join(' ')}
       role="status"
       aria-live="polite"
     >
       {icon && (
-        <div className="empty-state__icon" aria-hidden="true">
+        <div className="im-empty-state__icon" aria-hidden="true">
           {icon}
         </div>
       )}
 
-      <p className="empty-state__title">{title}</p>
+      <p className="im-empty-state__title">{title}</p>
 
       {description && (
-        <p className="empty-state__desc">{description}</p>
+        <p className="im-empty-state__desc">{description}</p>
       )}
 
       {action && (
-        <div className="empty-state__action">{action}</div>
+        <div className="im-empty-state__action">{action}</div>
       )}
     </div>
   );

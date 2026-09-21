@@ -38,7 +38,7 @@ function initials(first: string, last: string): string {
 
 /* ── Variante d'avatar déterministe ───────────────────────────
    Renvoie 1 à 4 : la couleur correspondante (--c-avatar-N) est
-   appliquée par la classe .candidate-card__avatar--N. */
+   appliquée par la classe .im-candidate-card__avatar--N. */
 
 const AVATAR_VARIANTS = 4;
 
@@ -56,41 +56,41 @@ export function CandidateCard({ candidate, basePath, animIndex = 0 }: CandidateC
   return (
     <Link
       to={`${basePath}/${candidate.id}`}
-      className="candidate-card anim-fade-up"
+      className="im-candidate-card anim-fade-up"
       style={{ animationDelay: `${animIndex * 50}ms` }}
       aria-label={`Candidat ${candidate.firstName} ${candidate.lastName} — ${Math.round(candidate.score)}% de compatibilité`}
     >
       {/* ── AVATAR ──────────────────────────────────────── */}
       <div
-        className="candidate-card__avatar-zone"
+        className="im-candidate-card__avatar-zone"
         aria-hidden="true"
       >
-        <div className={`candidate-card__avatar candidate-card__avatar--${variant}`}>
-          <span className="candidate-card__initials">{init}</span>
+        <div className={`im-candidate-card__avatar im-candidate-card__avatar--${variant}`}>
+          <span className="im-candidate-card__initials">{init}</span>
         </div>
 
         {/* Match badge */}
-        <div className="candidate-card__match">
+        <div className="im-candidate-card__match">
           <MatchBadge score={candidate.score} size="md" animated />
         </div>
 
         {/* Statut candidature si disponible */}
         {candidate.applicationStatus && (
-          <div className="candidate-card__app-status">
+          <div className="im-candidate-card__app-status">
             <StatusBadge status={candidate.applicationStatus} />
           </div>
         )}
       </div>
 
       {/* ── BODY ─────────────────────────────────────────── */}
-      <div className="candidate-card__body">
-        <h3 className="candidate-card__name">
+      <div className="im-candidate-card__body">
+        <h3 className="im-candidate-card__name">
           {candidate.firstName} {candidate.lastName.charAt(0)}.
         </h3>
 
-        <p className="candidate-card__job">{candidate.jobTitle}</p>
+        <p className="im-candidate-card__job">{candidate.jobTitle}</p>
 
-        <ul className="candidate-card__meta" aria-label="Informations du candidat">
+        <ul className="im-candidate-card__meta" aria-label="Informations du candidat">
           <li>
             <MapPin size={12} aria-hidden="true" />
             {candidate.city}
@@ -111,14 +111,14 @@ export function CandidateCard({ candidate, basePath, animIndex = 0 }: CandidateC
 
         {/* Compétences clés — max 3 pills */}
         {candidate.skills && candidate.skills.length > 0 && (
-          <ul className="candidate-card__skills" aria-label="Compétences">
+          <ul className="im-candidate-card__skills" aria-label="Compétences">
             {candidate.skills.slice(0, 3).map(skill => (
-              <li key={skill} className="candidate-card__skill-pill">
+              <li key={skill} className="im-candidate-card__skill-pill">
                 {skill}
               </li>
             ))}
             {candidate.skills.length > 3 && (
-              <li className="candidate-card__skill-pill candidate-card__skill-pill--more">
+              <li className="im-candidate-card__skill-pill im-candidate-card__skill-pill--more">
                 +{candidate.skills.length - 3}
               </li>
             )}
@@ -127,11 +127,11 @@ export function CandidateCard({ candidate, basePath, animIndex = 0 }: CandidateC
       </div>
 
       {/* ── FOOTER ───────────────────────────────────────── */}
-      <div className="candidate-card__foot">
-        <span className="candidate-card__cta">
+      <div className="im-candidate-card__foot">
+        <span className="im-candidate-card__cta">
           Voir le profil
         </span>
-        <span className="candidate-card__arrow" aria-hidden="true">
+        <span className="im-candidate-card__arrow" aria-hidden="true">
           <ArrowRight size={15} />
         </span>
       </div>
@@ -144,18 +144,18 @@ export function CandidateCard({ candidate, basePath, animIndex = 0 }: CandidateC
 export function CandidateCardSkeleton({ index = 0 }: { index?: number }) {
   return (
     <div
-      className="candidate-card candidate-card--skeleton anim-fade-in"
+      className="im-candidate-card im-candidate-card--skeleton anim-fade-in"
       style={{ animationDelay: `${index * 40}ms` }}
       aria-busy="true"
       aria-label="Chargement d'un candidat…"
     >
-      <div className="candidate-card__avatar-zone">
-        <div className="candidate-card__avatar skeleton" />
-        <div className="candidate-card__match">
+      <div className="im-candidate-card__avatar-zone">
+        <div className="im-candidate-card__avatar skeleton" />
+        <div className="im-candidate-card__match">
           <MatchBadgeSkeleton />
         </div>
       </div>
-      <div className="candidate-card__body" style={{ gap: 'var(--sp-3)', padding: 'var(--sp-4)' }}>
+      <div className="im-candidate-card__body" style={{ gap: 'var(--sp-3)', padding: 'var(--sp-4)' }}>
         <div className="skeleton" style={{ height: '16px', width: '60%', borderRadius: 'var(--r-sm)' }} />
         <div className="skeleton" style={{ height: '13px', width: '80%', borderRadius: 'var(--r-sm)' }} />
         <div className="skeleton" style={{ height: '12px', width: '50%', borderRadius: 'var(--r-sm)' }} />

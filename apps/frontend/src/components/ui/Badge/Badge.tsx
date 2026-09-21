@@ -33,13 +33,13 @@ export function Badge({
 }: BadgeProps) {
   return (
     <span
-      className={['badge', `badge--${variant}`, `badge--${size}`, className]
+      className={['im-badge', `im-badge--${variant}`, `im-badge--${size}`, className]
         .filter(Boolean)
         .join(' ')}
       {...rest}
     >
       {/* Décoratif : le label suffit à transmettre l'information */}
-      {dot && <span className="badge__dot" aria-hidden="true" />}
+      {dot && <span className="im-badge__dot" aria-hidden="true" />}
       {children}
     </span>
   );
