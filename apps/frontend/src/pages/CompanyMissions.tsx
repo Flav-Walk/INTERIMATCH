@@ -15,6 +15,8 @@ import {
 import { errorMessage } from "../services/session";
 import { useAuth } from "../hooks/useAuth";
 import { MissionCard } from "../components/mission/MissionCard";
+import { Badge } from "../components/ui/Badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/Tabs";
 import {
   listMissions,
   missionTabs,
@@ -22,6 +24,10 @@ import {
   type Mission,
   type MissionTab,
 } from "../services/missions";
+
+// Garde de type : Tabs renvoie une chaîne, l'état attend une MissionTab ou « all »
+const isTab = (value: string): value is MissionTab | "all" =>
+  value === "all" || missionTabs.some((entry) => entry.key === value);
 
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
 
@@ -89,110 +95,102 @@ export function CompanyMissions() {
       {/* ── Corps ─────────────────────────────────────────────────────────── */}
       <div className="missions-list-body">
 
-        {/* Toolbar : chips + compteur total */}
-        <div className="missions-list-toolbar">
-          <div className="dashboard-tabs" role="tablist" aria-label="Filtrer par statut">
+        <Tabs
+          value={tab}
+          onValueChange={(next) => {
+            if (isTab(next)) setTab(next);
+          }}
+        >
+          {/* Toolbar : onglets par statut + compteurs */}
+          <div className="missions-list-toolbar">
+            <TabsList aria-label="Filtrer par statut">
+              <TabsTrigger value="all">
+                Toutes
+                <Badge size="sm" variant="neutral">{data.length}</Badge>
+              </TabsTrigger>
+              {missionTabs.map((entry) => (
+                <TabsTrigger key={entry.key} value={entry.key}>
+                  {entry.label}
+                  <Badge size="sm" variant="neutral">
+                    {counts[entry.key] ?? 0}
+                  </Badge>
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </div>
 
-            {/* Onglet "Toutes" */}
-            <button
-              type="button"
-              role="tab"
-              aria-selected={tab === "all"}
-              className={["dashboard-tab", tab === "all" ? "is-active" : ""].join(" ").trim()}
-              onClick={() => setTab("all")}
-            >
-              Toutes
-              <span className="dashboard-tab__count">{data.length}</span>
-            </button>
-
-            {/* Onglets par statut */}
-            {missionTabs.map((entry) => (
-              <button
-                key={entry.key}
-                type="button"
-                role="tab"
-                aria-selected={tab === entry.key}
-                className={["dashboard-tab", tab === entry.key ? "is-active" : ""].join(" ").trim()}
-                onClick={() => setTab(entry.key)}
-              >
-                {entry.label}
-                <span className="dashboard-tab__count">
-                  {counts[entry.key] ?? 0}
+          <TabsContent value={tab}>
+            {/* Résultat de recherche active */}
+            {query && (
+              <div className="search-result-bar" role="status">
+                <span>
+                  <strong>{filtered.length}</strong>{" "}
+                  résultat{filtered.length > 1 ? "s" : ""} pour «&nbsp;{query}&nbsp;»
                 </span>
-              </button>
-            ))}
-          </div>
-        </div>
+                <button
+                  type="button"
+                  className="search-clear-btn"
+                  onClick={() => setParams({})}
+                  aria-label="Effacer la recherche"
+                >
+                  <X size={13} aria-hidden="true" />
+                  Effacer
+                </button>
+              </div>
+            )}
 
-        {/* Résultat de recherche active */}
-        {query && (
-          <div className="search-result-bar" role="status">
-            <span>
-              <strong>{filtered.length}</strong>{" "}
-              résultat{filtered.length > 1 ? "s" : ""} pour «&nbsp;{query}&nbsp;»
-            </span>
-            <button
-              type="button"
-              className="search-clear-btn"
-              onClick={() => setParams({})}
-              aria-label="Effacer la recherche"
-            >
-              <X size={13} aria-hidden="true" />
-              Effacer
-            </button>
-          </div>
-        )}
+            {/* Erreur */}
+            {error && (
+              <p className="form-error" role="alert">{error}</p>
+            )}
 
-        {/* Erreur */}
-        {error && (
-          <p className="form-error" role="alert">{error}</p>
-        )}
+            {/* Loading */}
+            {loading ? (
+              <MissionsListSkeleton />
 
-        {/* Loading */}
-        {loading ? (
-          <MissionsListSkeleton />
+            ) : filtered.length > 0 ? (
+              <div className="mission-grid mission-grid--wide">
+                {filtered.map((mission) => (
+                  <MissionCard key={mission.id} mission={mission} />
+                ))}
+              </div>
 
-        ) : filtered.length > 0 ? (
-          <div className="mission-grid mission-grid--wide">
-            {filtered.map((mission) => (
-              <MissionCard key={mission.id} mission={mission} />
-            ))}
-          </div>
+            ) : query ? (
+              /* Empty — recherche sans résultat */
+              <div className="empty">
+                <SearchX aria-hidden="true" />
+                <h2>Aucune mission ne correspond</h2>
+                <p>Essayez un autre intitulé, une autre ville ou un autre métier.</p>
+                <button
+                  type="button"
+                  className="button"
+                  onClick={() => setParams({})}
+                >
+                  Effacer la recherche
+                </button>
+              </div>
 
-        ) : query ? (
-          /* Empty — recherche sans résultat */
-          <div className="empty">
-            <SearchX aria-hidden="true" />
-            <h2>Aucune mission ne correspond</h2>
-            <p>Essayez un autre intitulé, une autre ville ou un autre métier.</p>
-            <button
-              type="button"
-              className="button"
-              onClick={() => setParams({})}
-            >
-              Effacer la recherche
-            </button>
-          </div>
-
-        ) : (
-          /* Empty — aucune mission */
-          <div className="empty">
-            <BriefcaseBusiness aria-hidden="true" />
-            <h2>
-              {tab === "all"
-                ? "Votre première mission commence ici"
-                : "Aucune mission dans cet onglet"}
-            </h2>
-            <p>
-              Décrivez le poste, les horaires et les compétences attendues :
-              les candidats compatibles vous seront proposés.
-            </p>
-            <Link className="button" to="/company/missions/new">
-              Créer une mission
-              <ArrowRight size={16} aria-hidden="true" />
-            </Link>
-          </div>
-        )}
+            ) : (
+              /* Empty — aucune mission */
+              <div className="empty">
+                <BriefcaseBusiness aria-hidden="true" />
+                <h2>
+                  {tab === "all"
+                    ? "Votre première mission commence ici"
+                    : "Aucune mission dans cet onglet"}
+                </h2>
+                <p>
+                  Décrivez le poste, les horaires et les compétences attendues :
+                  les candidats compatibles vous seront proposés.
+                </p>
+                <Link className="button" to="/company/missions/new">
+                  Créer une mission
+                  <ArrowRight size={16} aria-hidden="true" />
+                </Link>
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );

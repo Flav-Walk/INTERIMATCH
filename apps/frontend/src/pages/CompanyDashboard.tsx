@@ -19,12 +19,18 @@ import { RecentApplications } from "../components/applications/RecentApplication
 import { useCompanyData } from "../hooks/CompanyData";
 import { pendingByMission } from "../services/applications";
 import { PlanningCard } from "../components/mission/PlanningCard";
+import { Badge } from "../components/ui/Badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/Tabs";
 import {
   listMissions,
   missionTabs,
   type Mission,
   type MissionTab,
 } from "../services/missions";
+
+// Garde de type : Tabs renvoie une chaîne, l'état attend une MissionTab
+const isMissionTab = (value: string): value is MissionTab =>
+  missionTabs.some((entry) => entry.key === value);
 
 // ─── Skeleton missions ────────────────────────────────────────────────────────
 
@@ -128,58 +134,56 @@ export function CompanyDashboard() {
                 </Link>
               </div>
 
-              {/* Chips / onglets */}
-              <div className="dashboard-tabs" role="tablist" aria-label="Filtrer les missions">
-                {missionTabs.map((entry) => (
-                  <button
-                    key={entry.key}
-                    type="button"
-                    role="tab"
-                    aria-selected={tab === entry.key}
-                    className={[
-                      "dashboard-tab",
-                      tab === entry.key ? "is-active" : "",
-                    ].join(" ").trim()}
-                    onClick={() => setTab(entry.key)}
-                  >
-                    {entry.label}
-                    <span className="dashboard-tab__count">
-                      {counts[entry.key] ?? 0}
-                    </span>
-                  </button>
-                ))}
-              </div>
-
-              {/* États */}
-              {error && (
-                <p className="form-error" role="alert">{error}</p>
-              )}
-
-              {loading ? (
-                <MissionSkeleton />
-              ) : shown.length > 0 ? (
-                <div className="mission-grid">
-                  {shown.map((mission) => (
-                    <MissionCard
-                      key={mission.id}
-                      mission={mission}
-                      pendingApplications={pending.get(mission.id) ?? 0}
-                    />
+              <Tabs
+                value={tab}
+                onValueChange={(next) => {
+                  if (isMissionTab(next)) setTab(next);
+                }}
+              >
+                <TabsList aria-label="Filtrer les missions">
+                  {missionTabs.map((entry) => (
+                    <TabsTrigger key={entry.key} value={entry.key}>
+                      {entry.label}
+                      <Badge size="sm" variant="neutral">
+                        {counts[entry.key] ?? 0}
+                      </Badge>
+                    </TabsTrigger>
                   ))}
-                </div>
-              ) : (
-                <div className="empty">
-                  <BriefcaseBusiness aria-hidden="true" />
-                  <h3>Aucune mission dans cet onglet</h3>
-                  <p>
-                    Créez une mission pour commencer à recevoir des candidats
-                    compatibles.
-                  </p>
-                  <Link className="button" to="/company/missions/new">
-                    Créer une mission
-                  </Link>
-                </div>
-              )}
+                </TabsList>
+
+                <TabsContent value={tab}>
+                  {/* États */}
+                  {error && (
+                    <p className="form-error" role="alert">{error}</p>
+                  )}
+
+                  {loading ? (
+                    <MissionSkeleton />
+                  ) : shown.length > 0 ? (
+                    <div className="mission-grid">
+                      {shown.map((mission) => (
+                        <MissionCard
+                          key={mission.id}
+                          mission={mission}
+                          pendingApplications={pending.get(mission.id) ?? 0}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="empty">
+                      <BriefcaseBusiness aria-hidden="true" />
+                      <h3>Aucune mission dans cet onglet</h3>
+                      <p>
+                        Créez une mission pour commencer à recevoir des candidats
+                        compatibles.
+                      </p>
+                      <Link className="button" to="/company/missions/new">
+                        Créer une mission
+                      </Link>
+                    </div>
+                  )}
+                </TabsContent>
+              </Tabs>
             </section>
 
             {/* Candidatures récentes — composant Flavien */}
