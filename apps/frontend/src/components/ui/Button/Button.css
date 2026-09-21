@@ -6,7 +6,7 @@
   justify-content: center;
   gap:             var(--sp-2);
   border:          none;
-  border-radius:   var(--r-md);
+  border-radius:   var(--r-pill);
   font-family:     var(--font-display);
   font-weight:     600;
   letter-spacing:  var(--ls-wide);
