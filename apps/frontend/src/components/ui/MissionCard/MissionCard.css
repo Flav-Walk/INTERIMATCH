@@ -124,7 +124,7 @@
 .im-mission-card__title {
   font-family: var(--font-display);
   font-size:   var(--fs-md);
-  font-weight: 800;
+  font-weight: 600;
   line-height: var(--lh-tight);
   letter-spacing: var(--ls-tight);
   text-transform: uppercase;
@@ -175,7 +175,7 @@
   gap:         var(--sp-1);
   font-family: var(--font-display);
   font-size:   var(--fs-sm);
-  font-weight: 700;
+  font-weight: 600;
   color:       var(--c-forest-500);
 }
 

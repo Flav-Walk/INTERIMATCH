@@ -1,6 +1,7 @@
-/* Polices de la charte v2 : Montserrat (display) + Inter (interface).
-   Seules les graisses réellement utilisées sont chargées (éco-conception). */
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Montserrat:wght@700;800;900&display=swap");
+/* Police unique : Geist, servie localement (aucune requête tierce, RGESN).
+   Variable : un seul fichier par sous-ensemble, chargé selon les caractères
+   affichés (unicode-range). Graisses utilisées : 400, 500, 600. */
+@import "@fontsource-variable/geist";
 
 :root {
   --forest: oklch(0.32 0.065 165);
@@ -17,8 +18,8 @@
   --radius: 12px;
   --forest-mid: oklch(0.42 0.085 165);
   /* alp-medium ≈ #2C7052 */
-  --radius-card: 18px;
-  /* bords ronds des cartes v2 */
+  --radius-card: 24px;
+  /* bords ronds des cartes */
   /* Gabarit de page partagé par l'en-tête, le contenu et le pied, pour qu'ils
      s'alignent sur la même gouttière quelle que soit la largeur d'écran. */
   --page-max: 1440px;
@@ -146,8 +147,10 @@
   --shadow-focus: 0 0 0 3px oklch(0.42 0.085 165 / 0.35);
 
   /* --- Typographie --- */
-  --font-display: "Montserrat", system-ui, sans-serif;
-  --font-ui: "Inter", system-ui, sans-serif;
+  /* Une seule famille : les deux variables restent pour ne pas toucher
+     chaque composant, mais pointent vers la même pile. */
+  --font-ui: "Geist Variable", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: var(--font-ui);
   --fs-2xs: 11px;
   --fs-xs: var(--text-xs);
   --fs-sm: var(--text-sm);

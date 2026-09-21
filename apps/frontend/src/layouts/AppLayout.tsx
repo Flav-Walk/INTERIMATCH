@@ -107,9 +107,9 @@ export function AppLayout() {
                 x="16"
                 y="22"
                 textAnchor="middle"
-                fontFamily="Georgia, serif"
+                fontFamily="var(--font-display)"
                 fontSize="18"
-                fontWeight="700"
+                fontWeight="600"
                 fill="var(--orange)"
               >
                 A

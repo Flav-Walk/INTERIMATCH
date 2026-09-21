@@ -37,7 +37,7 @@ p {
 }
 h1,
 h2 {
-  font-family: Georgia, serif;
+  font-family: var(--font-display);
   text-wrap: balance;
 }
 h1 {
@@ -69,7 +69,7 @@ p {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-weight: 750;
+  font-weight: 600;
   font-size: 1.4rem;
   text-decoration: none;
   letter-spacing: -0.035em;
@@ -90,7 +90,7 @@ nav a {
 nav a.active {
   border-color: var(--orange);
   color: var(--forest);
-  font-weight: 650;
+  font-weight: 600;
 }
 .account-link {
   margin-left: auto;
@@ -141,7 +141,7 @@ main {
   gap: 16px;
   background: var(--orange);
   color: var(--ink);
-  font-weight: 700;
+  font-weight: 600;
   border: 0;
   border-radius: 8px;
   padding: 12px 20px;
@@ -404,7 +404,7 @@ input[type="checkbox"] {
   border-radius: 8px;
   padding: 12px 18px;
   cursor: pointer;
-  font-weight: 650;
+  font-weight: 600;
   min-height: 48px;
 }
 .google-button,
@@ -454,7 +454,7 @@ fieldset {
   min-width: 0;
 }
 legend {
-  font-family: Georgia, serif;
+  font-family: var(--font-display);
   font-size: 1.25rem;
   padding: 0 8px;
 }
@@ -806,7 +806,7 @@ small {
   color: var(--muted);
 }
 .lead-figure {
-  font-weight: 650;
+  font-weight: 600;
   color: var(--ink);
   margin-bottom: 8px;
 }
@@ -1088,7 +1088,7 @@ small {
 .skill-choice:has(input:checked) {
   border-color: var(--forest);
   background: var(--tint);
-  font-weight: 650;
+  font-weight: 600;
 }
 /* Une pastille non retenue reste en retrait, pour que le regard n'ait à
    parcourir que les choix réellement faits. */
@@ -1284,7 +1284,7 @@ small {
   border-radius: 99px;
   border: 1px solid transparent;
   font-size: 0.74rem;
-  font-weight: 650;
+  font-weight: 600;
   white-space: nowrap;
 }
 .match-badge.is-large {

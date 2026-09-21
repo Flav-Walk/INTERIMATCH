@@ -75,7 +75,7 @@
 .im-candidate-card__initials {
   font-family:   var(--font-display);
   font-size:     var(--fs-xl);
-  font-weight:   900;
+  font-weight:   600;
   letter-spacing: var(--ls-tight);
   line-height:   1;
   user-select:   none;
@@ -107,7 +107,7 @@
 .im-candidate-card__name {
   font-family:    var(--font-display);
   font-size:      var(--fs-md);
-  font-weight:    800;
+  font-weight:    600;
   letter-spacing: var(--ls-tight);
   text-transform: uppercase;
   color:          var(--c-ink-950);
@@ -180,7 +180,7 @@
 
 .im-candidate-card__cta {
   font-size:   var(--fs-xs);
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: var(--ls-wider);
   text-transform: uppercase;
   color:       var(--c-forest-500);
