@@ -1,0 +1,112 @@
+/* ── MatchBadge.css ──────────────────────────────────────── */
+
+.match-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  border-radius: var(--r-pill);
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: var(--ls-wide);
+  white-space: nowrap;
+  user-select: none;
+  transition:
+    transform     var(--dur-fast) var(--ease-spring),
+    box-shadow    var(--dur-normal) var(--ease-out);
+}
+
+/* ── Tailles ─────────────────────────────────────────────── */
+
+.match-badge--sm {
+  padding: 2px var(--sp-2);
+  font-size: var(--fs-2xs);
+}
+.match-badge--md {
+  padding: 3px var(--sp-3);
+  font-size: var(--fs-xs);
+}
+.match-badge--lg {
+  padding: var(--sp-1) var(--sp-4);
+  font-size: var(--fs-sm);
+}
+
+/* ── Niveaux ─────────────────────────────────────────────── */
+
+.match-badge--high {
+  background: var(--c-match-high-bg);
+  color:      var(--c-match-high);
+  box-shadow: 0 1px 4px color-mix(in oklch, var(--c-forest-500) 18%, transparent);
+}
+.match-badge--mid {
+  background: var(--c-match-mid-bg);
+  color:      var(--c-match-mid);
+}
+.match-badge--low {
+  background: var(--c-match-low-bg);
+  color:      var(--c-match-low);
+}
+
+/* ── Point indicateur ────────────────────────────────────── */
+
+.match-badge__dot {
+  width:  6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.match-badge--high .match-badge__dot { background: var(--c-match-high); }
+.match-badge--mid  .match-badge__dot { background: var(--c-match-mid); }
+.match-badge--low  .match-badge__dot { background: var(--c-match-low); }
+
+/* ── Score ───────────────────────────────────────────────── */
+
+.match-badge__score {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Label ───────────────────────────────────────────────── */
+
+.match-badge__label {
+  font-family: var(--font-ui);
+  font-weight: 500;
+  letter-spacing: 0;
+  opacity: 0.85;
+}
+.match-badge--sm .match-badge__label,
+.match-badge--md .match-badge__label { display: none; }
+
+/* ── Animation d'entrée ──────────────────────────────────── */
+
+.match-badge--animated {
+  animation: im-scale-in var(--dur-enter) var(--ease-spring) both;
+}
+
+/* Pulse sur high uniquement (subtil) */
+.match-badge--animated.match-badge--high {
+  animation:
+    im-scale-in  var(--dur-enter) var(--ease-spring) both,
+    im-pulse-match 2s ease-in-out 0.4s 2;
+}
+
+/* ── Skeleton ────────────────────────────────────────────── */
+
+.match-badge--skeleton {
+  background-color: var(--c-ink-100);
+  width:  60px;
+  height: 22px;
+  animation: im-shimmer 1.6s ease-in-out infinite;
+  background-size: 200% 100%;
+  background-image: linear-gradient(
+    90deg,
+    var(--c-ink-100) 25%,
+    var(--c-forest-50) 50%,
+    var(--c-ink-100) 75%
+  );
+}
+.match-badge--skeleton.match-badge--sm  { height: 18px; width: 48px; }
+.match-badge--skeleton.match-badge--lg  { height: 26px; width: 72px; }
+
+/* Mouvement réduit : pas de shimmer en boucle */
+@media (prefers-reduced-motion: reduce) {
+  .match-badge--skeleton { animation: none; background-image: none; }
+}
