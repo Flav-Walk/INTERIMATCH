@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { PageHero } from "../components/PageHero";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import {
@@ -168,21 +169,25 @@ export function CompanyMissionForm() {
     );
 
   return (
-    <section className="page-form">
-      <Link
-        className="link-back"
-        to={editing ? "/company/missions/" + id : "/company/missions"}
-      >
-        <ArrowLeft size={15} aria-hidden="true" />
-        {editing ? "Retour à la mission" : "Vos missions"}
-      </Link>
-
-      <h1>{editing ? "Modifier la mission" : "Créer une mission"}</h1>
-      <p className="quiet page-lead">
-        {editing
-          ? "Vos modifications remplacent les informations enregistrées. Le statut de la mission ne change pas."
-          : "La mission est enregistrée en brouillon. Elle ne sera visible des intérimaires qu’une fois publiée."}
-      </p>
+    <>
+      <PageHero
+        back={
+          <Link
+            className="link-back"
+            to={editing ? "/company/missions/" + id : "/company/missions"}
+          >
+            <ArrowLeft size={15} aria-hidden="true" />
+            {editing ? "Retour à la mission" : "Vos missions"}
+          </Link>
+        }
+        title={editing ? "Modifier la mission" : "Créer une mission"}
+        lead={
+          editing
+            ? "Vos modifications remplacent les informations enregistrées. Le statut de la mission ne change pas."
+            : "La mission est enregistrée en brouillon. Elle ne sera visible des intérimaires qu’une fois publiée."
+        }
+      />
+      <div className="page-panel page-panel--narrow">
 
       {apiError && (
         <p className="form-error" role="alert">
@@ -458,6 +463,7 @@ export function CompanyMissionForm() {
           </button>
         </div>
       </form>
-    </section>
+      </div>
+    </>
   );
 }

@@ -86,6 +86,7 @@ src/
 │   │   ├── StatusBadge/  Tabs/
 │   │   └── index.ts                ← barrel export
 │   ├── ConfirmDialog.tsx
+│   ├── PageHero.tsx                ← bandeau sombre des pages connectées (+ <div className="page-panel">)
 │   ├── Guards.tsx
 │   ├── GuidedTour.tsx
 │   ├── PasswordField.tsx
@@ -266,6 +267,9 @@ Jamais d'appel direct frontend → n8n.
 - **Interactions** : hover très subtil (couleur de fond ou de texte) — pas de `scale`,
   pas d'ombres portées massives.
 - **Orange** (`--orange`) : CTAs primaires et badge « urgent » uniquement.
+- **Pages connectées** : `<PageHero>` (fond `--forest`, même couleur que l'en-tête) suivi
+  d'un panneau clair `.page-panel` (ou `.missions-page__body`, `.dashboard-layout`,
+  `.detail-layout`) qui chevauche le hero. Pas de photo : la charte l'interdit.
 - **Ornements** : aucun élément décoratif superflu (pas de blur-orbs).
 
 ---

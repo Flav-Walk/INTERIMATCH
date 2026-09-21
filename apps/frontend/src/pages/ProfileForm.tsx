@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
+import { PageHero } from "../components/PageHero";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import {
@@ -89,13 +90,13 @@ export function ProfileForm() {
   }
 
   return (
-    <section className="onboarding">
-      <span className="eyeline">Votre espace Entreprise</span>
-      <h1>Présentons votre établissement.</h1>
-      <p>
-        Ces informations aideront les intérimaires à connaître votre
-        établissement.
-      </p>
+    <>
+      <PageHero
+        eyeline="Votre espace entreprise"
+        title="Présentons votre établissement."
+        lead="Ces informations aideront les intérimaires à connaître votre établissement."
+      />
+      <div className="page-panel page-panel--narrow onboarding">
       <form onSubmit={(e) => void submit(e)}>
         <fieldset>
           <legend>Le contact de votre établissement</legend>
@@ -192,6 +193,7 @@ export function ProfileForm() {
           {busy ? "Enregistrement…" : "Enregistrer"}
         </button>
       </form>
-    </section>
+      </div>
+    </>
   );
 }

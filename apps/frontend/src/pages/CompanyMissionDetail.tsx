@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { PageHero } from "../components/PageHero";
 import { Link, useLocation, useParams } from "react-router-dom";
 import {
   ArrowLeft,
@@ -109,39 +110,46 @@ export function CompanyMissionDetail() {
   const desired = mission.skills.filter((s) => !s.required);
 
   return (
-    <section className="page-wide">
-      <Link className="link-back" to="/company/missions">
-        <ArrowLeft size={15} aria-hidden="true" />
-        Vos missions
-      </Link>
+    <>
+      <PageHero
+        back={
+          <Link className="link-back" to="/company/missions">
+            <ArrowLeft size={15} aria-hidden="true" />
+            Vos missions
+          </Link>
+        }
+        title={mission.title}
+        badge={
+          <Badge variant={MISSION_STATUS_VARIANT[mission.status]} dot>
+            {STATUS_LABELS[mission.status]}
+          </Badge>
+        }
+        actions={
+          <>
+            {canEdit(mission) && (
+              <Link
+                className="secondary-button"
+                to={`/company/missions/${mission.id}/edit`}
+              >
+                <Pencil size={15} aria-hidden="true" />
+                Modifier
+              </Link>
+            )}
+            {canPublish(mission) && (
+              <button
+                type="button"
+                className="button"
+                onClick={() => setConfirming(true)}
+              >
+                <Send size={15} aria-hidden="true" />
+                Publier la mission
+              </button>
+            )}
+          </>
+        }
+      />
 
-      <div className="section-head">
-        <h1>{mission.title}</h1>
-        <Badge variant={MISSION_STATUS_VARIANT[mission.status]} dot>
-          {STATUS_LABELS[mission.status]}
-        </Badge>
-        <div className="head-actions">
-          {canEdit(mission) && (
-            <Link
-              className="secondary-button"
-              to={`/company/missions/${mission.id}/edit`}
-            >
-              <Pencil size={15} aria-hidden="true" />
-              Modifier
-            </Link>
-          )}
-          {canPublish(mission) && (
-            <button
-              type="button"
-              className="button"
-              onClick={() => setConfirming(true)}
-            >
-              <Send size={15} aria-hidden="true" />
-              Publier la mission
-            </button>
-          )}
-        </div>
-      </div>
+      <div className="page-panel">
 
       {flash && (
         <p className="form-success" role="status">
@@ -249,6 +257,7 @@ export function CompanyMissionDetail() {
           <MissionApplications missionId={mission.id} />
         </div>
       </div>
-    </section>
+      </div>
+    </>
   );
 }

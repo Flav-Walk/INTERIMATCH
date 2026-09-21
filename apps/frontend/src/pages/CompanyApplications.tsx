@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { PageHero } from "../components/PageHero";
 import { Link } from "react-router-dom";
 import { CalendarX2, MapPin, Users, Utensils } from "lucide-react";
 import { useCompanyData } from "../hooks/CompanyData";
@@ -100,13 +101,13 @@ export function CompanyApplicationsPage() {
   };
 
   return (
-    <section className="page-wide">
-      <span className="eyeline">Espace entreprise</span>
-      <h1>Candidatures</h1>
-      <p className="quiet page-lead">
-        Les intérimaires qui ont postulé à vos missions. Chaque candidature se
-        traite depuis la mission concernée.
-      </p>
+    <>
+      <PageHero
+        eyeline="Espace entreprise"
+        title="Candidatures"
+        lead="Les intérimaires qui ont postulé à vos missions. Chaque candidature se traite depuis la mission concernée."
+      />
+      <div className="page-panel">
 
       {error && (
         <p className="form-error" role="alert">
@@ -163,6 +164,7 @@ export function CompanyApplicationsPage() {
           )}
         </div>
       )}
-    </section>
+      </div>
+    </>
   );
 }

@@ -5,6 +5,7 @@ import {
   type FormEvent,
   type ReactNode,
 } from "react";
+import { PageHero } from "../components/PageHero";
 import { useLocation } from "react-router-dom";
 import { Check, Plus, Trash2, Pencil } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
@@ -200,14 +201,13 @@ export function WorkerProfile() {
       : [...jobs, { value: mainJob, label: mainJob }];
 
   return (
-    <section className="onboarding">
-      <span className="eyeline">Votre espace intérimaire</span>
-      <h1>Votre profil professionnel</h1>
-      <p>
-        Ces informations décident des missions qui vous seront proposées. Chaque
-        bloc s’enregistre séparément : vous pouvez revenir le compléter plus
-        tard.
-      </p>
+    <>
+      <PageHero
+        eyeline="Votre espace intérimaire"
+        title="Votre profil professionnel"
+        lead="Ces informations décident des missions qui vous seront proposées. Chaque bloc s’enregistre séparément : vous pouvez revenir le compléter plus tard."
+      />
+      <div className="page-panel page-panel--narrow onboarding">
 
       {loadError && (
         <p className="form-error" role="alert">
@@ -652,7 +652,8 @@ export function WorkerProfile() {
           </label>
         </div>
       </Section>
-    </section>
+      </div>
+    </>
   );
 }
 

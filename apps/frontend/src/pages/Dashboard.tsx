@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { PageHero } from "../components/PageHero";
 import { Link } from "react-router-dom";
 import {
   CalendarDays,
@@ -109,38 +110,37 @@ export function Dashboard() {
       {user.demo && (
         <p className="demo-label">DEVELOPMENT / DEMO DATA · Profil fictif</p>
       )}
-      <div className="workspace">
+      <PageHero
+        eyeline={
+          worker
+            ? "Espace intérimaire"
+            : (p.establishment_name ?? "Espace entreprise")
+        }
+        title={user.first_name ? `Bonjour ${user.first_name},` : "Bienvenue,"}
+        lead={
+          worker
+            ? complete
+              ? "Prêt pour votre prochain service ? Votre profil est en place."
+              : "Renseignez votre métier, vos compétences et vos disponibilités pour recevoir des missions adaptées."
+            : complete
+              ? "Votre établissement est prêt pour ses prochains recrutements."
+              : "Présentez votre établissement pour préparer vos premiers recrutements."
+        }
+        actions={
+          complete && (
+            <Link
+              className="welcome-action"
+              to={"/" + user.role + "/profile"}
+              data-tour="profile-status"
+            >
+              <Check size={15} aria-hidden="true" />
+              Profil complété · Modifier mon profil
+            </Link>
+          )
+        }
+      />
+      <div className="workspace page-panel">
         <section className="primary">
-          <div className="welcome">
-            <span className="eyeline">
-              {worker
-                ? "Espace intérimaire"
-                : (p.establishment_name ?? "Espace entreprise")}
-            </span>
-            <h1>
-              {user.first_name ? `Bonjour ${user.first_name},` : "Bienvenue,"}
-            </h1>
-            <p>
-              {worker
-                ? complete
-                  ? "Prêt pour votre prochain service ? Votre profil est en place."
-                  : "Renseignez votre métier, vos compétences et vos disponibilités pour recevoir des missions adaptées."
-                : complete
-                  ? "Votre établissement est prêt pour ses prochains recrutements."
-                  : "Présentez votre établissement pour préparer vos premiers recrutements."}
-            </p>
-            {complete && (
-              <Link
-                className="welcome-action"
-                to={"/" + user.role + "/profile"}
-                data-tour="profile-status"
-              >
-                <Check size={15} aria-hidden="true" />
-                Profil complété · Modifier mon profil
-              </Link>
-            )}
-          </div>
-
           {!complete && (
             <ProfileStatus
               missing={user.missing_requirements}

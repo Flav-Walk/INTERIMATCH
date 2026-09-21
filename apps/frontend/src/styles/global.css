@@ -399,8 +399,8 @@ input[type="checkbox"] {
   background: var(--surface);
   color: var(--forest);
   border: 1px solid var(--forest);
-  border-radius: 8px;
-  padding: 12px 18px;
+  border-radius: var(--radius-pill);
+  padding: 12px 24px;
   cursor: pointer;
   font-weight: 600;
   min-height: 48px;

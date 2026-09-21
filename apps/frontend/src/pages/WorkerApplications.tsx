@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { PageHero } from "../components/PageHero";
 import { Link } from "react-router-dom";
 import {
   ArrowRight,
@@ -98,13 +99,13 @@ export function WorkerApplications() {
   }, []);
 
   return (
-    <section className="page-wide applications-page">
-      <div className="section-head">
-        <div>
-          <h1>Mes candidatures</h1>
-          <p className="quiet">Suivez ici les réponses des entreprises.</p>
-        </div>
-      </div>
+    <>
+      <PageHero
+        eyeline="Espace intérimaire"
+        title="Mes candidatures"
+        lead="Suivez ici les réponses des entreprises."
+      />
+      <div className="page-panel applications-page">
       {error && (
         <p className="form-error" role="alert">
           {error}
@@ -117,6 +118,7 @@ export function WorkerApplications() {
       ) : (
         <WorkerApplicationList applications={applications} />
       )}
-    </section>
+      </div>
+    </>
   );
 }
