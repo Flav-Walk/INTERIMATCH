@@ -1,0 +1,127 @@
+/* ══════════════════════════════════════════════════════════════
+   INTERIMATCH — animations du design system v2
+   12 keyframes préfixés im-. Uniquement transform / opacity /
+   background-position : jamais width, height ni top/left.
+   Durées et courbes viennent de tokens.css (--dur-*, --ease-*).
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── Keyframes ───────────────────────────────────────────── */
+
+@keyframes im-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes im-fade-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes im-fade-down {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes im-slide-up {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+@keyframes im-slide-down {
+  from { transform: translateY(-100%); }
+  to   { transform: translateY(0); }
+}
+
+@keyframes im-slide-in-right {
+  from { opacity: 0; transform: translateX(24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes im-scale-in {
+  from { opacity: 0; transform: scale(0.85); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes im-pop {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.12); }
+  100% { transform: scale(1); }
+}
+
+@keyframes im-shimmer {
+  from { background-position: 200% 0; }
+  to   { background-position: -200% 0; }
+}
+
+/* Halo discret autour du badge « Très compatible ». */
+@keyframes im-pulse-match {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in oklch, var(--c-forest-500) 25%, transparent); }
+  50%      { box-shadow: 0 0 0 5px transparent; }
+}
+
+@keyframes im-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes im-backdrop-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ── Classes utilitaires ─────────────────────────────────── */
+
+.anim-fade-in { animation: im-fade-in var(--dur-enter) var(--ease-out) both; }
+.anim-fade-up { animation: im-fade-up var(--dur-enter) var(--ease-out) both; }
+
+/* Squelette de chargement : shimmer CSS pur, sans JS. */
+.skeleton {
+  background-color: var(--c-ink-100);
+  background-image: linear-gradient(
+    90deg,
+    var(--c-ink-100) 25%,
+    var(--c-forest-50) 50%,
+    var(--c-ink-100) 75%
+  );
+  background-size: 200% 100%;
+  animation: im-shimmer 1.6s ease-in-out infinite;
+}
+
+/* Stagger : les 8 premiers enfants entrent en cascade (50 ms d'écart). */
+.im-stagger-item {
+  animation: im-fade-up var(--dur-enter) var(--ease-out) both;
+}
+.im-stagger-item:nth-child(1) { animation-delay: 0ms; }
+.im-stagger-item:nth-child(2) { animation-delay: 50ms; }
+.im-stagger-item:nth-child(3) { animation-delay: 100ms; }
+.im-stagger-item:nth-child(4) { animation-delay: 150ms; }
+.im-stagger-item:nth-child(5) { animation-delay: 200ms; }
+.im-stagger-item:nth-child(6) { animation-delay: 250ms; }
+.im-stagger-item:nth-child(7) { animation-delay: 300ms; }
+.im-stagger-item:nth-child(8) { animation-delay: 350ms; }
+
+/* Grille des cartes mission. */
+.im-grid-missions {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--sp-5);
+}
+
+/* ── Mouvement réduit ────────────────────────────────────────
+   Les durées des transitions passent à 0 via tokens.css. Ici on coupe
+   les boucles infinies et les entrées. Le spinner (im-spin) reste :
+   c'est un retour d'état essentiel, pas de la décoration. */
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+    background-image: none;
+  }
+  .anim-fade-in,
+  .anim-fade-up,
+  .im-stagger-item {
+    animation: none;
+  }
+  .match-badge--animated,
+  .match-badge--animated.match-badge--high {
+    animation: none;
+  }
+}
