@@ -27,6 +27,11 @@ const STATUS_CONFIG: Record<BadgeStatus, { label: string; variant: string }> = {
   rejected:  { label: 'Refusée',    variant: 'rejected'  },
 };
 
+/** Libellés français des statuts — réutilisables hors du badge (titres, aria-label…) */
+export const STATUS_LABELS = Object.fromEntries(
+  Object.entries(STATUS_CONFIG).map(([status, { label }]) => [status, label]),
+) as Record<BadgeStatus, string>;
+
 export interface StatusBadgeProps {
   status:     BadgeStatus;
   className?: string;

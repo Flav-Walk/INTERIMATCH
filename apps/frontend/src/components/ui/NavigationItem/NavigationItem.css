@@ -109,3 +109,31 @@
   clip-path: inset(50%);
   white-space: nowrap;
 }
+
+/* ── Ton inverse : fond sombre (menu mobile forêt) ───────────
+   Texte blanc (≥ 9:1 sur --forest), survol et actif en voile blanc. */
+
+.im-nav-item--inverse {
+  --nav-active-bar: var(--c-forest-100);
+  color: color-mix(in oklch, var(--c-white) 88%, transparent);
+}
+
+.im-nav-item--inverse:hover {
+  background: color-mix(in oklch, var(--c-white) 10%, transparent);
+  color: var(--c-white);
+}
+
+.im-nav-item--inverse.im-nav-item--active,
+.im-nav-item--inverse.im-nav-item--active:hover {
+  background: color-mix(in oklch, var(--c-white) 16%, transparent);
+  color: var(--c-white);
+}
+
+.im-nav-item--inverse:focus-visible {
+  outline-color: var(--c-white);
+}
+
+.im-nav-item--inverse .im-nav-item__badge {
+  background: var(--c-white);
+  color: var(--c-forest-900);
+}

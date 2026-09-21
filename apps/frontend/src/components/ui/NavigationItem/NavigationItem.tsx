@@ -23,6 +23,8 @@ interface NavigationItemBaseProps {
   /** Texte lu par les lecteurs d'écran après le nombre (ex. « en attente ») */
   badgeLabel?: string;
   isActive?:  boolean;
+  /** `inverse` : texte clair pour un fond sombre (ex. le menu mobile forêt) */
+  tone?:      'default' | 'inverse';
   className?: string;
 }
 
@@ -40,10 +42,16 @@ export function NavigationItem({
   badge,
   badgeLabel,
   isActive = false,
+  tone = 'default',
   className = '',
   ...rest
 }: NavigationItemProps) {
-  const classes = ['im-nav-item', isActive ? 'im-nav-item--active' : '', className]
+  const classes = [
+    'im-nav-item',
+    tone === 'inverse' ? 'im-nav-item--inverse' : '',
+    isActive ? 'im-nav-item--active' : '',
+    className,
+  ]
     .filter(Boolean)
     .join(' ');
 
