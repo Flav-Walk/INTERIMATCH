@@ -1,0 +1,97 @@
+/* ── Tabs.css ────────────────────────────────────────────── */
+
+.tabs {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-5);
+}
+
+/* ── Liste + indicateur glissant ─────────────────────────────
+   Tabs.tsx mesure l'onglet actif et pose deux variables sur la liste :
+     --indicator-x : décalage en px      → translateX
+     --indicator-w : largeur en px (nombre sans unité) → scaleX
+   ::after fait 1px de large : scaleX(n) lui donne n px. Seul `transform`
+   est animé (jamais width/left) → pas de recalcul de layout. */
+
+.tabs__list {
+  position: relative;
+  display: flex;
+  gap: var(--sp-1);
+  /* Sur mobile, les onglets défilent horizontalement plutôt que de casser la ligne */
+  overflow-x: auto;
+  /* Ligne de base en box-shadow : reste visible malgré l'overflow */
+  box-shadow: inset 0 -1px 0 var(--c-ink-100);
+}
+
+.tabs__list::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 1px;
+  height: 3px;
+  background: var(--c-forest-800);
+  transform-origin: left center;
+  transform: translateX(var(--indicator-x, 0px)) scaleX(var(--indicator-w, 0));
+  pointer-events: none;
+}
+
+/* Transition activée après la première mesure (pas de glissement au chargement) */
+.tabs__list[data-ready='true']::after {
+  transition: transform var(--dur-normal) var(--ease-spring);
+}
+
+/* ── Onglet ──────────────────────────────────────────────── */
+
+.tabs__trigger {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-height: 44px;
+  padding: var(--sp-3) var(--sp-4);
+  background: transparent;
+  border: none;
+  border-radius: var(--r-sm) var(--r-sm) 0 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  letter-spacing: var(--ls-wide);
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--c-ink-500);
+  cursor: pointer;
+  transition: color var(--dur-fast) var(--ease-out),
+              background var(--dur-fast) var(--ease-out);
+}
+
+.tabs__trigger:hover:not(:disabled) {
+  color: var(--c-ink-950);
+  background: var(--c-forest-50);
+}
+
+.tabs__trigger[aria-selected='true'] {
+  color: var(--c-forest-900);
+}
+
+.tabs__trigger:focus-visible {
+  outline: 2px solid var(--c-forest-500);
+  outline-offset: -2px;
+}
+
+.tabs__trigger:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* ── Panneau ─────────────────────────────────────────────── */
+
+.tabs__panel:not([hidden]) {
+  animation: im-fade-in var(--dur-normal) var(--ease-out) both;
+}
+
+.tabs__panel:focus-visible {
+  outline: 2px solid var(--c-forest-500);
+  outline-offset: 4px;
+  border-radius: var(--r-sm);
+}
