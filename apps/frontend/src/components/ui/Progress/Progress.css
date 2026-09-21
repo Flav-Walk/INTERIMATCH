@@ -1,0 +1,61 @@
+/* ── Progress.css ────────────────────────────────────────── */
+
+.im-progress {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.im-progress__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+
+.im-progress__label {
+  font-family: var(--font-ui);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--c-ink-950);
+}
+
+.im-progress__label--hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.im-progress__value {
+  font-family: var(--font-display);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--c-forest-800);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Piste : le rayon + overflow:hidden arrondissent le remplissage,
+   qui reste un rectangle (un scaleX ne déforme donc aucun coin). */
+.im-progress__track {
+  height: 8px;
+  border-radius: var(--r-pill);
+  background: var(--c-ink-100);
+  overflow: hidden;
+}
+.im-progress--sm .im-progress__track { height: 4px; }
+
+.im-progress__fill {
+  width: 100%;
+  height: 100%;
+  background: var(--c-forest-500);
+  transform-origin: left center;
+  transition: transform var(--dur-slow) var(--ease-out),
+              background-color var(--dur-normal) var(--ease-out);
+}
+
+.im-progress--complete .im-progress__fill {
+  background: var(--c-success);
+}
