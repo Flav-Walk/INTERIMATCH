@@ -1,0 +1,69 @@
+:root {
+  --forest: oklch(0.32 0.065 165);
+  --orange: oklch(0.75 0.17 43);
+  --orange-hover: oklch(0.8 0.14 43);
+  /* Orange assombri pour le texte : l'orange de marque ne passe pas 4,5:1. */
+  --orange-ink: oklch(0.52 0.16 43);
+  --background: oklch(0.975 0.003 165);
+  --surface: oklch(1 0 0);
+  --ink: oklch(0.23 0.02 160);
+  --muted: oklch(0.45 0.02 160);
+  --border: oklch(0.88 0.008 160);
+  --tint: oklch(0.94 0.025 160);
+  --radius: 12px;
+  --forest-mid: oklch(0.42 0.085 165);
+  /* alp-medium ≈ #2C7052 */
+  --radius-card: 18px;
+  /* bords ronds des cartes v2 */
+  /* Gabarit de page partagé par l'en-tête, le contenu et le pied, pour qu'ils
+     s'alignent sur la même gouttière quelle que soit la largeur d'écran. */
+  --page-max: 1440px;
+  --page-gutter: 28px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  /* --- Échelle typographique. Ratio 1,2, arrondi au demi-pixel près. --- */
+  --text-xs: 12px;
+  --text-sm: 13px;
+  --text-base: 15px;
+  --text-lg: 18px;
+  --text-xl: 22px;
+  --text-2xl: 28px;
+
+  /* --- Espacements manquants, pour ne plus écrire de valeurs en dur. --- */
+  --space-5: 20px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+  /* --- Rayons. `--radius` reste la valeur par défaut des cartes. --- */
+  --radius-sm: 8px;
+  --radius-lg: 18px;
+  --radius-pill: 999px;
+
+  /* --- Ombres. Trois niveaux suffisent : posé, soulevé, détaché. --- */
+  --shadow-1: 0 1px 2px oklch(0.23 0.02 160 / 0.06);
+  --shadow-2: 0 4px 14px oklch(0.23 0.02 160 / 0.08);
+  --shadow-3: 0 12px 32px oklch(0.23 0.02 160 / 0.12);
+
+  /* --- Couleurs d'état. Le vert de marque sert déjà au succès. --- */
+  --danger: oklch(0.52 0.19 27);
+  --danger-tint: oklch(0.95 0.03 27);
+  --warn-ink: oklch(0.45 0.11 75);
+  --warn-tint: oklch(0.95 0.05 85);
+
+  /* --- Mouvement. Sorties exponentielles, jamais de rebond. --- */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --fast: 120ms;
+  --normal: 220ms;
+
+  /* --- Plans. Une échelle nommée, jamais de 9999. --- */
+  --z-sticky: 10;
+  --z-dropdown: 20;
+  --z-overlay: 30;
+  --z-modal: 40;
+  --z-toast: 50;
+}
