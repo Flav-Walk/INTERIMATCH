@@ -1,0 +1,62 @@
+/* ── Badge.css ───────────────────────────────────────────── */
+/* Couleurs : tokens uniquement (--c-success, --c-warning, --c-error,
+   --c-info + leurs -bg). Contrastes texte/fond ≥ 4,5:1.
+
+   Mapping recommandé
+   ─ Mission      : open → success · filled → info · draft → draft
+                    cancelled → error · completed → neutral
+   ─ Candidature  : pending → warning · accepted → success · rejected → error */
+
+.badge {
+  display:        inline-flex;
+  align-items:    center;
+  gap:            var(--sp-2);
+  border-radius:  var(--r-pill);
+  border:         1px solid transparent;
+  font-family:    var(--font-display);
+  font-weight:    700;
+  letter-spacing: var(--ls-wider);
+  text-transform: uppercase;
+  line-height:    1;
+  white-space:    nowrap;
+  user-select:    none;
+}
+
+/* ── Tailles ─────────────────────────────────────────────── */
+
+.badge--sm {
+  padding:   3px var(--sp-2);
+  font-size: var(--fs-2xs);
+}
+.badge--md {
+  padding:   var(--sp-1) var(--sp-3);
+  font-size: var(--fs-xs);
+}
+
+/* ── Variants ────────────────────────────────────────────── */
+
+.badge--success { background: var(--c-success-bg); color: var(--c-success); }
+.badge--warning { background: var(--c-warning-bg); color: var(--c-warning); }
+.badge--error   { background: var(--c-error-bg);   color: var(--c-error); }
+.badge--info    { background: var(--c-info-bg);    color: var(--c-info); }
+.badge--neutral { background: var(--c-ink-100);    color: var(--c-ink-700); }
+
+/* Brouillon : contour pointillé, sans fond → se distingue du neutre
+   sans dépendre de la couleur seule. */
+.badge--draft {
+  background:   transparent;
+  color:        var(--c-ink-500);
+  border-color: var(--c-ink-400);
+  border-style: dashed;
+}
+
+/* ── Point indicateur ────────────────────────────────────── */
+
+.badge__dot {
+  width:         6px;
+  height:        6px;
+  border-radius: 50%;
+  background:    currentColor;
+  flex-shrink:   0;
+}
+.badge--sm .badge__dot { width: 5px; height: 5px; }

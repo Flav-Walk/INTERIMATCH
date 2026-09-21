@@ -1,6 +1,8 @@
 /* Barrel du design system — import : `from '../components/ui'` */
 export { Button } from './Button';
 export type { ButtonProps } from './Button';
+export { Badge } from './Badge';
+export type { BadgeProps, BadgeVariant, BadgeSize } from './Badge';
 export { MatchBadge, MatchBadgeSkeleton } from './MatchBadge';
 export type { MatchBadgeProps } from './MatchBadge';
 export { StatusBadge } from './StatusBadge';
