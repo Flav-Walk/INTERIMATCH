@@ -433,6 +433,19 @@
   background: oklch(0.93 0.05 80);
   color: oklch(0.42 0.09 70);
 }
+/* Un <Badge> dans un conteneur flex/grid ne doit pas s'étirer sur toute la largeur */
+.detail-hero__title-wrap > .im-badge,
+.section-head > .im-badge {
+  align-self: flex-start;
+  justify-self: start;
+}
+
+/* Emplacement du <StatusBadge> superposé au visuel de la carte */
+.mission-status-slot {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+}
 .mission-body {
   padding: 14px 15px 12px;
   display: grid;
@@ -1016,6 +1029,24 @@
   padding: 0.75rem 1rem 1.25rem;
   border-top: 1px solid oklch(1 0 0 / 0.1);
   background: var(--forest);
+}
+
+/* Liste verticale des entrées (NavigationItem). Une classe est nécessaire :
+   global.css style tout <nav> en ligne (`nav { display: flex; gap: 24px }`)
+   et, sous 768px, le pousse en dernier (`order: 3; width: 100%`). */
+.app-header__mobile-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  order: 0;
+  width: 100%;
+}
+
+/* Séparation visuelle de l'action « Se déconnecter » */
+.app-header__mobile-menu > .im-nav-item {
+  margin-top: 0.5rem;
+  border-top: 1px solid color-mix(in oklch, var(--c-white) 12%, transparent);
+  border-radius: 0 0 var(--r-md) var(--r-md);
 }
 
 .app-header__mobile-link {

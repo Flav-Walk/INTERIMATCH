@@ -1,26 +1,3 @@
-.application-status {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  width: fit-content;
-  padding: 5px 10px;
-  border-radius: 99px;
-  font-size: 0.82rem;
-  font-weight: 650;
-}
-.application-status.is-pending {
-  background: oklch(0.94 0.05 85);
-  color: oklch(0.38 0.1 70);
-}
-.application-status.is-accepted {
-  background: var(--tint);
-  color: var(--forest);
-}
-.application-status.is-rejected {
-  background: oklch(0.95 0.035 25);
-  color: oklch(0.43 0.14 25);
-}
-
 .application-action {
   display: grid;
   gap: 14px;

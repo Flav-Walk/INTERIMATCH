@@ -20,24 +20,15 @@ import {
   type Mission,
 } from "../services/missions";
 import { ConfirmDialog } from "../components/ConfirmDialog";
-import {
-  statusLabels,
-  missionSchedule,
-} from "../components/mission/MissionCard";
+import { missionSchedule } from "../components/mission/MissionCard";
+import { Badge, MISSION_STATUS_VARIANT } from "../components/ui/Badge";
+import { STATUS_LABELS } from "../components/ui/StatusBadge";
 import { MissionApplications } from "../components/applications/MissionApplications";
 
 const payLabels: Record<string, string> = {
   hour: "de l’heure",
   day: "par jour",
   mission: "pour la mission",
-};
-
-const statusClass: Record<Mission["status"], string> = {
-  draft: "is-draft",
-  open: "is-open",
-  filled: "is-running",
-  completed: "is-done",
-  cancelled: "is-done",
 };
 
 /**
@@ -126,11 +117,9 @@ export function CompanyMissionDetail() {
 
       <div className="section-head">
         <h1>{mission.title}</h1>
-        <span
-          className={"mission-status is-inline " + statusClass[mission.status]}
-        >
-          {statusLabels[mission.status]}
-        </span>
+        <Badge variant={MISSION_STATUS_VARIANT[mission.status]} dot>
+          {STATUS_LABELS[mission.status]}
+        </Badge>
         <div className="head-actions">
           {canEdit(mission) && (
             <Link

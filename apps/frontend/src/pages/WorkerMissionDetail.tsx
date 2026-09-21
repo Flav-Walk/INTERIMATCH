@@ -23,6 +23,7 @@ import { missionSchedule } from "../components/mission/MissionCard";
 import { MatchExplanation } from "../components/mission/MatchExplanation";
 import { MatchBadge } from "../components/mission/MatchBadge";
 import { ApplyToMission } from "../components/applications/ApplyToMission";
+import { Badge } from "../components/ui/Badge";
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
@@ -117,7 +118,7 @@ export function WorkerMissionDetail() {
 
           <div className="detail-hero__head">
             <div className="detail-hero__title-wrap">
-              <span className="mission-status is-open">À pourvoir</span>
+              <Badge variant="success" dot>À pourvoir</Badge>
               <h1 className="detail-hero__title">{mission.title}</h1>
               {mission.company.establishment_name && (
                 <p className="detail-hero__company">

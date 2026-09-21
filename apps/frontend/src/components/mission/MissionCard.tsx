@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import type { Mission, MissionStatus } from "../../services/missions";
 import { MatchBadge } from "./MatchBadge";
+import { StatusBadge } from "../ui/StatusBadge";
 
 type StatusEntry = { label: string; cls: string; closed: boolean };
 
@@ -81,7 +82,7 @@ export function MissionCard({
   score?: number;
   pendingApplications?: number;
 }) {
-  const { label, cls, closed } = STATUS_CONFIG[mission.status];
+  const { closed } = STATUS_CONFIG[mission.status];
   const pay = formatPay(mission.pay_amount, mission.pay_unit);
   const seats = Array.from({ length: Math.min(mission.headcount, 3) });
 
@@ -92,7 +93,9 @@ export function MissionCard({
     >
       <div className="mission-media">
         <JobGlyph job={mission.job} />
-        <span className={`mission-status ${cls}`}>{label}</span>
+        <span className="mission-status-slot">
+          <StatusBadge status={mission.status} />
+        </span>
         {pendingApplications > 0 && (
           <span className="mission-pending">
             {pendingApplications}
