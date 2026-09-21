@@ -17,23 +17,25 @@
 /* Missions */
 .im-status-badge--open {
   background: color-mix(in oklch, var(--c-white) 90%, transparent);
-  color: var(--c-forest-800);
+  color: var(--c-brand-800);
+  box-shadow: inset 0 0 0 1px var(--border);
 }
 .im-status-badge--draft {
   background: color-mix(in oklch, var(--c-ink-100) 85%, transparent);
   color: var(--c-ink-700);
 }
 .im-status-badge--filled {
-  background: var(--c-forest-800);
-  color: var(--c-white);
+  background: var(--c-brand-100);
+  color: var(--brand-ink);
 }
 .im-status-badge--completed {
-  background: color-mix(in oklch, var(--c-forest-500) 88%, transparent);
-  color: var(--c-white);
+  background: var(--c-success-bg);
+  color: var(--c-success);
 }
 .im-status-badge--cancelled {
-  background: color-mix(in oklch, var(--c-ink-950) 75%, transparent);
-  color: var(--c-white);
+  background: var(--c-ink-100);
+  color: var(--c-ink-700);
+  box-shadow: inset 0 0 0 1px var(--border);
 }
 
 /* Candidatures */

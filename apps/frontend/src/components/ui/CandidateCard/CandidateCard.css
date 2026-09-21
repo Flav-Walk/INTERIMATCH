@@ -20,12 +20,12 @@
 
 .im-candidate-card:hover {
   box-shadow:   var(--shadow-hover);
-  border-color: color-mix(in oklch, var(--c-forest-500) 20%, transparent);
+  border-color: color-mix(in oklch, var(--c-brand-500) 20%, transparent);
   transform:    translateY(-3px);
 }
 
 .im-candidate-card:focus-visible {
-  outline:      2px solid var(--c-forest-500);
+  outline:      2px solid var(--c-brand-500);
   outline-offset: 2px;
   box-shadow:   var(--shadow-focus);
 }
@@ -45,7 +45,7 @@
 .im-candidate-card__avatar-zone {
   position:        relative;
   height:          160px;
-  background:      var(--c-forest-50);
+  background:      var(--c-brand-50);
   display:         flex;
   align-items:     center;
   justify-content: center;
@@ -63,10 +63,10 @@
 }
 
 /* Couleur d'avatar : 4 variantes déterministes (voir getAvatarVariant) */
-.im-candidate-card__avatar--1 { background: var(--c-avatar-1); color: var(--c-white); }
-.im-candidate-card__avatar--2 { background: var(--c-avatar-2); color: var(--c-white); }
-.im-candidate-card__avatar--3 { background: var(--c-avatar-3); color: var(--c-white); }
-.im-candidate-card__avatar--4 { background: var(--c-avatar-4); color: var(--c-white); }
+.im-candidate-card__avatar--1 { background: var(--c-avatar-1); color: var(--c-avatar-1-fg); }
+.im-candidate-card__avatar--2 { background: var(--c-avatar-2); color: var(--c-avatar-2-fg); }
+.im-candidate-card__avatar--3 { background: var(--c-avatar-3); color: var(--c-avatar-3-fg); }
+.im-candidate-card__avatar--4 { background: var(--c-avatar-4); color: var(--c-avatar-4-fg); }
 
 .im-candidate-card:hover .im-candidate-card__avatar {
   transform: scale(1.08);
@@ -117,7 +117,7 @@
 .im-candidate-card__job {
   font-size:   var(--fs-sm);
   font-weight: 600;
-  color:       var(--c-forest-500);
+  color:       var(--c-brand-500);
 }
 
 .im-candidate-card__meta {
@@ -155,8 +155,8 @@
   font-weight:  600;
   padding:      2px var(--sp-2);
   border-radius: var(--r-pill);
-  background:   var(--c-forest-100);
-  color:        var(--c-forest-800);
+  background:   var(--c-brand-100);
+  color:        var(--c-brand-800);
   letter-spacing: var(--ls-wide);
   text-transform: uppercase;
   white-space:  nowrap;
@@ -183,7 +183,7 @@
   font-weight: 600;
   letter-spacing: var(--ls-wider);
   text-transform: uppercase;
-  color:       var(--c-forest-500);
+  color:       var(--c-brand-500);
   transition:  color var(--dur-fast) var(--ease-out);
 }
 
@@ -196,8 +196,8 @@
     transform var(--dur-normal) var(--ease-spring);
 }
 
-.im-candidate-card:hover .im-candidate-card__cta  { color: var(--c-forest-800); }
+.im-candidate-card:hover .im-candidate-card__cta  { color: var(--c-brand-800); }
 .im-candidate-card:hover .im-candidate-card__arrow {
-  color:     var(--c-forest-500);
+  color:     var(--c-brand-500);
   transform: translateX(4px);
 }

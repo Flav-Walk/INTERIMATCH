@@ -1,4 +1,4 @@
-// Bandeau de tête des pages de l'espace connecté : fond sombre, titre large.
+// Bandeau de tête des pages de l'espace connecté : bandeau clair, titre large.
 // Le contenu de la page vient ensuite dans un <div className="page-panel">
 // qui chevauche le bandeau.
 

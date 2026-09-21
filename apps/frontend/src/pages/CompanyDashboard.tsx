@@ -10,11 +10,13 @@ import {
   Building2,
   BriefcaseBusiness,
   Plus,
-  Utensils,
+  Repeat,
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { errorMessage } from "../services/session";
-import { MissionCard } from "../components/mission/MissionCard";
+import { MissionCard, dayLabel, toHHMM } from "../components/mission/MissionCard";
+import { RepublishList } from "../components/mission/RepublishList";
+import { rebookable } from "../components/mission/republish";
 import { RecentApplications } from "../components/applications/RecentApplications";
 import { useCompanyData } from "../hooks/CompanyData";
 import { pendingByMission } from "../services/applications";
@@ -75,8 +77,45 @@ export function CompanyDashboard() {
   if (!user) return null;
 
   const p       = user.profile;
-  const shown   = data.filter((m) => m.status === tab).slice(0, 4);
   const pending = pendingByMission(applications);
+
+  // Le prochain service passe avant tout : les plus proches d'abord, sauf les
+  // missions terminées, où l'on veut les plus récentes.
+  const byStart = (a: Mission, b: Mission) =>
+    new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime();
+  const shown = data
+    .filter((m) => m.status === tab)
+    .sort(tab === "completed" ? (a, b) => byStart(b, a) : byStart)
+    .slice(0, 3);
+
+  const now = new Date();
+  const accepted = new Map<string, number>();
+  for (const a of applications)
+    if (a.status === "accepted")
+      accepted.set(a.mission_id, (accepted.get(a.mission_id) ?? 0) + 1);
+  const toFill = data
+    .filter(
+      (m) =>
+        m.status === "open" &&
+        new Date(m.ends_at) > now &&
+        (accepted.get(m.id) ?? 0) < m.headcount,
+    )
+    .sort(byStart);
+  const next = toFill[0];
+  const hasUpcoming = data.some(
+    (m) =>
+      (m.status === "open" || m.status === "filled") &&
+      new Date(m.ends_at) > now,
+  );
+  const pendingTotal = [...pending.values()].reduce((sum, n) => sum + n, 0);
+  const rebook = rebookable(data);
+
+  const headline =
+    toFill.length > 0
+      ? `${toFill.length} service${toFill.length > 1 ? "s" : ""} à pourvoir`
+      : hasUpcoming
+        ? "Vos prochains services sont pourvus"
+        : "Aucun service à venir";
 
   return (
     <div className="dashboard-page">
@@ -88,32 +127,67 @@ export function CompanyDashboard() {
         </div>
       )}
 
-      {/* ── Hero ──────────────────────────────────────────────────────────── */}
+      {/* ── Hero : ce qui demande une action, avant les salutations ───────── */}
       <div className="dashboard-hero">
         <div className="dashboard-hero__inner">
           <div className="dashboard-hero__body">
-            <span className="eyeline">Espace entreprise</span>
-            <h1 className="dashboard-hero__title">
-              {user.first_name
-                ? `Bonjour ${user.first_name},`
-                : "Bonjour,"}
-              <span className="dashboard-hero__sub">
-                Prêt à renforcer votre équipe&nbsp;?
-              </span>
-            </h1>
-            <p className="dashboard-hero__lead">
-              Publiez une mission en quelques minutes et trouvez des talents
-              qualifiés près de chez vous.
+            <span className="eyeline">
+              {user.first_name ? `Bonjour ${user.first_name}` : "Bonjour"}
+              {" · "}Espace entreprise
+            </span>
+            <h1 className="dashboard-hero__title">{headline}</h1>
+            <p className="dashboard-hero__next">
+              {next ? (
+                <>
+                  Le plus proche&nbsp;:{" "}
+                  <strong>
+                    {dayLabel(new Date(next.starts_at))},{" "}
+                    {toHHMM(new Date(next.starts_at))} –{" "}
+                    {toHHMM(new Date(next.ends_at))}
+                  </strong>
+                  {" · "}
+                  {next.title}
+                  {" · "}
+                  {accepted.get(next.id) ?? 0}/{next.headcount} pourvu
+                </>
+              ) : (
+                "Publiez votre prochain besoin en quelques minutes."
+              )}
             </p>
-            <Link className="dashboard-hero__cta" to="/company/missions/new">
-              <Plus size={18} aria-hidden="true" />
-              Créer une mission
-            </Link>
-          </div>
-
-          {/* Icône décorative */}
-          <div className="dashboard-hero__media" aria-hidden="true">
-            <Utensils />
+            <div className="dashboard-hero__actions">
+              {pendingTotal > 0 ? (
+                <>
+                  <Link className="dashboard-hero__cta" to="/company/applications">
+                    Traiter {pendingTotal} candidature
+                    {pendingTotal > 1 ? "s" : ""}
+                    <ArrowRight size={18} aria-hidden="true" />
+                  </Link>
+                  <Link
+                    className="dashboard-hero__ghost"
+                    to="/company/missions/new"
+                  >
+                    <Plus size={16} aria-hidden="true" />
+                    Créer une mission
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <Link className="dashboard-hero__cta" to="/company/missions/new">
+                    <Plus size={18} aria-hidden="true" />
+                    Créer une mission
+                  </Link>
+                  {rebook[0] && (
+                    <Link
+                      className="dashboard-hero__ghost"
+                      to={`/company/missions/new?from=${encodeURIComponent(rebook[0].id)}`}
+                    >
+                      <Repeat size={16} aria-hidden="true" />
+                      Republier « {rebook[0].title} »
+                    </Link>
+                  )}
+                </>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -185,6 +259,8 @@ export function CompanyDashboard() {
                 </TabsContent>
               </Tabs>
             </section>
+
+            <RepublishList missions={rebook} />
 
             {/* Candidatures récentes — composant Flavien */}
             <RecentApplications />

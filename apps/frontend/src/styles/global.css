@@ -24,7 +24,7 @@ a {
 }
 a:focus-visible,
 button:focus-visible {
-  outline: 3px solid var(--forest);
+  outline: 3px solid var(--brand);
   outline-offset: 5px;
 }
 h1,
@@ -35,7 +35,7 @@ p {
 }
 h1,
 h2 {
-  font-family: var(--font-display);
+  font-family: var(--font-title);
   text-wrap: balance;
 }
 h1 {
@@ -73,7 +73,7 @@ p {
   letter-spacing: -0.035em;
 }
 .brand svg {
-  color: var(--forest);
+  color: var(--brand);
 }
 nav {
   display: flex;
@@ -86,8 +86,8 @@ nav a {
   border-bottom: 2px solid transparent;
 }
 nav a.active {
-  border-color: var(--orange);
-  color: var(--forest);
+  border-color: var(--accent);
+  color: var(--brand);
   font-weight: 600;
 }
 .account-link {
@@ -114,30 +114,16 @@ main {
   grid-template-columns: minmax(0, 3fr) minmax(260px, 1fr);
   gap: 24px;
 }
-.welcome {
-  padding: 40px;
-  background: var(--forest);
-  color: white;
-  border-radius: var(--radius);
-  position: relative;
-}
 .eyeline {
   font-size: 0.85rem;
   margin-bottom: 16px;
-}
-.welcome h1 {
-  max-width: 17ch;
-}
-.welcome p {
-  max-width: 47ch;
-  color: oklch(0.92 0.025 160);
 }
 .button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 16px;
-  background: var(--orange);
+  background: var(--accent);
   color: var(--ink);
   font-weight: 600;
   border: 0;
@@ -148,20 +134,12 @@ main {
   min-height: 48px;
 }
 .button:hover {
-  background: var(--orange-hover);
+  background: var(--accent-hover);
 }
 .button:disabled {
   background: var(--border);
   color: var(--muted);
   cursor: not-allowed;
-}
-.welcome-note {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 0.8rem;
-  margin-top: 24px;
-  color: oklch(0.92 0.025 160);
 }
 .section {
   margin-top: 28px;
@@ -179,7 +157,7 @@ main {
 .badge {
   display: inline-block;
   background: var(--tint);
-  color: var(--forest);
+  color: var(--brand);
   padding: 4px 10px;
   border-radius: 99px;
   font-size: 0.75rem;
@@ -192,7 +170,7 @@ main {
   border-radius: var(--radius);
 }
 .empty > svg {
-  color: var(--forest);
+  color: var(--brand);
   margin-bottom: 12px;
 }
 .empty p,
@@ -216,7 +194,7 @@ main {
   border: 1px solid var(--border);
 }
 .side-panel > svg {
-  color: var(--forest);
+  color: var(--brand);
   margin-bottom: 16px;
 }
 .pale {
@@ -331,13 +309,14 @@ footer > span:last-child {
   max-width: 1100px;
   margin: 32px auto;
   background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: var(--radius);
   overflow: hidden;
 }
 .auth-story {
   padding: 56px 40px;
-  background: var(--forest);
-  color: white;
+  background: var(--brand-50);
+  color: var(--ink);
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -345,13 +324,15 @@ footer > span:last-child {
 .auth-story h1 {
   margin-top: 30px;
   max-width: 14ch;
+  color: var(--brand-ink);
 }
 .auth-story p {
-  color: oklch(0.92 0.025 160);
+  color: var(--muted);
 }
 .story-line {
   margin-top: 64px;
   font-size: 0.8rem;
+  color: var(--muted);
 }
 .form-panel {
   padding: 40px;
@@ -384,7 +365,7 @@ textarea {
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
-  outline: 2px solid var(--forest);
+  outline: 2px solid var(--brand);
   outline-offset: 2px;
 }
 textarea {
@@ -393,12 +374,12 @@ textarea {
 input[type="checkbox"] {
   width: 18px;
   height: 18px;
-  accent-color: var(--forest);
+  accent-color: var(--brand);
 }
 .secondary-button {
   background: var(--surface);
-  color: var(--forest);
-  border: 1px solid var(--forest);
+  color: var(--brand);
+  border: 1px solid var(--brand);
   border-radius: var(--radius-pill);
   padding: 12px 24px;
   cursor: pointer;
@@ -487,12 +468,12 @@ legend {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  color: var(--forest);
+  color: var(--brand);
   cursor: pointer;
   min-width: 0;
 }
 .role-card:hover {
-  border-color: var(--forest);
+  border-color: var(--brand);
   background: var(--tint);
 }
 .role-card strong {
@@ -522,7 +503,7 @@ legend {
   margin: 16px 24px;
 }
 .demo-label {
-  color: var(--forest);
+  color: var(--brand);
   font-weight: 600;
   background: var(--tint);
   padding: 10px 16px;
@@ -610,7 +591,7 @@ small {
   font-size: 0.92rem;
 }
 .steps-list svg {
-  color: var(--forest);
+  color: var(--brand);
   flex: none;
 }
 .inline {
@@ -619,13 +600,9 @@ small {
   gap: 10px;
   text-decoration: none;
 }
-.welcome-note.ink {
-  color: var(--muted);
-  margin-bottom: 0;
-}
 .form-success {
   background: var(--tint);
-  color: var(--forest);
+  color: var(--brand);
   padding: 14px;
   border-radius: 8px;
   margin: 0;
@@ -661,14 +638,14 @@ small {
   pointer-events: auto;
 }
 .tour-veil rect[mask] {
-  fill: oklch(0.18 0.02 160 / 0.74);
+  fill: oklch(0.13 0.03 175 / 0.74);
 }
 .tour-ring {
   position: fixed;
   border-radius: 14px;
-  outline: 2px solid var(--orange);
+  outline: 2px solid var(--accent);
   outline-offset: 0;
-  box-shadow: 0 0 0 6px oklch(0.75 0.17 43 / 0.22);
+  box-shadow: 0 0 0 6px color-mix(in oklch, var(--accent) 45%, transparent);
   pointer-events: none;
   transition: all 220ms ease;
 }
@@ -679,7 +656,7 @@ small {
   color: var(--ink);
   border-radius: var(--radius);
   padding: 22px 24px;
-  box-shadow: 0 18px 40px oklch(0.23 0.02 160 / 0.28);
+  box-shadow: var(--shadow-3);
   transition:
     top 220ms ease,
     left 220ms ease,
@@ -692,7 +669,7 @@ small {
   transform: translateX(-50%);
 }
 .tour-card:focus-visible {
-  outline: 3px solid var(--forest);
+  outline: 3px solid var(--brand);
   outline-offset: 3px;
 }
 .tour-card h2 {
@@ -777,8 +754,8 @@ small {
   cursor: pointer;
 }
 .icon-button:hover {
-  border-color: var(--forest);
-  color: var(--forest);
+  border-color: var(--brand);
+  color: var(--brand);
 }
 .slot-list {
   list-style: none;
@@ -854,16 +831,13 @@ small {
   text-decoration: none;
 }
 .link-back:hover {
-  color: var(--forest);
+  color: var(--brand);
 }
 .search-note {
   display: flex;
   align-items: center;
   gap: 12px;
   margin-bottom: 16px;
-}
-.mission-status.is-inline {
-  position: static;
 }
 .detail-grid {
   display: grid;
@@ -928,7 +902,7 @@ small {
   cursor: pointer;
 }
 .choice-group label:has(input:checked) {
-  border-color: var(--forest);
+  border-color: var(--brand);
   background: var(--tint);
   font-weight: 600;
 }
@@ -937,13 +911,13 @@ small {
   cursor: not-allowed;
 }
 .choice-single:has(input:checked) {
-  border-color: var(--forest);
+  border-color: var(--brand);
   background: var(--tint);
   font-weight: 600;
 }
 .choice-group input,
 .choice-single input {
-  accent-color: var(--forest);
+  accent-color: var(--brand);
 }
 /* Action compacte du tableau de bord quand le profil est complet. */
 .welcome-action {
@@ -952,15 +926,16 @@ small {
   gap: 8px;
   margin-top: 4px;
   padding: 8px 14px;
-  border: 1px solid oklch(1 0 0 / 0.28);
+  border: 1px solid var(--border);
   border-radius: 99px;
+  background: var(--surface);
   font-size: 0.85rem;
-  color: oklch(0.95 0.02 160);
+  color: var(--ink);
   text-decoration: none;
 }
 .welcome-action:hover {
-  background: oklch(1 0 0 / 0.1);
-  color: #fff;
+  background: var(--brand-50);
+  color: var(--brand-ink);
 }
 .form-legend {
   margin-bottom: 18px;
@@ -1081,10 +1056,10 @@ small {
   width: auto;
   margin: 0;
   padding: 0;
-  accent-color: var(--forest);
+  accent-color: var(--brand);
 }
 .skill-choice:has(input:checked) {
-  border-color: var(--forest);
+  border-color: var(--brand);
   background: var(--tint);
   font-weight: 600;
 }
@@ -1104,7 +1079,7 @@ small {
   color: var(--ink);
 }
 .skill-row:has(.skill-choice[data-level="required"] input:checked) {
-  border-color: var(--forest);
+  border-color: var(--brand);
 }
 
 .head-actions {
@@ -1131,7 +1106,7 @@ small {
   color: var(--ink);
 }
 .confirm::backdrop {
-  background: oklch(0.23 0.02 160 / 0.5);
+  background: oklch(0.2 0.025 172 / 0.5);
 }
 .confirm h2 {
   margin: 0 0 10px;
@@ -1181,7 +1156,7 @@ small {
     cursor: pointer;
   }
   .skill-choice:has(input:focus-visible) {
-    outline: 3px solid var(--forest);
+    outline: 3px solid var(--brand);
     outline-offset: 2px;
   }
   .form-actions > * {
@@ -1217,7 +1192,7 @@ small {
   cursor: pointer;
 }
 .password-toggle:hover {
-  color: var(--forest);
+  color: var(--brand);
   background: var(--tint);
 }
 
@@ -1237,7 +1212,7 @@ small {
 /* L'exigence remplie se signale, sans crier : elle n'est pas une réussite en
    soi, seulement une condition levée. */
 .password-rule.is-met {
-  color: var(--forest);
+  color: var(--brand);
 }
 .strength-bar {
   display: grid;
@@ -1262,7 +1237,7 @@ small {
   background: oklch(0.68 0.13 110);
 }
 .strength-bar span.is-filled[data-level="3"] {
-  background: var(--forest);
+  background: var(--brand);
 }
 .strength-note {
   margin: 0;
@@ -1292,19 +1267,16 @@ small {
 /* Trois niveaux, alignés sur les paliers. La couleur redit ce que le chiffre
    annonce déjà : elle ne porte jamais l'information à elle seule. */
 .match-badge.is-high {
-  background: var(--tint);
-  border-color: var(--forest);
-  color: var(--forest);
+  background: var(--c-match-high-bg);
+  color: var(--c-match-high);
 }
 .match-badge.is-mid {
-  background: oklch(0.95 0.04 95);
-  border-color: oklch(0.72 0.11 95);
-  color: oklch(0.42 0.09 95);
+  background: var(--c-match-mid-bg);
+  color: var(--c-match-mid);
 }
 .match-badge.is-low {
-  background: var(--background);
-  border-color: var(--border);
-  color: var(--muted);
+  background: var(--c-match-low-bg);
+  color: var(--c-match-low);
 }
 
 .match-card .rail-head {
@@ -1332,7 +1304,7 @@ small {
   color: var(--ink);
 }
 .match-list li.is-good svg {
-  color: var(--forest);
+  color: var(--brand);
 }
 .match-list li.is-blocked {
   color: oklch(0.45 0.16 25);

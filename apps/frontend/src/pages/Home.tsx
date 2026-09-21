@@ -184,15 +184,15 @@ export function Home() {
             )}
           </section>
 
-          {/* Bloc sombre : l'appel à l'action final */}
-          <section aria-labelledby="final-cta-title" className="home-dark-card">
+          {/* Bloc teinté : l'appel à l'action final */}
+          <section aria-labelledby="final-cta-title" className="home-final-card">
             <h2 id="final-cta-title">Prêt à rejoindre ALP'EMPLOI&nbsp;?</h2>
             <p>
               Intérimaire ou établissement — votre compte est créé en moins de
               2 minutes.
             </p>
             <Link
-              className="home-cta home-cta--light"
+              className="home-cta home-cta--dark"
               to={user ? destination(user) : "/register"}
               aria-label={
                 user

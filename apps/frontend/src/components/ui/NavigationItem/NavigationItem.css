@@ -1,9 +1,9 @@
 /* ── NavigationItem.css ──────────────────────────────────── */
 
 .im-nav-item {
-  /* Couleur de la barre d'état actif. Vert par défaut : l'orange est réservé
-     aux CTA. Pour passer à l'orange : --nav-active-bar: var(--c-orange-500). */
-  --nav-active-bar: var(--c-forest-500);
+  /* Couleur de la barre d'état actif. Vert par défaut : l'or est réservé
+     aux CTA. Pour passer à l'or : --nav-active-bar: var(--c-accent-500). */
+  --nav-active-bar: var(--c-brand-500);
 
   position: relative;
   display: flex;
@@ -32,7 +32,7 @@
 /* ── Survol : léger décalage vers la droite ──────────────── */
 
 .im-nav-item:hover {
-  background: var(--c-forest-50);
+  background: var(--c-brand-50);
   color: var(--c-ink-950);
   transform: translateX(2px);
 }
@@ -41,8 +41,8 @@
 
 .im-nav-item--active,
 .im-nav-item--active:hover {
-  background: var(--c-forest-100);
-  color: var(--c-forest-900);
+  background: var(--c-brand-100);
+  color: var(--c-brand-900);
 }
 
 /* La barre apparaît par scaleY (transform seul, pas de height animé) */
@@ -66,7 +66,7 @@
 /* ── Focus clavier ───────────────────────────────────────── */
 
 .im-nav-item:focus-visible {
-  outline: 2px solid var(--c-forest-500);
+  outline: 2px solid var(--c-brand-500);
   outline-offset: 2px;
 }
 
@@ -90,8 +90,8 @@
   min-width: 20px;
   padding: 2px var(--sp-2);
   border-radius: var(--r-pill);
-  background: var(--c-forest-800);
-  color: var(--c-white);
+  background: var(--c-brand-100);
+  color: var(--brand-ink);
   font-family: var(--font-display);
   font-size: var(--fs-2xs);
   font-weight: 600;
@@ -111,10 +111,10 @@
 }
 
 /* ── Ton inverse : fond sombre (menu mobile forêt) ───────────
-   Texte blanc (≥ 9:1 sur --forest), survol et actif en voile blanc. */
+   Texte blanc (≥ 9:1 sur --brand), survol et actif en voile blanc. */
 
 .im-nav-item--inverse {
-  --nav-active-bar: var(--c-forest-100);
+  --nav-active-bar: var(--c-brand-100);
   color: color-mix(in oklch, var(--c-white) 88%, transparent);
 }
 
@@ -135,5 +135,5 @@
 
 .im-nav-item--inverse .im-nav-item__badge {
   background: var(--c-white);
-  color: var(--c-forest-900);
+  color: var(--c-brand-900);
 }

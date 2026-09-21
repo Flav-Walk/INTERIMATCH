@@ -30,7 +30,7 @@
   bottom: 0;
   width: 1px;
   height: 3px;
-  background: var(--c-forest-800);
+  background: var(--c-brand-800);
   transform-origin: left center;
   transform: translateX(var(--indicator-x, 0px)) scaleX(var(--indicator-w, 0));
   pointer-events: none;
@@ -67,15 +67,15 @@
 
 .im-tabs__trigger:hover:not(:disabled) {
   color: var(--c-ink-950);
-  background: var(--c-forest-50);
+  background: var(--c-brand-50);
 }
 
 .im-tabs__trigger[aria-selected='true'] {
-  color: var(--c-forest-900);
+  color: var(--c-brand-900);
 }
 
 .im-tabs__trigger:focus-visible {
-  outline: 2px solid var(--c-forest-500);
+  outline: 2px solid var(--c-brand-500);
   outline-offset: -2px;
 }
 
@@ -91,7 +91,7 @@
 }
 
 .im-tabs__panel:focus-visible {
-  outline: 2px solid var(--c-forest-500);
+  outline: 2px solid var(--c-brand-500);
   outline-offset: 4px;
   border-radius: var(--r-sm);
 }

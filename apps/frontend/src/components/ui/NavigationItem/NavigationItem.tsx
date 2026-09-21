@@ -4,7 +4,7 @@
 
    • Avec `to`  → rendu en <Link> (navigation), aria-current="page" si actif
    • Sans `to`  → rendu en <button> (action : déconnexion, ouvrir un menu…)
-   • État actif : fond vert léger, texte forest-900, barre gauche de 3 px
+   • État actif : fond vert léger, texte brand-900, barre gauche de 3 px
      (couleur pilotée par --nav-active-bar dans NavigationItem.css)
    • Survol : translateX(2px). Seuls transform / couleurs sont animés.
    ══════════════════════════════════════════════════════════════ */

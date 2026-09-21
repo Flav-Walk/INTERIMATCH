@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { PageHero } from "../components/PageHero";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import {
   api,
@@ -10,6 +10,7 @@ import {
 } from "../services/session";
 import { useAuth } from "../hooks/useAuth";
 import { SkillPicker } from "../components/mission/SkillPicker";
+import { republishedForm } from "../components/mission/republish";
 import {
   ErrorSummary,
   Field,
@@ -40,6 +41,9 @@ import {
 export function CompanyMissionForm() {
   const { id } = useParams();
   const editing = Boolean(id);
+  // « Republier » : /company/missions/new?from=<id> reprend une mission passée.
+  const [params] = useSearchParams();
+  const from = editing ? null : params.get("from");
   const navigate = useNavigate();
   const { invalidate } = useAuth();
   const formRef = useRef<HTMLFormElement>(null);
@@ -65,7 +69,7 @@ export function CompanyMissionForm() {
       api<{ jobs: ReferenceValue[]; pay_units: ReferenceValue[] }>(
         "/reference",
       ),
-      id ? getMission(id) : Promise.resolve(null),
+      id || from ? getMission((id ?? from) as string) : Promise.resolve(null),
     ])
       .then(([loadedSkills, reference, mission]) => {
         if (!live) return;
@@ -74,8 +78,13 @@ export function CompanyMissionForm() {
         setPayUnits(reference.pay_units);
         if (mission) {
           const form = missionToForm(mission);
-          setValues(form);
-          setInitial(form);
+          if (from) {
+            // Une nouvelle mission : rien n'est enregistré, donc pas d'état de départ.
+            setValues(republishedForm(form));
+          } else {
+            setValues(form);
+            setInitial(form);
+          }
         }
         setApiError("");
       })
@@ -84,7 +93,7 @@ export function CompanyMissionForm() {
     return () => {
       live = false;
     };
-  }, [id]);
+  }, [id, from]);
 
   // Comparer à l'état de départ plutôt que suivre un drapeau : revenir soi-même
   // sur sa saisie redevient ainsi « rien à enregistrer », ce qu'un drapeau ne
@@ -180,11 +189,19 @@ export function CompanyMissionForm() {
             {editing ? "Retour à la mission" : "Vos missions"}
           </Link>
         }
-        title={editing ? "Modifier la mission" : "Créer une mission"}
+        title={
+          editing
+            ? "Modifier la mission"
+            : from
+              ? "Republier une mission"
+              : "Créer une mission"
+        }
         lead={
           editing
             ? "Vos modifications remplacent les informations enregistrées. Le statut de la mission ne change pas."
-            : "La mission est enregistrée en brouillon. Elle ne sera visible des intérimaires qu’une fois publiée."
+            : from
+              ? "Les informations de la mission précédente sont reprises, les dates décalées à la prochaine semaine. Vérifiez-les, puis enregistrez : la mission repart en brouillon."
+              : "La mission est enregistrée en brouillon. Elle ne sera visible des intérimaires qu’une fois publiée."
         }
       />
       <div className="page-panel page-panel--narrow">

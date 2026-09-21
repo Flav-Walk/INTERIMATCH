@@ -38,7 +38,7 @@
   flex: none;
 }
 .shell-brand svg {
-  color: var(--forest);
+  color: var(--brand);
 }
 .shell-nav {
   display: flex;
@@ -70,7 +70,7 @@
   width: 5px;
   height: 5px;
   border-radius: 50%;
-  background: var(--orange);
+  background: var(--accent);
   transform: translateX(-50%);
 }
 .shell-search {
@@ -98,7 +98,7 @@
   outline: none;
 }
 .shell-search:focus-within {
-  border-color: var(--forest);
+  border-color: var(--brand);
 }
 .shell-account {
   flex: none;
@@ -125,8 +125,8 @@
   width: 38px;
   height: 38px;
   border-radius: 50%;
-  background: var(--forest);
-  color: #fff;
+  background: var(--brand-100);
+  color: var(--brand-ink);
   font-size: 0.82rem;
   font-weight: 600;
   letter-spacing: 0.02em;
@@ -164,7 +164,7 @@
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  box-shadow: 0 16px 36px oklch(0.23 0.02 160 / 0.16);
+  box-shadow: var(--shadow-3);
 }
 .account-menu a,
 .account-menu button {
@@ -214,86 +214,6 @@
   top: 20px;
 }
 
-/* ---------- Carte héros ---------- */
-/* La maquette pose un média plein cadre et superpose un dégradé sombre côté
-   texte : ce n'est pas une grille à deux colonnes. Le média peut donc être
-   remplacé par une photographie sans retoucher la composition. */
-.hero {
-  position: relative;
-  display: flex;
-  align-items: center;
-  min-height: 258px;
-  border-radius: 16px;
-  overflow: hidden;
-  background: var(--forest);
-  color: #fff;
-  isolation: isolate;
-}
-.hero-media {
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  display: grid;
-  place-items: center;
-  justify-items: end;
-  padding-right: 9%;
-  background: radial-gradient(
-    130% 120% at 100% 0%,
-    oklch(0.44 0.07 165) 0%,
-    oklch(0.27 0.055 165) 68%
-  );
-}
-/* Voile qui garantit la lisibilité du texte, quel que soit le média derrière. */
-.hero-media::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    92deg,
-    var(--forest) 0%,
-    oklch(0.32 0.065 165 / 0.92) 42%,
-    oklch(0.32 0.065 165 / 0) 78%
-  );
-}
-.hero-media svg {
-  width: 88px;
-  height: 88px;
-  color: oklch(1 0 0 / 0.38);
-}
-.hero-body {
-  position: relative;
-  padding: 30px 34px;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 12px;
-  max-width: 68%;
-}
-.hero-badge {
-  display: inline-block;
-  padding: 5px 13px;
-  border: 1px solid oklch(1 0 0 / 0.32);
-  border-radius: 99px;
-  font-size: 0.76rem;
-  color: oklch(0.97 0.01 160);
-}
-.hero h1 {
-  margin: 0;
-  font-size: 1.9rem;
-  line-height: 1.2;
-  letter-spacing: -0.02em;
-  text-wrap: pretty;
-}
-.hero p {
-  margin: 0;
-  max-width: 42ch;
-  font-size: 0.95rem;
-  color: oklch(0.9 0.02 160);
-}
-.hero .button {
-  margin-top: 6px;
-}
-
 /* ---------- Titre de section + filtres ---------- */
 .section-head {
   display: flex;
@@ -318,7 +238,7 @@
   white-space: nowrap;
 }
 .section-head .link-more:hover {
-  color: var(--forest);
+  color: var(--brand);
 }
 .chips {
   display: flex;
@@ -348,8 +268,8 @@
   opacity: 0.75;
 }
 .chip.is-active {
-  background: var(--forest);
-  color: #fff;
+  background: var(--brand-100);
+  color: var(--brand-ink);
   font-weight: 600;
 }
 .chip.is-active .chip-count {
@@ -367,95 +287,145 @@
 .mission-grid.is-wide {
   grid-template-columns: repeat(auto-fill, minmax(238px, 1fr));
 }
+/* Carte de service. Ce qui décide d'une candidature passe en premier : le
+   jour et le moment, l'horaire, le tarif. Le métier tient dans une pastille.
+   Le moment de la journée (matin, midi, soir, nuit) donne la teinte ; le libellé
+   le dit toujours en toutes lettres. */
 .mission-card {
+  --shift-bg: var(--c-shift-soir-bg);
+  --shift-fg: var(--c-shift-soir-fg);
+  --shift-bar: var(--c-shift-soir-bar);
   display: flex;
   flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+  padding: 18px;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
-  /* Élévation très douce : les cartes de la maquette se détachent du fond
-     crème sans ombre portée marquée. */
-  box-shadow: 0 1px 2px oklch(0.23 0.02 160 / 0.04);
-  overflow: hidden;
-  text-decoration: none;
+  border-radius: var(--radius-card);
   color: inherit;
-  min-width: 0;
+  text-decoration: none;
+  transition:
+    box-shadow var(--normal) var(--ease-out),
+    border-color var(--normal) var(--ease-out);
+}
+.mission-card--matin {
+  --shift-bg: var(--c-shift-matin-bg);
+  --shift-fg: var(--c-shift-matin-fg);
+  --shift-bar: var(--c-shift-matin-bar);
+}
+.mission-card--midi {
+  --shift-bg: var(--c-shift-midi-bg);
+  --shift-fg: var(--c-shift-midi-fg);
+  --shift-bar: var(--c-shift-midi-bar);
+}
+.mission-card--nuit {
+  --shift-bg: var(--c-shift-nuit-bg);
+  --shift-fg: var(--c-shift-nuit-fg);
+  --shift-bar: var(--c-shift-nuit-bar);
+}
+/* Service passé ou pourvu : la carte s'éteint */
+.mission-card.is-closed {
+  --shift-bg: var(--c-ink-100);
+  --shift-fg: var(--c-ink-700);
+  --shift-bar: var(--c-ink-400);
 }
 .mission-card:hover {
-  border-color: oklch(0.78 0.02 160);
-  box-shadow: 0 4px 14px oklch(0.23 0.02 160 / 0.08);
+  border-color: color-mix(in oklch, var(--shift-bar) 55%, var(--border));
+  box-shadow: var(--shadow-2);
 }
 .mission-card:focus-visible {
-  outline: 3px solid var(--forest);
+  outline: 3px solid var(--brand);
   outline-offset: 2px;
 }
-/* Ratio et position repris de la maquette : la photo viendra remplacer
-   l'aplat sans changer la hauteur ni le cadrage. */
-.mission-media {
-  position: relative;
-  aspect-ratio: 16 / 7;
-  display: grid;
-  place-items: center;
-  background: var(--tint);
+
+.mission-card__top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }
-.mission-media svg {
-  width: 30px;
-  height: 30px;
-  color: var(--forest);
-  opacity: 0.55;
-}
-.mission-status {
-  position: absolute;
-  top: 10px;
-  right: 10px;
+.mission-when {
   padding: 4px 11px;
-  border-radius: 99px;
-  font-size: 0.73rem;
+  border-radius: var(--radius-pill);
+  background: var(--shift-bg);
+  color: var(--shift-fg);
+  font-size: 0.78rem;
   font-weight: 600;
-  background: var(--surface);
-  color: var(--ink);
-}
-.mission-status.is-open {
-  background: oklch(0.9 0.05 235);
-  color: oklch(0.36 0.09 245);
-}
-.mission-status.is-running {
-  background: oklch(0.9 0.06 160);
-  color: var(--forest);
-}
-.mission-status.is-done {
-  background: oklch(0.93 0.004 160);
-  color: var(--muted);
-}
-.mission-status.is-draft {
-  background: oklch(0.93 0.05 80);
-  color: oklch(0.42 0.09 70);
-}
-/* Un <Badge> dans un conteneur flex/grid ne doit pas s'étirer sur toute la largeur */
-.detail-hero__title-wrap > .im-badge,
-.section-head > .im-badge {
-  align-self: flex-start;
-  justify-self: start;
+  white-space: nowrap;
 }
 
-/* Emplacement du <StatusBadge> superposé au visuel de la carte */
-.mission-status-slot {
-  position: absolute;
-  top: 12px;
-  left: 12px;
+.mission-time {
+  margin: 0 0 10px;
+  font-size: 1.6rem;
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
 }
+.mission-duration {
+  margin-left: 8px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--muted);
+}
+/* Frise de 24 h : la portion du service est surlignée */
+.shift-bar {
+  position: relative;
+  height: 6px;
+  border-radius: var(--radius-pill);
+  background: var(--c-ink-100);
+  overflow: hidden;
+}
+.shift-bar span {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: var(--shift-bar);
+  border-radius: var(--radius-pill);
+}
+
 .mission-body {
-  padding: 14px 15px 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.mission-job {
   display: grid;
-  align-content: start;
-  gap: 7px;
+  place-items: center;
+  flex: none;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--job-bg, var(--c-ink-100));
+  color: var(--job-fg, var(--c-ink-700));
+}
+.mission-job svg {
+  width: 19px;
+  height: 19px;
+}
+.mission-job--serveur   { --job-bg: var(--c-job-serveur-bg);   --job-fg: var(--c-job-serveur-fg); }
+.mission-job--chef      { --job-bg: var(--c-job-chef-bg);      --job-fg: var(--c-job-chef-fg); }
+.mission-job--barman    { --job-bg: var(--c-job-barman-bg);    --job-fg: var(--c-job-barman-fg); }
+.mission-job--reception { --job-bg: var(--c-job-reception-bg); --job-fg: var(--c-job-reception-fg); }
+.mission-job--plongeur  { --job-bg: var(--c-job-plongeur-bg);  --job-fg: var(--c-job-plongeur-fg); }
+.mission-job--default   { --job-bg: var(--c-job-default-bg);   --job-fg: var(--c-job-default-fg); }
+.mission-card.is-closed .mission-job {
+  background: var(--c-ink-100);
+  color: var(--c-ink-400);
 }
 .mission-title {
   margin: 0;
   font-family: inherit;
-  font-size: 0.98rem;
+  font-size: 1rem;
   font-weight: 600;
   line-height: 1.3;
+}
+.mission-card.is-closed .mission-title {
+  color: var(--muted);
 }
 .mission-meta {
   display: flex;
@@ -468,31 +438,33 @@
   flex: none;
   color: var(--muted);
 }
+
 .mission-foot {
   margin-top: auto;
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 11px 15px;
+  padding-top: 14px;
   border-top: 1px solid var(--border);
-  font-size: 0.83rem;
+}
+.mission-pay {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+.mission-card.is-closed .mission-pay {
   color: var(--muted);
 }
-.avatar-stack {
-  display: flex;
-}
-.avatar-stack span {
-  width: 25px;
-  height: 25px;
-  margin-right: -8px;
-  border-radius: 50%;
-  border: 2px solid var(--surface);
-  background: var(--tint);
-  display: grid;
-  place-items: center;
-  font-size: 0.62rem;
+/* Candidatures à traiter (côté entreprise) : l'action attendue, en signal doux */
+.mission-pending {
+  margin-left: auto;
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+  background: var(--accent-50);
+  color: var(--accent-ink);
+  font-size: 0.78rem;
   font-weight: 600;
-  color: var(--forest);
+  white-space: nowrap;
 }
 .circle-button {
   margin-left: auto;
@@ -503,13 +475,22 @@
   border-radius: 50%;
   border: 1px solid var(--border);
   background: var(--surface);
-  color: var(--forest);
+  color: var(--brand);
   flex: none;
 }
+.mission-pending + .circle-button {
+  margin-left: 0;
+}
 .mission-card:hover .circle-button {
-  background: var(--forest);
-  border-color: var(--forest);
-  color: #fff;
+  background: var(--brand-100);
+  border-color: var(--brand-100);
+  color: var(--brand-ink);
+}
+/* Un <Badge> dans un conteneur flex/grid ne doit pas s'étirer sur toute la largeur */
+.detail-hero__title-wrap > .im-badge,
+.section-head > .im-badge {
+  align-self: flex-start;
+  justify-self: start;
 }
 
 /* ---------- Rail droit ---------- */
@@ -518,7 +499,7 @@
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  box-shadow: 0 1px 2px oklch(0.23 0.02 160 / 0.04);
+  box-shadow: var(--shadow-1);
 }
 .rail-card .quiet {
   font-size: 0.86rem;
@@ -530,7 +511,7 @@
   margin-bottom: 16px;
 }
 .rail-head svg {
-  color: var(--forest);
+  color: var(--brand);
 }
 .rail-head h2 {
   margin: 0;
@@ -570,8 +551,8 @@
   cursor: pointer;
 }
 .calendar-nav button:hover {
-  color: var(--forest);
-  border-color: var(--forest);
+  color: var(--brand);
+  border-color: var(--brand);
 }
 .calendar-grid {
   display: grid;
@@ -593,16 +574,17 @@
   color: var(--ink);
 }
 .calendar-day.is-outside {
-  color: oklch(0.82 0.005 160);
+  color: var(--laurier);
 }
 .calendar-day.has-mission {
-  background: oklch(0.91 0.055 160);
-  color: var(--forest);
+  background: var(--accent-50);
+  color: var(--accent-ink);
   font-weight: 600;
 }
 .calendar-day.is-today {
-  background: var(--forest);
-  color: #fff;
+  background: var(--brand-100);
+  box-shadow: inset 0 0 0 2px var(--brand-ink);
+  color: var(--brand-ink);
   font-weight: 600;
 }
 
@@ -625,7 +607,7 @@
   border-top: 1px solid var(--border);
 }
 .agenda-item:hover .agenda-title {
-  color: var(--forest);
+  color: var(--brand);
 }
 .agenda-date {
   flex: none;
@@ -639,7 +621,7 @@
 }
 .agenda-date span {
   font-size: 0.68rem;
-  color: var(--orange);
+  color: var(--brand);
 }
 .agenda-body {
   min-width: 0;
@@ -681,7 +663,7 @@
   text-decoration: none;
 }
 .shell-footer a:hover {
-  color: var(--forest);
+  color: var(--brand);
 }
 
 /* ---------- Responsive ---------- */
@@ -714,20 +696,6 @@
   .shell-search {
     width: min(240px, 46vw);
   }
-  .hero-body {
-    max-width: 100%;
-    padding: 28px 24px;
-  }
-  .hero-media {
-    padding-right: 0;
-  }
-  .hero-media svg {
-    display: none;
-  }
-  .hero h1 {
-    font-size: 1.9rem;
-    max-width: 20ch;
-  }
 }
 @media (max-width: 620px) {
   .shell-header {
@@ -758,9 +726,6 @@
   .mission-grid.is-wide {
     grid-template-columns: minmax(0, 1fr);
   }
-  .mission-media {
-    max-height: 124px;
-  }
   .section-head h2 {
     font-size: 1.25rem;
   }
@@ -774,94 +739,6 @@
     flex-wrap: wrap;
   }
 }
-/* ================================================================
- * Mission card v2 — charte visuelle Alp'Emploi (Yrieix)
- * ================================================================ */
-
-.mission-card {
-  border-radius: var(--radius-card);
-  transition:
-    box-shadow var(--normal) var(--ease-out),
-    border-color var(--normal) var(--ease-out);
-}
-.mission-card:hover {
-  border-color: oklch(0.42 0.085 165 / 0.35);
-  box-shadow: var(--shadow-3);
-}
-
-.mission-card .mission-media {
-  aspect-ratio: 4 / 3;
-  border-radius: var(--radius-card) var(--radius-card) 0 0;
-}
-.mission-card .mission-media svg {
-  width: 40px;
-  height: 40px;
-  opacity: 0.4;
-}
-
-/* Badge statut repositionné top-LEFT (maquette v2) */
-.mission-status {
-  top: 12px;
-  right: auto;
-  left: 12px;
-  font-size: 0.7rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-.mission-status.is-open {
-  background: oklch(1 0 0 / 0.9);
-  color: var(--forest);
-  backdrop-filter: blur(4px);
-}
-.mission-status.is-filled {
-  background: var(--forest);
-  color: #fff;
-}
-
-/* Carte fermée : demi-teinte */
-.mission-card.is-closed .mission-media {
-  filter: grayscale(1);
-  opacity: 0.75;
-}
-.mission-card.is-closed .mission-title {
-  color: var(--muted);
-}
-
-/* Rémunération mise en valeur */
-.mission-pay {
-  font-size: 0.88rem;
-  font-weight: 600;
-  color: var(--forest-mid, var(--forest));
-}
-.mission-card.is-closed .mission-pay {
-  color: var(--muted);
-}
-
-/* Check vert sur cartes fermées */
-.mission-card.is-closed .circle-button {
-  background: var(--tint);
-  border-color: var(--forest);
-  color: var(--forest);
-}
-
-/* Badge candidatures en attente (côté entreprise) */
-.mission-pending {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  min-width: 22px;
-  height: 22px;
-  padding: 0 6px;
-  border-radius: 99px;
-  background: var(--orange);
-  color: var(--ink);
-  font-size: 0.72rem;
-  font-weight: 600;
-  display: grid;
-  place-items: center;
-}
-
 .mission-grid { gap: 20px; }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -877,7 +754,7 @@
   left: 1rem;
   z-index: 9999;
   padding: 0.5rem 1rem;
-  background: var(--forest);
+  background: var(--brand);
   color: var(--surface);
   border-radius: var(--radius);
   font-size: 0.875rem;
@@ -895,7 +772,8 @@
   position: sticky;
   top: 0;
   z-index: 100;
-  background: var(--forest);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
 }
 
 .app-header__inner {
@@ -912,18 +790,35 @@
 .app-header__logo {
   display: flex;
   align-items: center;
-  gap: 0.625rem;
+  color: var(--brand);
   text-decoration: none;
   flex-shrink: 0;
 }
 
-.app-header__brand {
-  font-family: var(--font-display);
-  font-size: 1.125rem;
-  font-weight: 600;
-  color: var(--surface);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+/* Logo : voir components/Logo.tsx et CLAUDE.md, section « Logo » */
+.logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55em;
+  color: inherit;
+  font-size: 1.3rem;
+  line-height: 1;
+}
+.logo__mark {
+  flex: none;
+}
+.logo__word {
+  font-family: var(--font-title);
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  white-space: nowrap;
+}
+.logo__apos {
+  margin-inline: 0.02em;
+  padding-inline: 0.07em;
+  border-radius: 0.18em;
+  background: var(--accent);
+  color: var(--nuit);
 }
 
 /* ── Navigation desktop ─────────────────────────────────────────────────── */
@@ -940,7 +835,7 @@
   gap: 0.4rem;
   padding: 0.4rem 0.875rem;
   border-radius: var(--radius-pill);
-  color: oklch(0.88 0.015 160); /* blanc légèrement teinté */
+  color: var(--muted);
   text-decoration: none;
   font-size: 0.875rem;
   font-weight: 500;
@@ -948,13 +843,13 @@
 }
 
 .app-header__nav-link:hover {
-  background: var(--forest-mid);
-  color: var(--surface);
+  background: var(--brand-50);
+  color: var(--brand-ink);
 }
 
 .app-header__nav-link.is-active {
-  background: oklch(1 0 0 / 0.12);
-  color: var(--surface);
+  background: var(--brand-100);
+  color: var(--brand-ink);
   font-weight: 600;
 }
 
@@ -970,8 +865,8 @@
 .app-header__role-pill {
   font-size: 0.75rem;
   font-weight: 600;
-  color: var(--forest);
-  background: var(--orange);
+  color: var(--brand);
+  background: var(--accent);
   padding: 0.2rem 0.625rem;
   border-radius: 999px;
   letter-spacing: 0.03em;
@@ -984,10 +879,10 @@
   align-items: center;
   gap: 0.375rem;
   padding: 0.4rem 0.875rem;
-  border: 1px solid oklch(1 0 0 / 0.25);
+  border: 1px solid var(--border);
   border-radius: var(--radius-pill);
   background: transparent;
-  color: var(--surface);
+  color: var(--ink);
   font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
@@ -995,29 +890,29 @@
 }
 
 .app-header__signout:hover {
-  background: oklch(1 0 0 / 0.1);
-  border-color: oklch(1 0 0 / 0.4);
+  background: var(--brand-50);
+  border-color: var(--brand-100);
 }
 
 /* Pages publiques : lien texte + CTA pill blanc */
 .app-header__link {
   padding: 0.4rem 0.875rem;
   border-radius: var(--radius-pill);
-  color: oklch(0.88 0.015 160);
+  color: var(--muted);
   font-size: 0.875rem;
   font-weight: 500;
   text-decoration: none;
   transition: background 0.15s ease, color 0.15s ease;
 }
 .app-header__link:hover {
-  background: oklch(1 0 0 / 0.12);
-  color: var(--surface);
+  background: var(--brand-50);
+  color: var(--brand-ink);
 }
 .app-header__cta {
   padding: 0.5rem 1.125rem;
   border-radius: var(--radius-pill);
-  background: var(--surface);
-  color: var(--ink);
+  background: var(--brand);
+  color: var(--surface);
   font-size: 0.875rem;
   font-weight: 500;
   text-decoration: none;
@@ -1025,7 +920,7 @@
   transition: background 0.15s ease;
 }
 .app-header__cta:hover {
-  background: var(--tint);
+  background: var(--brand-hi);
 }
 
 /* Burger — visible mobile uniquement */
@@ -1037,14 +932,14 @@
   height: 40px;
   border: none;
   border-radius: var(--radius);
-  background: oklch(1 0 0 / 0.1);
-  color: var(--surface);
+  background: var(--brand-50);
+  color: var(--brand-ink);
   cursor: pointer;
   transition: background 0.15s ease;
 }
 
 .app-header__burger:hover {
-  background: oklch(1 0 0 / 0.2);
+  background: var(--brand-100);
 }
 
 /* ── Menu mobile ────────────────────────────────────────────────────────── */
@@ -1053,8 +948,8 @@
   flex-direction: column;
   gap: 0.25rem;
   padding: 0.75rem 1rem 1.25rem;
-  border-top: 1px solid oklch(1 0 0 / 0.1);
-  background: var(--forest);
+  border-top: 1px solid var(--border);
+  background: var(--surface);
 }
 
 /* Liste verticale des entrées (NavigationItem). Une classe est nécessaire :
@@ -1071,46 +966,8 @@
 /* Séparation visuelle de l'action « Se déconnecter » */
 .app-header__mobile-menu > .im-nav-item {
   margin-top: 0.5rem;
-  border-top: 1px solid color-mix(in oklch, var(--c-white) 12%, transparent);
+  border-top: 1px solid var(--border);
   border-radius: 0 0 var(--r-md) var(--r-md);
-}
-
-.app-header__mobile-link {
-  display: flex;
-  align-items: center;
-  gap: 0.625rem;
-  padding: 0.75rem 1rem;
-  border-radius: var(--radius);
-  color: oklch(0.88 0.015 160);
-  text-decoration: none;
-  font-size: 0.9375rem;
-  font-weight: 500;
-  transition: background 0.15s ease;
-}
-
-.app-header__mobile-link:hover,
-.app-header__mobile-link.is-active {
-  background: var(--forest-mid);
-  color: var(--surface);
-}
-
-.app-header__mobile-signout {
-  display: flex;
-  align-items: center;
-  gap: 0.625rem;
-  margin-top: 0.75rem;
-  padding: 0.75rem 1rem;
-  border: 1px solid oklch(1 0 0 / 0.2);
-  border-radius: var(--radius);
-  background: transparent;
-  color: var(--surface);
-  font-size: 0.9375rem;
-  cursor: pointer;
-  transition: background 0.15s ease;
-}
-
-.app-header__mobile-signout:hover {
-  background: oklch(1 0 0 / 0.1);
 }
 
 /* ── Main content ───────────────────────────────────────────────────────── */
@@ -1120,12 +977,12 @@
   outline: none; /* tabIndex={-1} pour skip link — pas de focus ring visible */
 }
 
-/* ── Pied de page — sombre, en contraste avec le canevas clair ─────────── */
+/* ── Pied de page — teinte vert très clair, filet fin ─────────────── */
 .app-footer {
   display: block;
-  border-top: 0;
-  background: var(--ink);
-  color: oklch(0.82 0.01 160);
+  border-top: 1px solid var(--border);
+  background: var(--brand-50);
+  color: var(--muted);
   padding: 4rem var(--page-gutter) 2rem;
 }
 /* Accueil et pages à hero : pleine largeur, le hero touche l'en-tête et les bords */
@@ -1145,10 +1002,11 @@
   margin-inline: auto;
 }
 .app-footer__logo {
-  font-size: var(--text-lg);
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  color: var(--surface);
+  display: inline-block;
+  color: var(--brand);
+}
+.app-footer__logo .logo {
+  font-size: 1.15rem;
 }
 .app-footer__brand p,
 .app-footer__col p {
@@ -1166,7 +1024,7 @@
   margin: 0 0 0.25rem;
   font-size: var(--text-sm);
   font-weight: 600;
-  color: var(--surface);
+  color: var(--ink);
 }
 .app-footer__col a {
   width: fit-content;
@@ -1178,15 +1036,15 @@
   transition: color var(--fast) var(--ease-out);
 }
 .app-footer__col a:hover {
-  color: var(--surface);
+  color: var(--brand-ink);
 }
 .app-footer__legal {
   max-width: var(--page-max);
   margin: 3rem auto 0;
   padding-top: 1.5rem;
-  border-top: 1px solid oklch(1 0 0 / 0.12);
+  border-top: 1px solid var(--border);
   font-size: var(--text-xs);
-  color: oklch(0.7 0.01 160);
+  color: var(--c-ink-400);
 }
 @media (width < 700px) {
   .app-footer__inner {
@@ -1230,9 +1088,10 @@
 }
 
 /* ── Page hero ──────────────────────────────────────────────────────────── */
-/* Même fond que l'en-tête ; le panneau clair du corps vient le chevaucher. */
+/* Bandeau clair : un lavis de vert très léger. Le panneau blanc du corps
+   vient le chevaucher. Le sombre est réservé à l'accueil et au dashboard. */
 .page-hero {
-  background: var(--forest);
+  background: linear-gradient(180deg, var(--brand-50), var(--background));
   padding-block: 2.5rem 6.5rem;
 }
 
@@ -1243,7 +1102,7 @@
 }
 
 .page-hero h1 {
-  color: var(--surface);
+  color: var(--brand-ink);
   margin-block: 0.5rem 1rem;
   font-size: clamp(2rem, 5vw, 3.5rem);
   font-weight: 600;
@@ -1251,9 +1110,15 @@
   letter-spacing: -0.03em;
 }
 
-.page-hero .eyeline,
+.page-hero .eyeline {
+  color: var(--muted);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+}
 .dashboard-hero .eyeline {
-  color: oklch(0.82 0.03 160);
+  color: oklch(0.82 0.03 175);
   font-size: var(--text-sm);
   font-weight: 500;
   text-transform: none;
@@ -1261,7 +1126,7 @@
 }
 
 .page-hero__lead {
-  color: oklch(0.88 0.015 160);
+  color: var(--muted);
   max-width: 60ch;
   margin: 0;
   font-size: 1rem;
@@ -1282,23 +1147,22 @@
 }
 .page-hero .link-back {
   margin-bottom: 1rem;
-  color: oklch(0.82 0.03 160);
+  color: var(--muted);
 }
 .page-hero .link-back:hover {
-  color: var(--surface);
+  color: var(--brand-ink);
 }
-/* Bouton secondaire sur fond sombre */
 .page-hero .secondary-button {
-  border-color: oklch(1 0 0 / 0.4);
-  background: transparent;
-  color: var(--surface);
+  border-color: var(--border);
+  background: var(--surface);
+  color: var(--ink);
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
   text-decoration: none;
 }
 .page-hero .secondary-button:hover {
-  background: oklch(1 0 0 / 0.12);
+  background: var(--brand-50);
 }
 
 /* Panneau clair générique : contenu des pages qui portent un <PageHero> */
@@ -1308,6 +1172,7 @@
   width: min(var(--page-max) - 2 * var(--page-gutter), 100% - 2 * var(--page-gutter));
   margin: -3.5rem auto 4rem;
   padding: clamp(1.25rem, 3vw, 2.5rem);
+  border: 1px solid var(--border);
   border-radius: var(--radius-card);
   background: var(--surface);
 }
@@ -1349,7 +1214,7 @@
 }
 
 .missions-toolbar__count svg {
-  color: var(--orange);
+  color: var(--brand);
   flex-shrink: 0;
 }
 
@@ -1379,13 +1244,13 @@
 }
 
 .select-wrapper select:hover {
-  border-color: var(--forest-mid);
+  border-color: var(--brand-hi);
 }
 
 .select-wrapper select:focus {
-  outline: 2px solid var(--forest-mid);
+  outline: 2px solid var(--brand-hi);
   outline-offset: 2px;
-  border-color: var(--forest-mid);
+  border-color: var(--brand-hi);
 }
 
 .select-wrapper svg {
@@ -1456,8 +1321,8 @@
   height: 28px;
   flex-shrink: 0;
   border-radius: 50%;
-  background: var(--forest);
-  color: var(--surface);
+  background: var(--brand-100);
+  color: var(--brand-ink);
   font-size: 0.75rem;
   font-weight: 600;
 }
@@ -1487,7 +1352,7 @@
 
 /* ── Hero ────────────────────────────────────────────────────────────────── */
 .detail-hero {
-  background: var(--forest);
+  background: linear-gradient(180deg, var(--brand-50), var(--background));
   padding-block: 1.5rem 6.5rem;
 }
 
@@ -1502,7 +1367,7 @@
   display: inline-flex;
   align-items: center;
   gap: 0.375rem;
-  color: oklch(0.78 0.02 160);
+  color: var(--muted);
   text-decoration: none;
   font-size: 0.875rem;
   margin-bottom: 1.25rem;
@@ -1510,7 +1375,7 @@
 }
 
 .detail-back:hover {
-  color: var(--surface);
+  color: var(--brand-ink);
 }
 
 /* Titre + badge */
@@ -1529,7 +1394,7 @@
 }
 
 .detail-hero__title {
-  color: var(--surface);
+  color: var(--brand-ink);
   font-size: clamp(2rem, 5vw, 3.5rem);
   font-weight: 600;
   line-height: 1.05;
@@ -1541,13 +1406,13 @@
   display: flex;
   align-items: center;
   gap: 0.375rem;
-  color: oklch(0.78 0.02 160);
+  color: var(--muted);
   font-size: 0.9375rem;
   margin: 0;
 }
 
 .detail-hero__sector {
-  color: oklch(0.65 0.02 160);
+  color: var(--c-ink-400);
 }
 
 .detail-hero__badge {
@@ -1566,16 +1431,18 @@
   align-items: center;
   gap: 0.375rem;
   padding: 0.3rem 0.75rem;
-  background: oklch(1 0 0 / 0.1);
-  color: oklch(0.9 0.01 160);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--c-ink-700);
   border-radius: 999px;
   font-size: 0.8125rem;
   font-weight: 500;
 }
 
 .detail-meta-chip--pay {
-  background: oklch(0.75 0.17 43 / 0.2);
-  color: var(--orange);
+  background: var(--accent-50);
+  border-color: transparent;
+  color: var(--accent-ink);
   font-weight: 600;
 }
 
@@ -1595,6 +1462,7 @@
   width: min(var(--page-max) - 2 * var(--page-gutter), 100% - 2 * var(--page-gutter));
   margin: -3.5rem auto 4rem;
   padding: clamp(1.25rem, 3vw, 2.5rem);
+  border: 1px solid var(--border);
   border-radius: var(--radius-card);
   background: var(--surface);
 }
@@ -1663,8 +1531,8 @@
 }
 
 .badge--required {
-  background: oklch(0.94 0.03 165);
-  color: var(--forest);
+  background: var(--tint);
+  color: var(--brand);
   font-weight: 600;
 }
 
@@ -1712,7 +1580,7 @@
 }
 
 .button-ghost:hover {
-  border-color: var(--forest-mid);
+  border-color: var(--brand-hi);
   background: var(--tint);
 }
 
@@ -1740,7 +1608,7 @@
 
 .detail-skeleton__hero {
   height: 180px;
-  background: linear-gradient(90deg, var(--forest) 25%, var(--forest-mid) 50%, var(--forest) 75%);
+  background: linear-gradient(90deg, var(--brand) 25%, var(--brand-hi) 50%, var(--brand) 75%);
   background-size: 200% 100%;
   animation: skeleton-shimmer 1.4s ease infinite;
 }
@@ -1804,9 +1672,9 @@
 
 /* ── Bannière demo ───────────────────────────────────────────────────────── */
 .demo-banner {
-  background: oklch(0.75 0.17 43 / 0.12);
-  border-bottom: 1px solid var(--orange);
-  color: var(--orange);
+  background: var(--accent-50);
+  border-bottom: 1px solid var(--accent);
+  color: var(--accent-ink);
   text-align: center;
   font-size: 0.8125rem;
   font-weight: 600;
@@ -1815,8 +1683,12 @@
 }
 
 /* ── Hero ────────────────────────────────────────────────────────────────── */
+/* Seul moment sombre du dashboard : une carte arrondie, pas une dalle pleine largeur. */
 .dashboard-hero {
-  background: var(--forest);
+  width: min(var(--page-max) - 2 * var(--page-gutter), 100% - 2 * var(--page-gutter));
+  margin: 0.75rem auto 0;
+  border-radius: var(--radius-card);
+  background: var(--brand);
   padding-block: 2.5rem 6.5rem;
 }
 
@@ -1826,7 +1698,7 @@
   justify-content: space-between;
   max-width: var(--page-max);
   margin-inline: auto;
-  padding-inline: var(--page-gutter);
+  padding-inline: clamp(1.5rem, 4vw, 3rem);
   gap: 2rem;
 }
 
@@ -1839,62 +1711,116 @@
 
 .dashboard-hero__title {
   color: var(--surface);
-  font-size: clamp(2rem, 5vw, 3.5rem);
+  font-size: clamp(1.75rem, 4.5vw, 3rem);
   font-weight: 600;
-  line-height: 1.05;
+  line-height: 1.08;
   letter-spacing: -0.03em;
   margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.125rem;
 }
 
-.dashboard-hero__sub {
-  letter-spacing: 0;
-  line-height: 1.3;
-  color: oklch(0.78 0.02 160);
-  font-size: clamp(1.125rem, 2vw, 1.375rem);
-  font-weight: 400;
-}
-
-.dashboard-hero__lead {
-  color: oklch(0.78 0.02 160);
-  font-size: 0.9375rem;
-  line-height: 1.6;
+/* Le service le plus proche : la seule ligne de détail du hero */
+.dashboard-hero__next {
   margin: 0;
+  color: oklch(0.86 0.02 175);
+  font-size: 1rem;
+  line-height: 1.5;
+}
+.dashboard-hero__next strong {
+  color: var(--surface);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.dashboard-hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
 }
 
 .dashboard-hero__cta {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  align-self: flex-start;
-  margin-top: 0.5rem;
   padding: 0.7rem 1.5rem;
-  background: var(--orange);
-  color: var(--forest);
+  background: var(--accent);
+  color: var(--brand);
   border-radius: var(--radius-pill);
   font-size: 0.9375rem;
   font-weight: 600;
   text-decoration: none;
-  transition: filter 0.15s ease, transform 0.1s ease;
+  transition: background var(--fast) var(--ease-out);
 }
 
 .dashboard-hero__cta:hover {
-  background: var(--orange-hover);
+  background: var(--accent-hover);
 }
 
-/* Icône décorative : retirée, la charte n'admet aucun ornement */
-.dashboard-hero__media {
-  display: none;
-  flex-shrink: 0;
-  color: oklch(1 0 0 / 0.08);
+/* Action secondaire sur le hero sombre : pilule à contour */
+.dashboard-hero__ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.7rem 1.25rem;
+  border: 1px solid oklch(1 0 0 / 0.35);
+  border-radius: var(--radius-pill);
+  color: var(--surface);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: background var(--fast) var(--ease-out);
 }
 
-.dashboard-hero__media svg {
-  width: 120px;
-  height: 120px;
-  stroke-width: 1;
+.dashboard-hero__ghost:hover {
+  background: oklch(1 0 0 / 0.1);
+}
+
+/* ── Relancer un besoin ──────────────────────────────────────────────────── */
+.rebook-list {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.rebook-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.875rem 1.125rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+.rebook-title {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+.rebook-meta {
+  margin: 0.125rem 0 0;
+  font-size: var(--text-sm);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.rebook-action {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.9rem;
+  border-radius: var(--radius-pill);
+  background: var(--brand-50);
+  color: var(--brand-ink);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background var(--fast) var(--ease-out);
+}
+.rebook-action:hover {
+  background: var(--brand-100);
 }
 
 /* ── Corps ───────────────────────────────────────────────────────────────── */
@@ -1961,14 +1887,14 @@
 }
 
 .dashboard-tab:hover {
-  border-color: var(--forest-mid);
+  border-color: var(--brand-hi);
   color: var(--ink);
 }
 
 .dashboard-tab.is-active {
-  background: var(--forest);
-  border-color: var(--forest);
-  color: var(--surface);
+  background: var(--brand-100);
+  border-color: var(--brand-100);
+  color: var(--brand-ink);
   font-weight: 600;
 }
 
@@ -1986,7 +1912,7 @@
 }
 
 .dashboard-tab.is-active .dashboard-tab__count {
-  background: oklch(1 0 0 / 0.2);
+  background: color-mix(in oklch, var(--brand-ink) 12%, transparent);
 }
 
 /* ── Rail ────────────────────────────────────────────────────────────────── */
@@ -2007,10 +1933,6 @@
 
   .dashboard-rail {
     position: static;
-  }
-
-  .dashboard-hero__media {
-    display: none;
   }
 }
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -2074,7 +1996,7 @@
 }
 
 .search-clear-btn:hover {
-  border-color: var(--forest-mid);
+  border-color: var(--brand-hi);
   color: var(--ink);
 }
 
@@ -2095,9 +2017,12 @@
 }
 
 /* ── Hero ────────────────────────────────────────────────────────────────── */
-/* Même fond que l'en-tête : les deux se lisent comme un seul bloc sombre. */
+/* Carte sombre arrondie sous l'en-tête clair : le seul aplat sombre de l'écran. */
 .home-hero {
-  background: var(--forest);
+  width: min(var(--page-max) - 2 * var(--page-gutter), 100% - 2 * var(--page-gutter));
+  margin: 0.75rem auto 0;
+  border-radius: var(--radius-card);
+  background: var(--brand);
   padding-block: 4rem 9rem;
 }
 
@@ -2108,14 +2033,14 @@
   gap: 1.5rem;
   max-width: var(--page-max);
   margin-inline: auto;
-  padding-inline: var(--page-gutter);
+  padding-inline: clamp(1.5rem, 4vw, 3rem);
 }
 
 .home-hero__eyeline {
   margin: 0;
   font-size: var(--text-sm);
   font-weight: 500;
-  color: oklch(0.82 0.03 160);
+  color: oklch(0.82 0.03 175);
 }
 
 .home-hero__title {
@@ -2134,7 +2059,7 @@
   margin: 0;
   font-size: clamp(1rem, 2vw, 1.125rem);
   line-height: 1.6;
-  color: oklch(0.82 0.015 160);
+  color: oklch(0.82 0.015 175);
 }
 
 .home-hero__ctas {
@@ -2164,11 +2089,11 @@
 
 /* Orange : CTA principal uniquement */
 .home-cta--primary {
-  background: var(--orange);
-  color: var(--forest);
+  background: var(--accent);
+  color: var(--brand);
 }
 .home-cta--primary:hover {
-  background: var(--orange-hover);
+  background: var(--accent-hover);
 }
 
 /* Pill claire, pour les fonds sombres */
@@ -2182,11 +2107,11 @@
 
 /* Pill sombre, pour les fonds clairs */
 .home-cta--dark {
-  background: var(--ink);
+  background: var(--brand);
   color: var(--surface);
 }
 .home-cta--dark:hover {
-  background: var(--forest-mid);
+  background: var(--brand-hi);
 }
 
 /* ── Panneau clair ───────────────────────────────────────────────────────── */
@@ -2269,11 +2194,11 @@
   height: 32px;
   border-radius: var(--radius-pill);
   background: var(--tint);
-  color: var(--forest);
+  color: var(--brand);
 }
 
-/* Bloc sombre */
-.home-dark-card {
+/* Bloc teinté */
+.home-final-card {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -2281,22 +2206,23 @@
   gap: 1.25rem;
   padding: clamp(1.5rem, 3vw, 2.5rem);
   border-radius: var(--radius-card);
-  background: var(--ink);
-  color: var(--surface);
+  background: var(--brand-50);
+  color: var(--ink);
 }
-.home-dark-card h2 {
+.home-final-card h2 {
   margin: 0;
+  color: var(--brand-ink);
   font-size: var(--text-2xl);
   font-weight: 600;
   line-height: 1.1;
   letter-spacing: -0.025em;
 }
-.home-dark-card p {
+.home-final-card p {
   margin: 0;
   max-width: 34ch;
   font-size: var(--text-sm);
   line-height: 1.6;
-  color: oklch(0.8 0.01 160);
+  color: var(--muted);
 }
 
 /* ── Comment ça marche ───────────────────────────────────────────────────── */
@@ -2344,7 +2270,7 @@
   font-size: var(--text-2xl);
   font-weight: 500;
   letter-spacing: -0.02em;
-  color: var(--forest-mid);
+  color: var(--brand-hi);
 }
 .home-step__title {
   margin: 0;
@@ -2363,7 +2289,7 @@
   .home-panel__grid {
     grid-template-columns: 1fr 1fr;
   }
-  .home-dark-card {
+  .home-final-card {
     grid-column: 1 / -1;
   }
 }

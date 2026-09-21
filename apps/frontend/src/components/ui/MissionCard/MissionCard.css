@@ -21,12 +21,12 @@
 /* Hover — lift discret (pas de scale) */
 .im-mission-card:hover {
   box-shadow:  var(--shadow-hover);
-  border-color: color-mix(in oklch, var(--c-forest-500) 20%, transparent);
+  border-color: color-mix(in oklch, var(--c-brand-500) 20%, transparent);
   transform:   translateY(-3px);
 }
 
 .im-mission-card:focus-visible {
-  outline:      2px solid var(--c-forest-500);
+  outline:      2px solid var(--c-brand-500);
   outline-offset: 2px;
   box-shadow:   var(--shadow-focus);
 }
@@ -176,11 +176,11 @@
   font-family: var(--font-display);
   font-size:   var(--fs-sm);
   font-weight: 600;
-  color:       var(--c-forest-500);
+  color:       var(--c-brand-500);
 }
 
 .im-mission-card__salary svg {
-  color: var(--c-forest-500);
+  color: var(--c-brand-500);
 }
 
 .im-mission-card__salary--unknown {
@@ -192,7 +192,7 @@
   text-transform: uppercase;
 }
 
-/* Candidatures en attente : statut d'alerte, pas un CTA → ambre, pas orange */
+/* Candidatures en attente : statut d'alerte, pas un CTA → ambre, pas or */
 .im-mission-card__pending {
   font-size:   var(--fs-xs);
   font-weight: 600;
@@ -214,7 +214,7 @@
 }
 
 .im-mission-card:hover .im-mission-card__arrow {
-  color:     var(--c-forest-500);
+  color:     var(--c-brand-500);
   transform: translateX(4px);
 }
 

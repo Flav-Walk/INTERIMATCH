@@ -1,23 +1,55 @@
-/* Police unique : Geist, servie localement (aucune requête tierce, RGESN).
-   Variable : un seul fichier par sous-ensemble, chargé selon les caractères
-   affichés (unicode-range). Graisses utilisées : 400, 500, 600. */
+/* Polices servies localement (aucune requête tierce, RGESN).
+   Geist : texte et interface (400, 500, 600).
+   Bricolage Grotesque : titres uniquement (600, 700).
+   Variables : un fichier par sous-ensemble, chargé selon les caractères
+   affichés (unicode-range). */
 @import "@fontsource-variable/geist";
+@import "@fontsource-variable/bricolage-grotesque/wght.css";
 
 :root {
-  --forest: oklch(0.32 0.065 165);
-  --orange: oklch(0.75 0.17 43);
-  --orange-hover: oklch(0.8 0.14 43);
-  /* Orange assombri pour le texte : l'orange de marque ne passe pas 4,5:1. */
-  --orange-ink: oklch(0.52 0.16 43);
-  --background: oklch(0.975 0.003 165);
+  /* --- Palette « Altheia » : deux verts, une crème, un or ---
+     Vert profond : marque (hero, bouton principal, encre des titres). Vert
+     moyen : survols et focus. Laurier : neutres froids (états éteints, fonds
+     discrets). Crème : canevas. Or toscan : signal (CTA, match, disponible).
+     Nuit : texte. Cuivre : urgence et erreurs.
+     Vert profond : le RVB du visuel (10 | 59 | 53) fait foi, pas son HEX
+     imprimé (#0A3B25), qui n'y correspond pas. */
+  --vert-profond: oklch(0.319 0.051 183); /* #0A3B35 */
+  --vert-moyen: oklch(0.45 0.064 172);    /* #2A6151 */
+  --laurier: oklch(0.772 0.019 124);      /* #B2B7AA */
+  --creme: oklch(0.978 0.011 77);         /* #FCF7F0 — fond de page */
+  --or: oklch(0.825 0.048 76);            /* #D8C2A4 — texte nuit ou vert profond dessus (10,4:1 / 7,2:1) */
+  --nuit: oklch(0.2 0.025 172);           /* #091A15 — texte principal */
+  --brume: oklch(0.47 0.025 165);         /* #4E5F57 — texte secondaire (6,3:1 sur crème) */
+  --cuivre: oklch(0.55 0.19 28);          /* #C93029 — urgence, erreurs (texte blanc dessus, 5,3:1) */
+
+  /* Encre et teintes : sur fond clair, la marque est une encre, et ses teintes
+     remplacent les aplats pour les surfaces secondaires (états actifs, cartes
+     d'information, avatars). */
+  --brand-ink: var(--vert-profond);       /* 12,4:1 sur blanc */
+  --brand-50: oklch(0.966 0.01 175);      /* #EFF7F4 */
+  --brand-100: oklch(0.935 0.02 175);     /* #DDEEE8 */
+  --accent-ink: oklch(0.48 0.065 75);     /* #735832 — or lisible en texte sur fond clair (6,6:1 sur blanc) */
+  --accent-50: oklch(0.965 0.03 85);      /* #FDF2DD */
+  --laurier-50: oklch(0.955 0.008 125);   /* #EFF1EB */
+  --laurier-100: oklch(0.925 0.012 125);  /* #E4E8DF */
+
+  /* Noms sémantiques : les feuilles de style écrivent --brand et --accent, pas
+     la teinte. Changer de palette revient à changer ces alias.
+     --brand : couleur de marque. --accent : signal, CTA.
+     Les alias courts en dessous (--background, --ink, --muted, --tint) sont
+     historiques : à retirer au fil des migrations. */
+  --brand: var(--vert-profond);
+  --brand-hi: var(--vert-moyen);
+  --accent: var(--or);
+  --accent-hover: oklch(0.79 0.055 76);   /* #CDB794 */
+  --background: var(--creme);
   --surface: oklch(1 0 0);
-  --ink: oklch(0.23 0.02 160);
-  --muted: oklch(0.45 0.02 160);
-  --border: oklch(0.88 0.008 160);
-  --tint: oklch(0.94 0.025 160);
+  --ink: var(--nuit);
+  --muted: var(--brume);
+  --border: oklch(0.92 0.012 85);         /* #E8E4DC */
+  --tint: var(--laurier-100);
   --radius: 12px;
-  --forest-mid: oklch(0.42 0.085 165);
-  /* alp-medium ≈ #2C7052 */
   --radius-card: 24px;
   /* bords ronds des cartes */
   /* Gabarit de page partagé par l'en-tête, le contenu et le pied, pour qu'ils
@@ -50,13 +82,13 @@
   --radius-pill: 999px;
 
   /* --- Ombres. Trois niveaux suffisent : posé, soulevé, détaché. --- */
-  --shadow-1: 0 1px 2px oklch(0.23 0.02 160 / 0.06);
-  --shadow-2: 0 4px 14px oklch(0.23 0.02 160 / 0.08);
-  --shadow-3: 0 12px 32px oklch(0.23 0.02 160 / 0.12);
+  --shadow-1: 0 1px 2px oklch(0.2 0.025 172 / 0.05);
+  --shadow-2: 0 4px 14px oklch(0.2 0.025 172 / 0.06);
+  --shadow-3: 0 12px 32px oklch(0.2 0.025 172 / 0.1);
 
   /* --- Couleurs d'état. Le vert de marque sert déjà au succès. --- */
-  --danger: oklch(0.52 0.19 27);
-  --danger-tint: oklch(0.95 0.03 27);
+  --danger: var(--cuivre);
+  --danger-tint: oklch(0.96 0.025 30);
   --warn-ink: oklch(0.45 0.11 75);
   --warn-tint: oklch(0.95 0.05 85);
 
@@ -81,27 +113,28 @@
    Seul fichier autorisé à contenir des couleurs littérales.
    ══════════════════════════════════════════════════════════════ */
 :root {
-  /* --- Vert forêt (charte v2) --- */
-  --c-forest-50: oklch(0.97 0.008 162);
-  --c-forest-100: oklch(0.94 0.028 162);
-  --c-forest-500: oklch(0.42 0.085 165);
-  --c-forest-800: oklch(0.28 0.08 165);
-  --c-forest-900: oklch(0.26 0.08 162);
+  /* --- Marque : échelle du vert --- */
+  --c-brand-50: var(--brand-50);
+  --c-brand-100: var(--brand-100);
+  --c-brand-500: var(--brand-hi);
+  --c-brand-800: var(--brand);
+  --c-brand-900: var(--brand);
 
-  /* --- Orange : CTA stricts UNIQUEMENT ---
-     500 = fond du CTA. 600/100 = variantes texte et tint (contraste 5:1). */
-  --c-orange-500: oklch(0.68 0.155 38);
-  --c-orange-600: var(--orange-ink);
-  --c-orange-100: oklch(0.95 0.035 43);
+  /* --- Or : CTA et signal UNIQUEMENT ---
+     500 = fond du CTA (texte nuit ou vert profond dessus). 100 = teinte. Le
+     texte de mise en avant sur fond clair passe par --accent-ink, jamais par l'or. */
+  --c-accent-500: var(--accent);
+  --c-accent-600: var(--accent-ink);
+  --c-accent-100: var(--accent-50);
 
-  /* --- Neutres --- */
+  /* --- Neutres (verts très désaturés, dans le ton de la marque) --- */
   --c-white: oklch(1 0 0);
   --c-surface: var(--surface);
-  --c-ink-100: oklch(0.94 0.006 160);
-  --c-ink-400: oklch(0.52 0.018 160);
-  --c-ink-500: oklch(0.45 0.02 160);
-  --c-ink-700: oklch(0.35 0.02 160);
-  --c-ink-950: oklch(0.21 0.02 160);
+  --c-ink-100: oklch(0.955 0.006 110);
+  --c-ink-400: oklch(0.56 0.02 165);
+  --c-ink-500: var(--brume);
+  --c-ink-700: oklch(0.36 0.025 168);
+  --c-ink-950: var(--nuit);
 
   /* --- États (Badge, StatusBadge, Button danger) --- */
   --c-success: oklch(0.4 0.1 155);
@@ -113,9 +146,9 @@
   --c-info: oklch(0.42 0.1 245);
   --c-info-bg: oklch(0.95 0.025 245);
 
-  /* --- Score de matching : vert / ambre / neutre (jamais d'orange) --- */
-  --c-match-high: var(--c-forest-800);
-  --c-match-high-bg: var(--c-forest-100);
+  /* --- Score de matching : or / ambre / neutre --- */
+  --c-match-high: var(--nuit);
+  --c-match-high-bg: var(--accent);
   --c-match-mid: var(--c-warning);
   --c-match-mid-bg: var(--c-warning-bg);
   --c-match-low: var(--c-ink-500);
@@ -142,15 +175,16 @@
 
   /* --- Ombres --- */
   --shadow-sm: var(--shadow-1);
-  --shadow-card: 0 1px 2px oklch(0.23 0.02 160 / 0.05), 0 2px 8px oklch(0.23 0.02 160 / 0.06);
-  --shadow-hover: 0 8px 24px oklch(0.23 0.02 160 / 0.12);
-  --shadow-focus: 0 0 0 3px oklch(0.42 0.085 165 / 0.35);
+  --shadow-card: 0 1px 2px oklch(0.2 0.025 172 / 0.04), 0 2px 8px oklch(0.2 0.025 172 / 0.05);
+  --shadow-hover: 0 8px 24px oklch(0.2 0.025 172 / 0.09);
+  --shadow-focus: 0 0 0 3px oklch(0.45 0.064 172 / 0.4);
 
   /* --- Typographie --- */
-  /* Une seule famille : les deux variables restent pour ne pas toucher
-     chaque composant, mais pointent vers la même pile. */
+  /* Interface et texte : Geist. `--font-display` reste un alias de l'interface
+     (boutons, badges…). Seuls les titres utilisent `--font-title`. */
   --font-ui: "Geist Variable", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-display: var(--font-ui);
+  --font-title: "Bricolage Grotesque Variable", var(--font-ui);
   --fs-2xs: 11px;
   --fs-xs: var(--text-xs);
   --fs-sm: var(--text-sm);
@@ -177,28 +211,49 @@
 }
 
 /* Couleurs décoratives des cartes : palettes par métier HCR et avatars.
-   Aucune n'utilise l'orange (réservé aux CTA). Purement décoratives : le
+   Aucune n'utilise l'or (réservé au signal). Purement décoratives : le
    sens n'est jamais porté par la couleur seule. */
 :root {
   --c-error-hover: oklch(0.45 0.19 27);
 
-  --c-job-serveur-bg: oklch(0.94 0.02 165);
-  --c-job-serveur-fg: oklch(0.44 0.095 165);
+  --c-job-serveur-bg: var(--brand-100);
+  --c-job-serveur-fg: var(--brand);
   --c-job-chef-bg: oklch(0.94 0.03 85);
   --c-job-chef-fg: oklch(0.5 0.11 75);
   --c-job-barman-bg: oklch(0.92 0.02 250);
   --c-job-barman-fg: oklch(0.4 0.1 250);
-  --c-job-reception-bg: oklch(0.93 0.015 200);
-  --c-job-reception-fg: oklch(0.42 0.09 200);
-  --c-job-plongeur-bg: oklch(0.93 0.012 165);
-  --c-job-plongeur-fg: oklch(0.38 0.06 165);
-  --c-job-default-bg: oklch(0.92 0.015 165);
-  --c-job-default-fg: oklch(0.38 0.065 165);
+  --c-job-reception-bg: oklch(0.935 0.02 350);
+  --c-job-reception-fg: oklch(0.4 0.09 350);
+  --c-job-plongeur-bg: var(--laurier-100);
+  --c-job-plongeur-fg: oklch(0.38 0.035 125);
+  --c-job-default-bg: var(--c-ink-100);
+  --c-job-default-fg: var(--c-ink-700);
 
-  --c-avatar-1: var(--c-forest-800);
-  --c-avatar-2: oklch(0.4 0.09 200);
-  --c-avatar-3: oklch(0.38 0.1 280);
-  --c-avatar-4: var(--c-ink-700);
+  --c-avatar-1: var(--brand-100);
+  --c-avatar-1-fg: var(--brand-ink);
+  --c-avatar-2: oklch(0.93 0.03 200);
+  --c-avatar-2-fg: oklch(0.38 0.08 200);
+  --c-avatar-3: oklch(0.93 0.03 280);
+  --c-avatar-3-fg: oklch(0.4 0.1 280);
+  --c-avatar-4: var(--c-ink-100);
+  --c-avatar-4-fg: var(--c-ink-700);
+}
+
+/* Moment de la journée d'un service (carte de mission). Le libellé « soir »,
+   « nuit »… porte le sens : la teinte ne fait que le redire. */
+:root {
+  --c-shift-matin-bg: oklch(0.96 0.045 90);
+  --c-shift-matin-fg: oklch(0.42 0.09 75);
+  --c-shift-matin-bar: oklch(0.8 0.13 85);
+  --c-shift-midi-bg: oklch(0.955 0.03 235);
+  --c-shift-midi-fg: oklch(0.4 0.09 245);
+  --c-shift-midi-bar: oklch(0.68 0.11 240);
+  --c-shift-soir-bg: oklch(0.945 0.04 50);
+  --c-shift-soir-fg: oklch(0.42 0.1 45);
+  --c-shift-soir-bar: oklch(0.66 0.14 45);
+  --c-shift-nuit-bg: oklch(0.945 0.03 280);
+  --c-shift-nuit-fg: oklch(0.38 0.1 280);
+  --c-shift-nuit-bar: oklch(0.45 0.12 280);
 }
 
 /* prefers-reduced-motion : toutes les durées du design system passent à 0.

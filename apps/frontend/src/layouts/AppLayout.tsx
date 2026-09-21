@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { NavigationItem } from "../components/ui/NavigationItem";
+import { Logo } from "../components/Logo";
 import { destination } from "../services/session";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -97,31 +98,7 @@ export function AppLayout() {
             className="app-header__logo"
             aria-label="ALP'EMPLOI — Retour à l'accueil"
           >
-            {/* Sigle SVG inline — pas d'image externe (RGESN) */}
-            <svg
-              width="32"
-              height="32"
-              viewBox="0 0 32 32"
-              fill="none"
-              aria-hidden="true"
-              focusable="false"
-            >
-              <rect width="32" height="32" rx="8" fill="var(--forest)" />
-              <text
-                x="16"
-                y="22"
-                textAnchor="middle"
-                fontFamily="var(--font-display)"
-                fontSize="18"
-                fontWeight="600"
-                fill="var(--orange)"
-              >
-                A
-              </text>
-            </svg>
-            <span className="app-header__brand">
-              ALP<span aria-hidden="true">'</span>EMPLOI
-            </span>
+            <Logo size={34} />
           </Link>
 
           {/* Navigation desktop */}
@@ -216,7 +193,6 @@ export function AppLayout() {
                   icon={item.icon}
                   label={item.label}
                   isActive={isNavActive(pathname, item)}
-                  tone="inverse"
                   onClick={() => setMenuOpen(false)}
                 />
               ))}
@@ -225,7 +201,6 @@ export function AppLayout() {
             <NavigationItem
               icon={LogOut}
               label="Se déconnecter"
-              tone="inverse"
               onClick={handleSignOut}
             />
           </div>
@@ -242,7 +217,7 @@ export function AppLayout() {
         <div className="app-footer__inner">
           <div className="app-footer__brand">
             <span className="app-footer__logo">
-              ALP<span aria-hidden="true">'</span>EMPLOI
+              <Logo size={30} />
             </span>
             <p>
               L'intérim hôtellerie-restauration en Auvergne-Rhône-Alpes, sans

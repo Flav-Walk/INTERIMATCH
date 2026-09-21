@@ -47,9 +47,9 @@
 }
 
 .im-search__field:focus-visible {
-  outline: 2px solid var(--c-forest-500);
+  outline: 2px solid var(--c-brand-500);
   outline-offset: 2px;
-  border-color: var(--c-forest-500);
+  border-color: var(--c-brand-500);
 }
 
 .im-search__field:disabled {
@@ -92,7 +92,7 @@
 }
 
 .im-search__clear:focus-visible {
-  outline: 2px solid var(--c-forest-500);
+  outline: 2px solid var(--c-brand-500);
   outline-offset: 1px;
 }
 

@@ -15,12 +15,12 @@
   width:         56px;
   height:        56px;
   border-radius: 50%;
-  background:    var(--c-forest-100);
+  background:    var(--c-brand-100);
   display:       flex;
   align-items:   center;
   justify-content: center;
   margin-bottom: var(--sp-5);
-  color:         var(--c-forest-500);
+  color:         var(--c-brand-500);
 }
 .im-empty-state--sm .im-empty-state__icon { width: 44px; height: 44px; margin-bottom: var(--sp-4); }
 

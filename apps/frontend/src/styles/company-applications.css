@@ -16,30 +16,11 @@
   margin-left: var(--space-2);
   padding: 0 6px;
   border-radius: var(--radius-pill);
-  background: var(--orange);
-  color: var(--forest);
+  background: var(--accent);
+  color: var(--brand);
   font-size: var(--text-xs);
   font-weight: 600;
   line-height: 1;
-}
-
-/* Pastille sur la carte mission : combien de candidatures attendent. */
-.mission-pending {
-  position: absolute;
-  top: var(--space-3);
-  right: var(--space-3);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 24px;
-  height: 24px;
-  padding: 0 7px;
-  border-radius: var(--radius-pill);
-  background: var(--orange);
-  color: var(--forest);
-  font-size: var(--text-xs);
-  font-weight: 600;
-  box-shadow: var(--shadow-1);
 }
 
 /* --- Lignes compactes du tableau de bord. --- */
@@ -67,7 +48,7 @@
 }
 
 .application-row:hover {
-  border-color: var(--forest);
+  border-color: var(--brand);
 }
 
 .application-row-main,

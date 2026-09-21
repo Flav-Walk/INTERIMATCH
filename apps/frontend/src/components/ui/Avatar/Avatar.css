@@ -7,7 +7,6 @@
   flex-shrink: 0;
   overflow: hidden;
   border-radius: 50%;
-  color: var(--c-white);
   font-family: var(--font-display);
   font-weight: 600;
   line-height: 1;
@@ -20,10 +19,10 @@
 .im-avatar--lg { width: 64px; height: 64px; font-size: var(--fs-xl); }
 
 /* Couleur d'initiales (déterministe, voir getVariant) */
-.im-avatar--v1 { background: var(--c-avatar-1); }
-.im-avatar--v2 { background: var(--c-avatar-2); }
-.im-avatar--v3 { background: var(--c-avatar-3); }
-.im-avatar--v4 { background: var(--c-avatar-4); }
+.im-avatar--v1 { background: var(--c-avatar-1); color: var(--c-avatar-1-fg); }
+.im-avatar--v2 { background: var(--c-avatar-2); color: var(--c-avatar-2-fg); }
+.im-avatar--v3 { background: var(--c-avatar-3); color: var(--c-avatar-3-fg); }
+.im-avatar--v4 { background: var(--c-avatar-4); color: var(--c-avatar-4-fg); }
 
 .im-avatar__img {
   width: 100%;

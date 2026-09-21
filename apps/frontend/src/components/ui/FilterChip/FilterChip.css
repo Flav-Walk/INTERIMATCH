@@ -24,8 +24,8 @@
 }
 
 .im-filter-chip:hover:not(:disabled) {
-  background: var(--c-forest-50);
-  border-color: var(--c-forest-500);
+  background: var(--c-brand-50);
+  border-color: var(--c-brand-500);
   color: var(--c-ink-950);
 }
 
@@ -34,16 +34,16 @@
 }
 
 .im-filter-chip:focus-visible {
-  outline: 2px solid var(--c-forest-500);
+  outline: 2px solid var(--c-brand-500);
   outline-offset: 2px;
 }
 
 /* Actif : fond plein + coche (deux indices en plus de aria-pressed) */
 .im-filter-chip--selected,
 .im-filter-chip--selected:hover:not(:disabled) {
-  background: var(--c-forest-800);
-  border-color: var(--c-forest-800);
-  color: var(--c-white);
+  background: var(--c-brand-100);
+  border-color: var(--c-brand-100);
+  color: var(--brand-ink);
 }
 
 .im-filter-chip:disabled {
@@ -73,8 +73,8 @@
 }
 
 .im-filter-chip--selected .im-filter-chip__count {
-  background: color-mix(in oklch, var(--c-white) 22%, transparent);
-  color: var(--c-white);
+  background: color-mix(in oklch, var(--brand-ink) 12%, transparent);
+  color: var(--brand-ink);
 }
 
 @media (prefers-reduced-motion: reduce) {
