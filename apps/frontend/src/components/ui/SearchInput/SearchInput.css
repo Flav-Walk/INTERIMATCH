@@ -1,0 +1,134 @@
+/* ── SearchInput.css ─────────────────────────────────────── */
+
+.im-search {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.im-search__control {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.im-search__icon {
+  position: absolute;
+  left: var(--sp-4);
+  display: flex;
+  color: var(--c-ink-500);
+  pointer-events: none;
+}
+
+/* Redéfinit ce que `input {}` (global.css) impose : voir Input.css */
+.im-search__field {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: var(--sp-3) var(--sp-10) var(--sp-3) var(--sp-12);
+  border: 1px solid var(--c-ink-400);
+  border-radius: var(--r-pill);
+  background: var(--c-surface);
+  color: var(--c-ink-950);
+  font-family: var(--font-ui);
+  font-size: var(--fs-base);
+  transition:
+    border-color var(--dur-fast) var(--ease-out),
+    box-shadow   var(--dur-fast) var(--ease-out);
+}
+
+.im-search__field::placeholder {
+  color: var(--c-ink-500);
+}
+
+.im-search__field:hover:not(:disabled) {
+  border-color: var(--c-ink-700);
+}
+
+.im-search__field:focus-visible {
+  outline: 2px solid var(--c-forest-500);
+  outline-offset: 2px;
+  border-color: var(--c-forest-500);
+}
+
+.im-search__field:disabled {
+  background: var(--c-ink-100);
+  color: var(--c-ink-500);
+  cursor: not-allowed;
+}
+
+/* La croix native de type="search" est remplacée par notre bouton */
+.im-search__field::-webkit-search-cancel-button,
+.im-search__field::-webkit-search-decoration {
+  -webkit-appearance: none;
+  appearance: none;
+  display: none;
+}
+
+/* ── Bouton effacer ──────────────────────────────────────── */
+
+.im-search__clear {
+  position: absolute;
+  right: var(--sp-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--c-ink-500);
+  cursor: pointer;
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    color            var(--dur-fast) var(--ease-out);
+}
+
+.im-search__clear:hover {
+  background: var(--c-ink-100);
+  color: var(--c-ink-950);
+}
+
+.im-search__clear:focus-visible {
+  outline: 2px solid var(--c-forest-500);
+  outline-offset: 1px;
+}
+
+/* ── Spinner (transform seul) ────────────────────────────── */
+
+.im-search__spinner {
+  animation: im-spin 0.8s linear infinite;
+}
+
+/* ── Statut : masqué visuellement sauf « aucun résultat » ── */
+
+.im-search__status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.im-search__status--visible {
+  position: static;
+  width: auto;
+  height: auto;
+  overflow: visible;
+  clip-path: none;
+  white-space: normal;
+  padding-left: var(--sp-4);
+  font-family: var(--font-ui);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  color: var(--c-ink-500);
+  animation: im-fade-in var(--dur-normal) var(--ease-out) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .im-search__status--visible { animation: none; }
+}
