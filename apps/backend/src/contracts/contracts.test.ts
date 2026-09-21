@@ -297,6 +297,7 @@ describe("contrats de mission", () => {
   });
 
   it("conserve un contrat reprenable quand le stockage est indisponible", async () => {
+    logger.error.mockClear();
     const source = await acceptedApplication(
       otherWorkerId,
       "Mission stockage indisponible",
@@ -321,6 +322,13 @@ describe("contrats de mission", () => {
         )
       ).rows[0].last_error_code,
     ).toBe("PROCESSING_FAILED");
+    expect(logger.error).toHaveBeenCalledWith(
+      {
+        contract_id: draft.id,
+        error_code: "PROCESSING_FAILED",
+      },
+      "contract.storage.failed",
+    );
     await contracts.retryPendingDocuments();
     expect(
       (
@@ -363,5 +371,43 @@ describe("contrats de mission", () => {
       .expect(200)
       .expect("Content-Type", "application/pdf");
     expect(download.body.subarray(0, 5).toString()).toBe("%PDF-");
+  });
+
+  it("rattrape une acceptation sans contrat une seule fois", async () => {
+    logger.info.mockClear();
+    const recoveryWorker = await profile(
+      "worker",
+      "recovery.contract@example.test",
+    );
+    await db.query(
+      `INSERT INTO worker_profiles(profile_id,city,postal_code,main_job,phone)
+       VALUES($1,'Lyon','69002','serveur','0600000000')`,
+      [recoveryWorker],
+    );
+    const source = await acceptedApplication(
+      recoveryWorker,
+      "Mission acceptée pendant une indisponibilité",
+    );
+
+    await contracts.reconcileAcceptedApplications();
+    await contracts.reconcileAcceptedApplications();
+
+    const created = await db.query<{ id: string }>(
+      "SELECT id FROM contracts WHERE application_id=$1",
+      [source.application],
+    );
+    expect(created.rows).toHaveLength(1);
+    expect(logger.info).toHaveBeenCalledWith(
+      { count: 1 },
+      "contract.creation.reconciliation_started",
+    );
+    expect(logger.info).toHaveBeenCalledWith(
+      expect.objectContaining({
+        application_id: source.application,
+        contract_id: created.rows[0].id,
+        status: "awaiting_worker_signature",
+      }),
+      "contract.creation.completed",
+    );
   });
 });

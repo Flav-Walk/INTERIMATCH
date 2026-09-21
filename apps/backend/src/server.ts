@@ -135,12 +135,20 @@ const server = createApp(
 const recoverContracts = async () => {
   if (!contracts) return;
   try {
+    await contracts.reconcileAcceptedApplications();
     await contracts.retryPendingDocuments();
     await contracts.retryPendingEmails();
-  } catch {
+  } catch (error) {
+    const code =
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      /^[A-Za-z0-9_]{1,32}$/.test(String(error.code))
+        ? String(error.code)
+        : "CONTRACT_RECOVERY_FAILED";
     eventLogger.error(
-      { error_code: "CONTRACT_RECOVERY_FAILED" },
-      "contract_recovery_failed",
+      { error_code: code },
+      "contract.recovery.failed",
     );
   }
 };

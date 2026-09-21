@@ -118,15 +118,49 @@ export class ContractService {
   /** Point d'intégration post-commit : une panne documentaire ne remonte jamais
    * dans la décision métier déjà validée. */
   async onApplicationAccepted(applicationId: string) {
+    this.logger.info(
+      { application_id: applicationId },
+      "contract.creation.requested",
+    );
     try {
-      return await this.ensureForAcceptedApplication(applicationId);
+      const contract = await this.ensureForAcceptedApplication(applicationId);
+      this.logger.info(
+        {
+          application_id: applicationId,
+          contract_id: contract.id,
+          status: contract.status,
+        },
+        "contract.creation.completed",
+      );
+      return contract;
     } catch (error) {
       this.logger.error(
         { application_id: applicationId, error_code: errorCode(error) },
-        "contract_creation_failed",
+        "contract.creation.failed",
       );
       return undefined;
     }
+  }
+
+  /** Rattrape les acceptations validées pendant une indisponibilité du module
+   * documentaire. L'unicité application_id rend l'opération rejouable. */
+  async reconcileAcceptedApplications(limit = 20) {
+    const rows = await this.db.query<{ id: string }>(
+      `SELECT a.id
+         FROM applications a
+         JOIN missions m ON m.id=a.mission_id
+         LEFT JOIN contracts c ON c.application_id=a.id
+        WHERE a.status='accepted' AND m.status <> 'cancelled' AND c.id IS NULL
+        ORDER BY a.updated_at,a.id
+        LIMIT $1`,
+      [limit],
+    );
+    if (rows.rows.length)
+      this.logger.info(
+        { count: rows.rows.length },
+        "contract.creation.reconciliation_started",
+      );
+    for (const row of rows.rows) await this.onApplicationAccepted(row.id);
   }
 
   /** Crée au plus un contrat, uniquement à partir de l'attribution persistée. */
@@ -249,6 +283,15 @@ export class ContractService {
       );
     });
 
+    this.logger.info(
+      {
+        contract_id: signed.id,
+        actor_role: actor.role,
+        status: signed.status,
+      },
+      "contract.signature.recorded",
+    );
+
     if (signed.status === "awaiting_company_signature")
       await this.deliverForContract(signed.id);
     if (signed.status === "awaiting_finalization")
@@ -312,14 +355,25 @@ export class ContractService {
   private async prepareOriginal(contractId: string) {
     const contract = await this.getInternal(contractId);
     if (contract.status !== "draft") return contract;
+    let failureEvent: "contract.pdf.failed" | "contract.storage.failed" =
+      "contract.pdf.failed";
     try {
       const bytes = await generateContractPdf(
         contract.id,
         contract.document_version,
         contract.snapshot,
       );
+      this.logger.info(
+        { contract_id: contract.id, document_version: contract.document_version },
+        "contract.pdf.generated",
+      );
       const path = `contracts/${contract.id}/v${contract.document_version}/original.pdf`;
+      failureEvent = "contract.storage.failed";
       await this.store.upload(path, bytes);
+      this.logger.info(
+        { contract_id: contract.id, document_kind: "original" },
+        "contract.storage.written",
+      );
       const ready = await this.db.transaction(async (db) => {
         const updated = (
           await db.query<DbContractRow>(
@@ -344,7 +398,7 @@ export class ContractService {
       await this.deliverForContract(contract.id);
       return ready;
     } catch (error) {
-      await this.recordFailure(contract.id, error);
+      await this.recordFailure(contract.id, failureEvent, error);
       return this.getInternal(contract.id);
     }
   }
@@ -353,16 +407,31 @@ export class ContractService {
     const contract = await this.getInternal(contractId);
     if (contract.status === "completed") return contract;
     if (contract.status !== "awaiting_finalization") return contract;
+    let failureEvent:
+      | "contract.finalization.failed"
+      | "contract.pdf.failed"
+      | "contract.storage.failed" = "contract.finalization.failed";
     try {
       const signatures = await this.signatures(contract.id);
+      failureEvent = "contract.pdf.failed";
       const bytes = await generateContractPdf(
         contract.id,
         contract.document_version,
         contract.snapshot,
         signatures,
       );
+      this.logger.info(
+        { contract_id: contract.id, document_version: contract.document_version },
+        "contract.pdf.generated",
+      );
       const path = `contracts/${contract.id}/v${contract.document_version}/final.pdf`;
+      failureEvent = "contract.storage.failed";
       await this.store.upload(path, bytes);
+      this.logger.info(
+        { contract_id: contract.id, document_kind: "final" },
+        "contract.storage.written",
+      );
+      failureEvent = "contract.finalization.failed";
       const completed = await this.db.transaction(async (db) => {
         const updated = (
           await db.query<DbContractRow>(
@@ -392,9 +461,13 @@ export class ContractService {
         return result;
       });
       await this.deliverForContract(contract.id);
+      this.logger.info(
+        { contract_id: contract.id, status: completed.status },
+        "contract.finalization.completed",
+      );
       return completed;
     } catch (error) {
-      await this.recordFailure(contract.id, error);
+      await this.recordFailure(contract.id, failureEvent, error);
       return this.getInternal(contract.id);
     }
   }
@@ -559,6 +632,14 @@ export class ContractService {
               SET status='sent',sent_at=now(),last_error_code=NULL WHERE id=$1`,
           [delivery.id],
         );
+        this.logger.info(
+          {
+            contract_id: contract.id,
+            email_kind: delivery.kind,
+            attempt_id: delivery.id,
+          },
+          "contract.email.sent",
+        );
       } catch (error) {
         await this.db.query(
           `UPDATE contract_email_deliveries
@@ -566,8 +647,13 @@ export class ContractService {
           [delivery.id, errorCode(error)],
         );
         this.logger.error(
-          { contract_id: contract.id, email_kind: delivery.kind },
-          "contract_email_delivery_failed",
+          {
+            contract_id: contract.id,
+            email_kind: delivery.kind,
+            attempt_id: delivery.id,
+            error_code: errorCode(error),
+          },
+          "contract.email.failed",
         );
       }
     }
@@ -735,7 +821,14 @@ export class ContractService {
     return mapContract(row);
   }
 
-  private async recordFailure(contractId: string, error: unknown) {
+  private async recordFailure(
+    contractId: string,
+    event:
+      | "contract.pdf.failed"
+      | "contract.storage.failed"
+      | "contract.finalization.failed",
+    error: unknown,
+  ) {
     const code = errorCode(error);
     await this.db.query(
       "UPDATE contracts SET last_error_code=$2 WHERE id=$1",
@@ -743,7 +836,7 @@ export class ContractService {
     );
     this.logger.error(
       { contract_id: contractId, error_code: code },
-      "contract_document_processing_failed",
+      event,
     );
   }
 }
