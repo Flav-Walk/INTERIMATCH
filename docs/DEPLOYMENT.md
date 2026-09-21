@@ -86,3 +86,22 @@ GET  /api/v1/company/media/unsplash?query=restaurant  → 200 en tant qu'entrepr
 POST /api/v1/company/media     → 201 avec une image JPEG
 POST /api/v1/missions/:id/publish sans photo → 409 MISSION_MEDIA_REQUIRED
 ```
+
+## Documents contractuels — prérequis
+
+Ces opérations restent manuelles et n'ont pas été exécutées pendant le
+développement :
+
+1. appliquer la migration additive `011_contracts.sql` avant le nouveau code ;
+2. créer dans Supabase un bucket **privé** `contract-documents`, sans policy de
+   lecture publique ni URL permanente ;
+3. configurer côté Render uniquement `BREVO_API_KEY`, `BREVO_SENDER_EMAIL`,
+   `BREVO_SENDER_NAME` et `FRONTEND_URL` ; les trois variables Brevo doivent être
+   toutes absentes ou toutes présentes et ne doivent jamais être préfixées
+   `VITE_` ;
+4. valider l'expéditeur chez Brevo. Le backend appelle uniquement
+   `POST https://api.brevo.com/v3/smtp/email`, jamais SMTP.
+
+Le boot journalise seulement l'activation des capacités. Les logs d'échec ne
+contiennent ni clé, ni destinataire, ni contenu. Tout secret communiqué hors
+du coffre doit être révoqué puis remplacé avant configuration.

@@ -18,6 +18,7 @@ import type { ApplicationService } from "./applications/service.js";
 import type { PublicJobOfferService } from "./public-data/service.js";
 import { publicJobOffersRouter } from "./public-data/routes.js";
 import type { MissionMediaService } from "./media/service.js";
+import type { ContractService } from "./contracts/service.js";
 import { missionMediaRouter } from "./media/routes.js";
 import { requireAuth, requireRole } from "./auth/routes.js";
 import { HttpError } from "./errors.js";
@@ -71,6 +72,7 @@ export function createApp(
   applications?: ApplicationService,
   publicOffers?: PublicJobOfferService,
   missionMedia?: MissionMediaService,
+  contracts?: ContractService,
 ) {
   const app = express();
   const logger = pino({
@@ -167,7 +169,14 @@ export function createApp(
   if (accounts)
     app.use(
       "/api/v1",
-      accountRouter(config, accounts, workers, missions, applications),
+      accountRouter(
+        config,
+        accounts,
+        workers,
+        missions,
+        applications,
+        contracts,
+      ),
     );
   app.use((_req, res) => {
     res.status(404).json({

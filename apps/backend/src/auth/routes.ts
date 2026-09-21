@@ -26,6 +26,8 @@ import type { MissionService } from "../missions/service.js";
 import { missionRouter } from "../missions/routes.js";
 import type { ApplicationService } from "../applications/service.js";
 import { applicationRouter } from "../applications/routes.js";
+import type { ContractService } from "../contracts/service.js";
+import { contractRouter } from "../contracts/routes.js";
 export const requireAuth =
   (service: AccountService): RequestHandler =>
   async (req, res, next) => {
@@ -61,6 +63,7 @@ export function accountRouter(
   workers?: WorkerService,
   missions?: MissionService,
   applications?: ApplicationService,
+  contracts?: ContractService,
 ) {
   const router = Router();
   const origin: RequestHandler = (req, _res, next) => {
@@ -161,6 +164,7 @@ export function accountRouter(
   if (workers) router.use(workerRouter(service, workers));
   if (missions) router.use(missionRouter(missions));
   if (applications) router.use(applicationRouter(applications));
+  if (contracts) router.use(contractRouter(contracts));
   router.get("/companies/me", requireRole("company"), async (_req, res) =>
     res.json(await service.me(res.locals.profile as Profile)),
   );

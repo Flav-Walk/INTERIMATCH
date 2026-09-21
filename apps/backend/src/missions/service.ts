@@ -825,6 +825,14 @@ export class MissionService {
         "UPDATE missions SET status = 'cancelled' WHERE id = $1 AND company_id = $2",
         [missionId, companyId],
       );
+      // Une mission retirée ne peut plus porter un processus de validation en
+      // cours. Les documents finalisés restent archivés et inchangés.
+      await db.query(
+        `UPDATE contracts SET status='cancelled'
+          WHERE mission_id=$1 AND company_id=$2
+            AND status NOT IN ('completed','cancelled')`,
+        [missionId, companyId],
+      );
       return loadMissionEventData(db, missionId);
     });
     const mission = await this.get(companyId, missionId);

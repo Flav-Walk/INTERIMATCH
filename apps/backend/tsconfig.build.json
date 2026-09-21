@@ -3,6 +3,7 @@
   "exclude": [
     "src/**/*.test.ts",
     "src/media/testing.ts",
+    "src/contracts/testing.ts",
     "src/scripts/test-server.ts",
     "src/scripts/local-demo-server.ts",
     "src/scripts/local-demo-data.ts"

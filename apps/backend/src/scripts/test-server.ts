@@ -15,6 +15,8 @@ import {
 import { ApplicationService } from "../applications/service.js";
 import { PublicJobOfferService } from "../public-data/service.js";
 import type { Db } from "../db.js";
+import { ContractService } from "../contracts/service.js";
+import { memoryContractStore } from "../contracts/testing.js";
 
 /**
  * Photo déterministe des missions de recette.
@@ -99,7 +101,17 @@ const missionMedia = new MissionMediaService(
   fakeUnsplashApi.service,
 );
 const missions = new MissionService(db, geocode, undefined, missionMedia);
-const applications = new ApplicationService(db);
+const contractEmail = { send: async () => undefined };
+const contractLogger = { info: () => undefined, error: () => undefined };
+const contractStorage = memoryContractStore();
+const contracts = new ContractService(
+  db,
+  contractStorage.store,
+  contractEmail,
+  "http://127.0.0.1:5174",
+  contractLogger,
+);
+const applications = new ApplicationService(db, undefined, contracts);
 const publicOffers = new PublicJobOfferService(db);
 
 /**
@@ -612,4 +624,5 @@ createApp(
   applications,
   publicOffers,
   missionMedia,
+  contracts,
 ).listen(3001, "127.0.0.1");

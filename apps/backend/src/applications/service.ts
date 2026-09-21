@@ -6,6 +6,7 @@ import type { MissionStatus } from "../missions/schemas.js";
 import type { BusinessEventPublisher } from "../events/dispatcher.js";
 import { loadApplicationEventData } from "../events/payloads.js";
 import type { ApplicationStatus } from "./schemas.js";
+import type { ContractService } from "../contracts/service.js";
 
 interface ApplicationRow {
   id: string;
@@ -143,6 +144,7 @@ export class ApplicationService {
   constructor(
     public readonly db: Db,
     private events?: BusinessEventPublisher,
+    private contracts?: ContractService,
   ) {}
 
   /**
@@ -575,6 +577,8 @@ export class ApplicationService {
     // Une seule transition est autorisée depuis pending. L'émission après
     // COMMIT garantit qu'un refus métier ou un rollback ne part jamais vers n8n.
     this.events?.publish(`application.${status}`, outcome.eventData);
+    if (status === "accepted")
+      await this.contracts?.onApplicationAccepted(outcome.application.id);
     return outcome.application;
   }
 

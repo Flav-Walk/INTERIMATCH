@@ -150,3 +150,26 @@ que la **transition** vers « publiée » : les missions publiées avant cette
 
 Elles n'ont **aucune image**, d'aucune origine. Aucun visuel local, aucune photo
 Unsplash, aucun média prétendument fourni par la source.
+
+## Documents contractuels de mission
+
+Toutes ces routes sont sous `/api/v1`, exigent un bearer InteriMatch et ne
+renvoient jamais de chemin ou d'URL Supabase. Un UUID appartenant à une autre
+partie répond `404 DOCUMENT_NOT_FOUND`, sans confirmer son existence.
+
+| Méthode et route | Rôle | Corps | Réponse 200 |
+| --- | --- | --- | --- |
+| `GET /workers/me/documents` | worker | aucun | `{ documents: ContractListItem[] }` |
+| `GET /company/me/documents` | company | aucun | `{ documents: ContractListItem[] }` |
+| `GET /documents/:id` | worker ou company partie au document | aucun | détail, snapshot figé, traces et `download_available` |
+| `POST /documents/:id/sign` | partie dont c'est le tour | `{ "accepted": true }` strict | détail après transition |
+| `GET /documents/:id/download` | partie au document | aucun | PDF en attachment |
+
+La liste expose les identifiants métier, type, statut, dates et résumés des
+parties. Le détail ajoute le snapshot et les traces de validation. Chemins de
+stockage, empreintes et erreurs internes ne sont jamais exposés.
+
+Erreurs : `400 VALIDATION_ERROR`, `401 AUTH_REQUIRED`, `403 FORBIDDEN` pour un
+rôle non admis, `404 DOCUMENT_NOT_FOUND`, `409 CONTRACT_CANCELLED`,
+`409 CONTRACT_NOT_READY`, `409 WORKER_SIGNATURE_REQUIRED` et
+`409 DOCUMENT_NOT_READY`. Une double validation est idempotente.

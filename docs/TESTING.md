@@ -40,6 +40,34 @@ Coverage généré et conservé comme livrable final ; pas de pourcentage revend
 - Le serveur de production refuse les inscriptions, connexions et sessions portant un domaine réservé `.test`. Les tests locaux les autorisent volontairement.
 - Ces barrières protègent les chemins applicatifs et les scripts livrés. Un accès SQL privilégié reste capable d'écrire directement : les droits et procédures Supabase demeurent donc une frontière opérationnelle obligatoire.
 
+## Workflow documentaire
+
+`contracts.test.ts` applique toutes les migrations dans PGlite et couvre
+candidature non acceptée, unicité, PDF serveur, snapshot immuable, ordre et
+idempotence des validations, finalisation, outbox, panne email sans rollback,
+listes, IDOR et téléchargement. `email.test.ts` remplace `fetch` : aucun test ne
+contacte Brevo et les logs sont vérifiés sans secret ni contenu. La configuration
+absente ou partielle est testée séparément.
+
+Le premier scénario `e2e/applications.spec.ts` est full-stack : acceptation,
+création, validation worker, validation entreprise, finalisation et PDF retrouvé
+par les deux comptes. Il tourne en desktop et mobile avec PGlite, stockage
+mémoire et email mocké ; aucun service distant n'est appelé.
+
+### Données personnelles et conservation proposée
+
+Le snapshot conserve identités et coordonnées, mission, rémunération, date
+d'acceptation et traces de validation. PostgreSQL contient métadonnées/traces,
+Supabase privé les PDF et Brevo reçoit nom, email et contenu transactionnel.
+Finalité : préparer, valider et restituer le document de mission. L'accès est
+limité aux deux parties authentifiées.
+
+Aucune suppression automatique n'est implémentée. Avant production, le
+responsable de traitement doit fixer base légale, information, durée de
+conservation, procédure d'exercice des droits et arbitrer effacement ou
+anonymisation avec les obligations de conservation contractuelle. Sauvegardes
+et purge Brevo doivent intégrer cette politique.
+
 ## Lot SL2e — Données publiques France Travail
 
 - **Normaliseur France Travail (`apps/backend/src/public-data/normalizer.test.ts`)** :

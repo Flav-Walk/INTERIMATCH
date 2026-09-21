@@ -66,6 +66,20 @@ export function readConfig(env: NodeJS.ProcessEnv): Config {
     throw new Error(
       "Configuration invalide : N8N_WEBHOOK_URL et N8N_WEBHOOK_SECRET doivent être définis ensemble",
     );
+  const brevo = [
+    config.BREVO_API_KEY,
+    config.BREVO_SENDER_EMAIL,
+    config.BREVO_SENDER_NAME,
+  ].filter(Boolean).length;
+  if (brevo !== 0 && brevo !== 3)
+    throw new Error(
+      "Configuration invalide : BREVO_API_KEY, BREVO_SENDER_EMAIL et BREVO_SENDER_NAME doivent être définis ensemble",
+    );
+  if (
+    config.BREVO_SENDER_EMAIL &&
+    !z.email().safeParse(config.BREVO_SENDER_EMAIL).success
+  )
+    throw new Error("Configuration invalide : BREVO_SENDER_EMAIL");
   if (new URL(config.FRONTEND_URL).origin !== config.FRONTEND_URL)
     throw new Error("FRONTEND_URL doit être une origine sans chemin");
   return {

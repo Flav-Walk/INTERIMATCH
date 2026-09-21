@@ -30,6 +30,27 @@ Les résultats inéligibles gardent leurs raisons et ne sont pas proposés autom
 
 Le PDF page 4 impose deux automatisations ; Slack/Discord y sont conseillés, pas obligatoires. Brevo est conservé. Workflow A : notifier une proposition issue d’un match. Workflow B : informer l’entreprise d’une acceptation. Le backend enregistre toujours l’état métier et la notification en application avant d’émettre ; n8n ne décide ni de l’éligibilité ni de l’attribution. n8n possède tous les emails métier ; le backend possède les emails d’auth classique via une abstraction EmailService. Aucun envoi double en secours implicite.
 
+Exception ultérieure : le workflow contractuel est entièrement possédé par le
+backend, sans n8n. Ses notifications passent directement par Brevo API v3 et
+une outbox PostgreSQL idempotente. Cette exception ne déplace ni le matching ni
+les autres webhooks hors de leur architecture existante.
+
+## D08 — Validation contractuelle interne
+
+Le prototype fige un snapshot, journalise utilisateur authentifié, rôle,
+version, états et horodatage, puis archive un PDF final. Sans prestataire de
+confiance qualifié, preuve cryptographique personnelle et clauses légales
+complètes, l'interface et le PDF parlent de **validation interne de
+démonstration**, jamais de signature qualifiée ou de contrat de travail complet.
+
+Pour devenir juridiquement exploitable, il manque notamment l'identification
+légale complète de l'employeur et du salarié, convention collective et
+classification, qualification/type/durée du contrat, temps de travail et
+pauses, salaire détaillé et accessoires, période d'essai, congés/indemnités,
+motif et mentions propres au travail temporaire, ainsi que le choix et la preuve
+d'un procédé de signature adapté. Ces champs doivent être collectés et validés
+par le métier/juridique ; aucune valeur par défaut ne doit être inventée.
+
 ## D06 — Ordre de travail et Git
 
 Consigne actualisée : opérations Git locales autorisées, commits/push/PR/publication interdits. Dépôt initialisé avec origin officiel, remote vide. Deux worktrees frères sans premier commit permettent le développement sans mélanger les applications sur main. Avant tout premier commit applicatif, rattacher leurs HEAD au premier commit main selon DEPLOYMENT.md ; aucun historique parallèle créé.
