@@ -96,6 +96,14 @@ const CompanyApplicationsPage = lazy(() =>
     default: m.CompanyApplicationsPage,
   })),
 );
+const DocumentsPage = lazy(() =>
+  import("./pages/Documents").then((m) => ({ default: m.DocumentsPage })),
+);
+const DocumentDetailPage = lazy(() =>
+  import("./pages/DocumentDetail").then((m) => ({
+    default: m.DocumentDetailPage,
+  })),
+);
 const AdminPage = lazy(() =>
   import("./pages/Admin").then((m) => ({ default: m.AdminPage })),
 );
@@ -135,6 +143,14 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
                 <Route path="missions" element={<Missions />} />
                 <Route path="missions/:id" element={<WorkerMissionDetail />} />
                 <Route path="applications" element={<WorkerApplications />} />
+                <Route
+                  path="documents"
+                  element={<DocumentsPage role="worker" />}
+                />
+                <Route
+                  path="documents/:id"
+                  element={<DocumentDetailPage role="worker" />}
+                />
                 <Route path="public-offers" element={<WorkerPublicOffers />} />
                 <Route
                   path="public-offers/:id"
@@ -157,6 +173,14 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
                 <Route
                   path="applications"
                   element={<CompanyApplicationsPage />}
+                />
+                <Route
+                  path="documents"
+                  element={<DocumentsPage role="company" />}
+                />
+                <Route
+                  path="documents/:id"
+                  element={<DocumentDetailPage role="company" />}
                 />
                 {/* Ancien libellé : les liens déjà partagés doivent survivre. */}
                 <Route

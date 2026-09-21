@@ -4,6 +4,7 @@
 @import "./public-offers.css";
 @import "./brand.css";
 @import "./mission-photo.css";
+@import "./documents.css";
 * {
   box-sizing: border-box;
 }

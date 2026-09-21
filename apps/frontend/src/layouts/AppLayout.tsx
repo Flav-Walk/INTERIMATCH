@@ -68,6 +68,11 @@ const links: Record<Role, NavItem[]> = {
       icon: <ClipboardList size={17} aria-hidden="true" />,
     },
     {
+      to: "/worker/documents",
+      label: "Mes documents",
+      icon: <FileText size={17} aria-hidden="true" />,
+    },
+    {
       to: "/worker/public-offers",
       label: "Offres France Travail",
       icon: <Globe size={17} aria-hidden="true" />,
@@ -88,6 +93,11 @@ const links: Record<Role, NavItem[]> = {
       to: "/company/applications",
       label: "Candidatures",
       icon: <FileText size={17} aria-hidden="true" />,
+    },
+    {
+      to: "/company/documents",
+      label: "Documents",
+      icon: <ClipboardList size={17} aria-hidden="true" />,
     },
     {
       to: "/company/profile",

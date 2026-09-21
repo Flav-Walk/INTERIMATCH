@@ -120,6 +120,23 @@ export function PolitiqueConfidentialite() {
           serveur, doté de l’attribut <code>HttpOnly</code>. Aucun cookie tiers
           publicitaire ou traceur n’est employé.
         </p>
+
+        <h3>F. Documents de mission et validations internes</h3>
+        <ul>
+          <li>
+            Copie figée des identités, coordonnées, informations de mission,
+            rémunération déclarée et date d’acceptation utilisées pour produire
+            le document ;
+          </li>
+          <li>
+            Horodatage, rôle, version et transitions associés aux validations
+            internes de l’intérimaire et de l’entreprise ;
+          </li>
+          <li>
+            PDF initial et final conservés dans un espace de stockage privé,
+            accessible uniquement aux deux parties via le serveur InteriMatch.
+          </li>
+        </ul>
       </section>
 
       <section>
@@ -151,6 +168,12 @@ export function PolitiqueConfidentialite() {
             <strong>Notifications de suivi de parcours :</strong> transmission
             d’événements applicatifs (via webhook ou email transactionnel lorsque
             activé).
+          </li>
+          <li>
+            <strong>Préparation et suivi des documents de mission :</strong>{" "}
+            génération, validation interne, archivage et restitution aux deux
+            parties. Ce mécanisme de démonstration n’est pas une signature
+            électronique qualifiée.
           </li>
         </ul>
       </section>
@@ -207,6 +230,13 @@ export function PolitiqueConfidentialite() {
           pas en œuvre de purge ou d’effacement automatique programmé des
           comptes ou des données de profil. Les données demeurent enregistrées
           jusqu’à demande explicite de suppression formulée par l’utilisateur.
+        </p>
+        <p>
+          Les documents finalisés ne font l’objet d’aucune suppression
+          automatique dans le prototype. Leur durée, les sauvegardes et les
+          modalités d’effacement ou d’anonymisation doivent être arrêtées avant
+          production en tenant compte des obligations de conservation
+          applicables aux documents contractuels.
         </p>
       </section>
 

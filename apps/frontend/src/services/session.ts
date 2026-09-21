@@ -130,6 +130,48 @@ export async function api<T>(
     throw error;
   }
 }
+
+/** Téléchargement authentifié d'un binaire, avec le même renouvellement de
+ * session que le client JSON. */
+export async function apiBlob(path: string): Promise<Blob> {
+  if (
+    !config?.VITE_API_URL ||
+    !path.startsWith("/") ||
+    path.startsWith("//") ||
+    path.includes("://")
+  )
+    throw new ApiError("Chemin API invalide.", 0, "INVALID_PATH");
+  const baseUrl = config.VITE_API_URL.replace(/\/$/, "");
+  const request = () =>
+    fetch(`${baseUrl}${path}`, {
+      credentials: "include",
+      headers: {
+        Accept: "application/pdf",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+  let response = await request();
+  if (response.status === 401) {
+    await refreshSession();
+    response = await request();
+  }
+  if (!response.ok) {
+    const payload: unknown = await response.json().catch(() => null);
+    const detail =
+      payload && typeof payload === "object" && "error" in payload
+        ? (payload.error as Record<string, unknown>)
+        : {};
+    throw new ApiError(
+      typeof detail.message === "string"
+        ? detail.message
+        : "Le document est indisponible.",
+      response.status,
+      typeof detail.code === "string" ? detail.code : "HTTP_ERROR",
+      response.headers.get("X-Request-Id") ?? undefined,
+    );
+  }
+  return response.blob();
+}
 // Un compte connecté a toujours un espace : le profil se complète depuis l'espace,
 // il ne conditionne plus l'accès.
 export function destination(user: User) {

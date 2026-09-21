@@ -83,9 +83,7 @@ async function makeEmployable(
   await save(page, "Votre métier");
 
   if (skills.length) {
-    const competences = section(page, "Vos compétences");
-    for (const name of skills)
-      await competences.getByRole("checkbox", { name }).check();
+    for (const name of skills) await chooseSkill(page, name);
     await save(page, "Vos compétences");
   }
 
@@ -104,6 +102,23 @@ async function makeEmployable(
 
 /** Un fieldset est exposé comme un groupe nommé par sa légende. */
 const section = (page: Page, name: string) => page.getByRole("group", { name });
+
+/** La case native est conservée pour le clavier et les technologies
+ * d'assistance, tandis que l'utilisateur à la souris active la pastille
+ * visible portée par le même label implicite. */
+async function chooseSkill(page: Page, name: string) {
+  const competences = section(page, "Vos compétences");
+  const checkbox = competences.getByRole("checkbox", { name, exact: true });
+  await expect(checkbox).toHaveAccessibleName(name);
+  await checkbox.focus();
+  await expect(checkbox).toBeFocused();
+  await checkbox.press("Space");
+  await expect(checkbox).toBeChecked();
+  await checkbox.press("Space");
+  await expect(checkbox).not.toBeChecked();
+  await competences.getByText(name, { exact: true }).click();
+  await expect(checkbox).toBeChecked();
+}
 
 async function save(page: Page, name: string) {
   await expect(section(page, name)).toBeVisible();
@@ -291,9 +306,7 @@ test("a new account becomes an intérimaire, is toured once, and cannot reach th
     .selectOption("serveur");
   await save(page, "Votre métier");
 
-  await section(page, "Vos compétences")
-    .getByLabel("Service en salle", { exact: true })
-    .check();
+  await chooseSkill(page, "Service en salle");
   await save(page, "Vos compétences");
 
   await section(page, "Votre mobilité")
@@ -1529,9 +1542,8 @@ test("matching connects a published mission to a compatible intérimaire", async
   await metier.getByLabel("Métier principal").selectOption("serveur");
   await save(page, "Votre métier");
 
-  const competences = section(page, "Vos compétences");
-  await competences.getByRole("checkbox", { name: "Service en salle" }).check();
-  await competences.getByRole("checkbox", { name: "Relation client" }).check();
+  await chooseSkill(page, "Service en salle");
+  await chooseSkill(page, "Relation client");
   await save(page, "Vos compétences");
 
   const mobilite = section(page, "Votre mobilité");

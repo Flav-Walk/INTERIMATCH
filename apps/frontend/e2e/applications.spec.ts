@@ -190,6 +190,126 @@ test("un worker postule, l’entreprise accepte et l’état persiste", async ({
     path: testInfo.outputPath("worker-application-accepted.png"),
     fullPage: true,
   });
+
+  // Le parcours poursuit le workflow documentaire réel, sans interception
+  // réseau et avec une doublure locale pour le stockage et l'email uniquement.
+  await page.goto("/worker/documents");
+  await expect(
+    page.getByRole("heading", { name: "Mes documents", exact: true }),
+  ).toBeVisible();
+  const workerDocument = page.getByRole("listitem").filter({
+    has: page.getByRole("heading", { name: "Serveur candidature" }),
+  });
+  await expect(workerDocument).toContainText("À valider");
+  await workerDocument.getByRole("link", { name: "Voir" }).click();
+  await page.getByRole("checkbox").check();
+  await page.getByRole("button", { name: "Valider le document" }).click();
+  await expect(page.getByText("En attente de l’entreprise")).toBeVisible();
+  await page.screenshot({
+    path: testInfo.outputPath("worker-document-signed.png"),
+    fullPage: true,
+  });
+  await logout(page);
+
+  await signIn(page, companyEmail);
+  await expect(page).toHaveURL(/\/company$/);
+  await page.goto("/company/documents");
+  const companyDocument = page.getByRole("listitem").filter({
+    has: page.getByRole("heading", { name: "Serveur candidature" }),
+  });
+  await expect(companyDocument).toContainText("À valider");
+  await companyDocument.getByRole("link", { name: "Voir" }).click();
+  await page.getByRole("checkbox").check();
+  await page.getByRole("button", { name: "Valider le document" }).click();
+  await expect(page.getByText("Finalisé", { exact: true })).toBeVisible();
+  const companyDownload = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Télécharger le PDF" }).click();
+  expect((await companyDownload).suggestedFilename()).toMatch(/\.pdf$/);
+  await page.screenshot({
+    path: testInfo.outputPath("company-document-finalized.png"),
+    fullPage: true,
+  });
+  await logout(page);
+
+  await signIn(page, workerEmail);
+  await expect(page).toHaveURL(/\/worker$/);
+  await page.goto("/worker/documents");
+  const finalizedDocument = page.getByRole("listitem").filter({
+    has: page.getByRole("heading", { name: "Serveur candidature" }),
+  });
+  await expect(finalizedDocument).toContainText("Finalisé");
+  await finalizedDocument.getByRole("link", { name: "Voir" }).click();
+  const workerDownload = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Télécharger le PDF" }).click();
+  expect((await workerDownload).suggestedFilename()).toMatch(/\.pdf$/);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+
+  if (testInfo.project.name === "desktop") {
+    const sizes = [1920, 1440, 768, 390];
+    const assertFits = () =>
+      page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      );
+    for (const width of sizes) {
+      await page.setViewportSize({ width, height: width <= 768 ? 844 : 1000 });
+      await expect(
+        page.getByRole("heading", { name: "Serveur candidature", level: 1 }),
+      ).toBeVisible();
+      await expect(page.getByText("Finalisé", { exact: true })).toBeVisible();
+      await page.screenshot({
+        path: testInfo.outputPath(
+          "responsive-" + width + "-worker-detail.png",
+        ),
+        fullPage: true,
+      });
+      expect(await assertFits()).toBe(true);
+      await page.goto("/worker/documents");
+      await expect(finalizedDocument).toContainText("Finalisé");
+      await page.screenshot({
+        path: testInfo.outputPath(
+          "responsive-" + width + "-worker-list.png",
+        ),
+        fullPage: true,
+      });
+      expect(await assertFits()).toBe(true);
+      await finalizedDocument.getByRole("link", { name: "Voir" }).click();
+    }
+
+    await logout(page);
+    await signIn(page, companyEmail);
+    await expect(page).toHaveURL(/\/company$/);
+    for (const width of sizes) {
+      await page.setViewportSize({ width, height: width <= 768 ? 844 : 1000 });
+      await page.goto("/company/documents");
+      const responsiveCompanyDocument = page.getByRole("listitem").filter({
+        has: page.getByRole("heading", { name: "Serveur candidature" }),
+      });
+      await expect(responsiveCompanyDocument).toContainText("Finalisé");
+      await page.screenshot({
+        path: testInfo.outputPath(
+          "responsive-" + width + "-company-list.png",
+        ),
+        fullPage: true,
+      });
+      expect(await assertFits()).toBe(true);
+      await responsiveCompanyDocument.getByRole("link", { name: "Voir" }).click();
+      await expect(
+        page.getByRole("heading", { name: "Serveur candidature", level: 1 }),
+      ).toBeVisible();
+      await expect(page.getByText("Finalisé", { exact: true })).toBeVisible();
+      await page.screenshot({
+        path: testInfo.outputPath(
+          "responsive-" + width + "-company-detail.png",
+        ),
+        fullPage: true,
+      });
+      expect(await assertFits()).toBe(true);
+    }
+  }
 });
 
 test("une candidature refusée reste visible et ne redevient pas disponible", async ({
