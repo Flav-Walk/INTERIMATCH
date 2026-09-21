@@ -1,0 +1,82 @@
+/* ── FilterChip.css ──────────────────────────────────────── */
+
+.im-filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-height: 40px;
+  padding: var(--sp-2) var(--sp-4);
+  border: 1px solid var(--c-ink-400);
+  border-radius: var(--r-pill);
+  background: var(--c-surface);
+  color: var(--c-ink-700);
+  font-family: var(--font-ui);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    border-color     var(--dur-fast) var(--ease-out),
+    color            var(--dur-fast) var(--ease-out),
+    transform        var(--dur-fast) var(--ease-spring);
+}
+
+.im-filter-chip:hover:not(:disabled) {
+  background: var(--c-forest-50);
+  border-color: var(--c-forest-500);
+  color: var(--c-ink-950);
+}
+
+.im-filter-chip:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.im-filter-chip:focus-visible {
+  outline: 2px solid var(--c-forest-500);
+  outline-offset: 2px;
+}
+
+/* Actif : fond plein + coche (deux indices en plus de aria-pressed) */
+.im-filter-chip--selected,
+.im-filter-chip--selected:hover:not(:disabled) {
+  background: var(--c-forest-800);
+  border-color: var(--c-forest-800);
+  color: var(--c-white);
+}
+
+.im-filter-chip:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Coche : apparition par scale (transform seul) */
+.im-filter-chip__check {
+  flex-shrink: 0;
+  animation: im-scale-in var(--dur-normal) var(--ease-spring) both;
+}
+
+/* Compteur */
+.im-filter-chip__count {
+  min-width: 20px;
+  padding: 1px var(--sp-2);
+  border-radius: var(--r-pill);
+  background: var(--c-ink-100);
+  color: var(--c-ink-700);
+  font-family: var(--font-display);
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  line-height: 1.5;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.im-filter-chip--selected .im-filter-chip__count {
+  background: color-mix(in oklch, var(--c-white) 22%, transparent);
+  color: var(--c-white);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .im-filter-chip__check { animation: none; }
+}
