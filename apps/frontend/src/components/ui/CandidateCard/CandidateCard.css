@@ -1,0 +1,203 @@
+/* ── CandidateCard.css ───────────────────────────────────── */
+
+.candidate-card {
+  display:         flex;
+  flex-direction:  column;
+  background:      var(--c-surface);
+  border-radius:   var(--r-card);
+  box-shadow:      var(--shadow-card);
+  border:          1px solid transparent;
+  overflow:        hidden;
+  text-decoration: none;
+  color:           inherit;
+  cursor:          pointer;
+  transition:
+    box-shadow   var(--dur-normal) var(--ease-out),
+    border-color var(--dur-normal) var(--ease-out),
+    transform    var(--dur-normal) var(--ease-out);
+  will-change: transform, box-shadow;
+}
+
+.candidate-card:hover {
+  box-shadow:   var(--shadow-hover);
+  border-color: color-mix(in oklch, var(--c-forest-500) 20%, transparent);
+  transform:    translateY(-3px);
+}
+
+.candidate-card:focus-visible {
+  outline:      2px solid var(--c-forest-500);
+  outline-offset: 2px;
+  box-shadow:   var(--shadow-focus);
+}
+
+.candidate-card:active {
+  transform: translateY(-1px);
+}
+
+/* Skeleton : pas de lift au survol, pas de clic */
+.candidate-card--skeleton {
+  cursor: default;
+  pointer-events: none;
+}
+
+/* ── AVATAR ZONE ─────────────────────────────────────────── */
+
+.candidate-card__avatar-zone {
+  position:        relative;
+  height:          160px;
+  background:      var(--c-forest-50);
+  display:         flex;
+  align-items:     center;
+  justify-content: center;
+  flex-shrink:     0;
+}
+
+.candidate-card__avatar {
+  width:           72px;
+  height:          72px;
+  border-radius:   50%;
+  display:         flex;
+  align-items:     center;
+  justify-content: center;
+  transition:      transform var(--dur-slow) var(--ease-spring);
+}
+
+/* Couleur d'avatar : 4 variantes déterministes (voir getAvatarVariant) */
+.candidate-card__avatar--1 { background: var(--c-avatar-1); color: var(--c-white); }
+.candidate-card__avatar--2 { background: var(--c-avatar-2); color: var(--c-white); }
+.candidate-card__avatar--3 { background: var(--c-avatar-3); color: var(--c-white); }
+.candidate-card__avatar--4 { background: var(--c-avatar-4); color: var(--c-white); }
+
+.candidate-card:hover .candidate-card__avatar {
+  transform: scale(1.08);
+}
+
+.candidate-card__initials {
+  font-family:   var(--font-display);
+  font-size:     var(--fs-xl);
+  font-weight:   900;
+  letter-spacing: var(--ls-tight);
+  line-height:   1;
+  user-select:   none;
+}
+
+/* Badges dans l'avatar zone */
+.candidate-card__match {
+  position: absolute;
+  top:   var(--sp-3);
+  right: var(--sp-3);
+}
+
+.candidate-card__app-status {
+  position: absolute;
+  top:   var(--sp-3);
+  left:  var(--sp-3);
+}
+
+/* ── BODY ────────────────────────────────────────────────── */
+
+.candidate-card__body {
+  padding: var(--sp-4) var(--sp-5) var(--sp-3);
+  display: flex;
+  flex-direction: column;
+  gap:     var(--sp-2);
+  flex:    1;
+}
+
+.candidate-card__name {
+  font-family:    var(--font-display);
+  font-size:      var(--fs-md);
+  font-weight:    800;
+  letter-spacing: var(--ls-tight);
+  text-transform: uppercase;
+  color:          var(--c-ink-950);
+  line-height:    var(--lh-tight);
+}
+
+.candidate-card__job {
+  font-size:   var(--fs-sm);
+  font-weight: 600;
+  color:       var(--c-forest-500);
+}
+
+.candidate-card__meta {
+  list-style: none;
+  display:    flex;
+  flex-direction: column;
+  gap:        var(--sp-1);
+}
+
+.candidate-card__meta li {
+  display:     flex;
+  align-items: center;
+  gap:         var(--sp-2);
+  font-size:   var(--fs-sm);
+  font-weight: 500;
+  color:       var(--c-ink-500);
+}
+
+.candidate-card__meta li svg {
+  color:      var(--c-ink-400);
+  flex-shrink: 0;
+}
+
+/* Compétences */
+.candidate-card__skills {
+  list-style: none;
+  display:    flex;
+  flex-wrap:  wrap;
+  gap:        var(--sp-1);
+  margin-top: var(--sp-1);
+}
+
+.candidate-card__skill-pill {
+  font-size:    var(--fs-xs);
+  font-weight:  600;
+  padding:      2px var(--sp-2);
+  border-radius: var(--r-pill);
+  background:   var(--c-forest-100);
+  color:        var(--c-forest-800);
+  letter-spacing: var(--ls-wide);
+  text-transform: uppercase;
+  white-space:  nowrap;
+}
+
+.candidate-card__skill-pill--more {
+  background: var(--c-ink-100);
+  color:      var(--c-ink-500);
+}
+
+/* ── FOOTER ──────────────────────────────────────────────── */
+
+.candidate-card__foot {
+  display:     flex;
+  align-items: center;
+  padding:     var(--sp-3) var(--sp-5) var(--sp-4);
+  border-top:  1px solid var(--c-ink-100);
+  margin-top:  auto;
+  gap:         var(--sp-2);
+}
+
+.candidate-card__cta {
+  font-size:   var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: var(--ls-wider);
+  text-transform: uppercase;
+  color:       var(--c-forest-500);
+  transition:  color var(--dur-fast) var(--ease-out);
+}
+
+.candidate-card__arrow {
+  margin-left: auto;
+  color:       var(--c-ink-400);
+  display:     flex;
+  transition:
+    color     var(--dur-fast) var(--ease-out),
+    transform var(--dur-normal) var(--ease-spring);
+}
+
+.candidate-card:hover .candidate-card__cta  { color: var(--c-forest-800); }
+.candidate-card:hover .candidate-card__arrow {
+  color:     var(--c-forest-500);
+  transform: translateX(4px);
+}
