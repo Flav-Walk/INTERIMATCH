@@ -34,3 +34,11 @@ La suite Playwright démarre elle-même le frontend et un backend sur moteur Pos
 Vitest mesure la couche `src/services` ; les vues React sont couvertes par Playwright. Voir `docs/TESTING.md` et `docs/DECISIONS.md` D09.
 
 Documentation commune dans le worktree voisin `Piscine Epitech/docs`. Les commits et les push sont réalisés par Flavien seul.
+
+## Mode démo (sans backend)
+
+`npm run dev:demo` lance le front sur http://127.0.0.1:5175 avec une API fictive
+en mémoire (`dev/demo-api.ts`) : aucune base, aucun compte. Ouvrir
+http://127.0.0.1:5175/__demo pour choisir l'espace à parcourir (intérimaire,
+entreprise, administrateur). Les écritures ne durent que jusqu'au redémarrage.
+Réservé au développement : rien de ce dossier n'entre dans le build.

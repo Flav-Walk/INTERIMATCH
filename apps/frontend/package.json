@@ -13,6 +13,7 @@
     "test:coverage": "vitest run --coverage",
     "build": "tsc --noEmit && vite build",
     "dev": "vite --host 127.0.0.1",
+    "dev:demo": "VITE_API_URL=http://127.0.0.1:5175/api/v1 VITE_SUPABASE_URL= VITE_SUPABASE_PUBLISHABLE_KEY= vite --config vite.demo.config.ts --host 127.0.0.1 --port 5175 --strictPort",
     "start": "vite preview --host 127.0.0.1",
     "test:e2e": "playwright test"
   },
