@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { Check, ShieldCheck } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
+import { Avatar } from "../components/ui/Avatar";
+import { Badge } from "../components/ui/Badge";
 import { errorMessage, type Role } from "../services/session";
 import {
   adminUserName,
@@ -50,10 +52,25 @@ export function AdminUsersTable({
             return (
               <tr key={user.id}>
                 <td>
-                  <strong>{adminUserName(user)}</strong>
-                  {ownAccount && (
-                    <span className="admin-you">Votre compte</span>
-                  )}
+                  <div className="admin-user">
+                    {/* Nom écrit à côté : avatar décoratif, sans doublon pour les lecteurs d'écran */}
+                    <Avatar
+                      name={
+                        `${user.first_name} ${user.last_name}`.trim() ||
+                        user.email
+                      }
+                      size="sm"
+                      decorative
+                    />
+                    <div className="admin-user__text">
+                      <strong>{adminUserName(user)}</strong>
+                      {ownAccount && (
+                        <Badge size="sm" variant="info">
+                          Votre compte
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
                 </td>
                 <td>{user.email}</td>
                 <td>
@@ -93,9 +110,10 @@ export function AdminUsersTable({
                       {saving ? "Enregistrement…" : "Enregistrer"}
                     </button>
                     {saved && (
-                      <span className="admin-saved" role="status">
-                        <Check size={16} aria-hidden="true" /> Enregistré
-                      </span>
+                      <Badge size="sm" variant="success" role="status">
+                        <Check size={12} aria-hidden="true" />
+                        Enregistré
+                      </Badge>
                     )}
                   </div>
                 </td>

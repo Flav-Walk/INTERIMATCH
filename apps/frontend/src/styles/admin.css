@@ -79,12 +79,17 @@
   margin-top: 5px;
   line-height: 1.35;
 }
-.admin-you {
-  display: inline-block;
-  margin-top: 4px;
-  color: var(--forest);
-  font-size: 0.76rem;
-  font-weight: 600;
+.admin-user {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.admin-user__text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-width: 0;
 }
 .admin-action {
   display: flex;
@@ -96,14 +101,6 @@
   min-height: 40px;
   padding: 8px 14px;
   white-space: nowrap;
-}
-.admin-saved {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  color: var(--forest);
-  font-size: 0.82rem;
-  font-weight: 650;
 }
 
 .admin-loading {
