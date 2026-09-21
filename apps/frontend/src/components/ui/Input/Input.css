@@ -1,0 +1,118 @@
+/* ── Input.css ───────────────────────────────────────────── */
+
+.im-input {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.im-input__label {
+  font-family: var(--font-ui);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--c-ink-950);
+}
+
+/* Masqué visuellement, toujours lu par les lecteurs d'écran */
+.im-input__label--hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.im-input__required {
+  color: var(--c-error);
+}
+
+.im-input__control {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.im-input__icon {
+  position: absolute;
+  left: var(--sp-3);
+  display: flex;
+  color: var(--c-ink-500);
+  pointer-events: none;
+}
+
+/* Le champ redéfinit tout ce que `input {}` (global.css) fixe : padding,
+   bordure, fond… pour ne pas dépendre de l'ordre de chargement. */
+.im-input__field {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: var(--sp-3) var(--sp-4);
+  border: 1px solid var(--c-ink-400);
+  border-radius: var(--r-md);
+  background: var(--c-surface);
+  color: var(--c-ink-950);
+  font-family: var(--font-ui);
+  font-size: var(--fs-base);
+  transition:
+    border-color var(--dur-fast) var(--ease-out),
+    box-shadow   var(--dur-fast) var(--ease-out);
+}
+
+.im-input--has-icon .im-input__field {
+  padding-left: var(--sp-10);
+}
+
+.im-input__field::placeholder {
+  color: var(--c-ink-500);
+}
+
+.im-input__field:hover:not(:disabled) {
+  border-color: var(--c-ink-700);
+}
+
+.im-input__field:focus-visible {
+  outline: 2px solid var(--c-forest-500);
+  outline-offset: 2px;
+  border-color: var(--c-forest-500);
+}
+
+.im-input__field:disabled {
+  background: var(--c-ink-100);
+  color: var(--c-ink-500);
+  cursor: not-allowed;
+}
+
+/* ── Aide + erreur ───────────────────────────────────────── */
+
+.im-input__hint {
+  margin: 0;
+  font-size: var(--fs-xs);
+  color: var(--c-ink-500);
+}
+
+.im-input__error {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  margin: 0;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--c-error);
+  animation: im-fade-down var(--dur-normal) var(--ease-out) both;
+}
+
+.im-input--error .im-input__field {
+  border-color: var(--c-error);
+  background: var(--c-error-bg);
+}
+
+.im-input--error .im-input__field:focus-visible {
+  outline-color: var(--c-error);
+  border-color: var(--c-error);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .im-input__error { animation: none; }
+}
