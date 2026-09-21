@@ -1,0 +1,111 @@
+/* ── NavigationItem.css ──────────────────────────────────── */
+
+.nav-item {
+  /* Couleur de la barre d'état actif. Vert par défaut : l'orange est réservé
+     aux CTA. Pour passer à l'orange : --nav-active-bar: var(--c-orange-500). */
+  --nav-active-bar: var(--c-forest-500);
+
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 44px;
+  padding: var(--sp-3) var(--sp-4);
+  border: none;
+  border-radius: var(--r-md);
+  background: transparent;
+  color: var(--c-ink-700);
+  font-family: var(--font-ui);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    transform        var(--dur-fast) var(--ease-out),
+    background-color var(--dur-fast) var(--ease-out),
+    color            var(--dur-fast) var(--ease-out);
+}
+
+/* ── Survol : léger décalage vers la droite ──────────────── */
+
+.nav-item:hover {
+  background: var(--c-forest-50);
+  color: var(--c-ink-950);
+  transform: translateX(2px);
+}
+
+/* ── Actif : fond vert léger, texte fort, barre gauche 3px ── */
+
+.nav-item--active,
+.nav-item--active:hover {
+  background: var(--c-forest-100);
+  color: var(--c-forest-900);
+}
+
+/* La barre apparaît par scaleY (transform seul, pas de height animé) */
+.nav-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: var(--sp-2);
+  bottom: var(--sp-2);
+  width: 3px;
+  border-radius: var(--r-pill);
+  background: var(--nav-active-bar);
+  transform: scaleY(0);
+  transition: transform var(--dur-normal) var(--ease-spring);
+}
+
+.nav-item--active::before {
+  transform: scaleY(1);
+}
+
+/* ── Focus clavier ───────────────────────────────────────── */
+
+.nav-item:focus-visible {
+  outline: 2px solid var(--c-forest-500);
+  outline-offset: 2px;
+}
+
+/* ── Contenu ─────────────────────────────────────────────── */
+
+.nav-item__icon {
+  flex-shrink: 0;
+}
+
+.nav-item__label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Pastille numérique */
+.nav-item__badge {
+  flex-shrink: 0;
+  min-width: 20px;
+  padding: 2px var(--sp-2);
+  border-radius: var(--r-pill);
+  background: var(--c-forest-800);
+  color: var(--c-white);
+  font-family: var(--font-display);
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  line-height: 1.4;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Texte réservé aux lecteurs d'écran (visuellement masqué) */
+.nav-item__sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

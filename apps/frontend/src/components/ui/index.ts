@@ -3,6 +3,8 @@ export { Button } from './Button';
 export type { ButtonProps } from './Button';
 export { Badge } from './Badge';
 export type { BadgeProps, BadgeVariant, BadgeSize } from './Badge';
+export { NavigationItem } from './NavigationItem';
+export type { NavigationItemProps } from './NavigationItem';
 export { Tabs, TabsList, TabsTrigger, TabsContent } from './Tabs';
 export type { TabsProps, TabsListProps, TabsTriggerProps, TabsContentProps } from './Tabs';
 export { MatchBadge, MatchBadgeSkeleton } from './MatchBadge';
