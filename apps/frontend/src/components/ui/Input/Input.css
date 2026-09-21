@@ -88,6 +88,7 @@
 
 .im-input__hint {
   margin: 0;
+  font-family: var(--font-ui);
   font-size: var(--fs-xs);
   color: var(--c-ink-500);
 }
@@ -97,6 +98,7 @@
   align-items: center;
   gap: var(--sp-1);
   margin: 0;
+  font-family: var(--font-ui);
   font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--c-error);
