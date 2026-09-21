@@ -5,3 +5,5 @@ export { MatchBadge, MatchBadgeSkeleton } from './MatchBadge';
 export type { MatchBadgeProps } from './MatchBadge';
 export { StatusBadge } from './StatusBadge';
 export type { StatusBadgeProps, BadgeStatus } from './StatusBadge';
+export { EmptyState } from './EmptyState';
+export type { EmptyStateProps } from './EmptyState';
