@@ -1,0 +1,142 @@
+/* ── Button.css ──────────────────────────────────────────── */
+
+.btn {
+  display:         inline-flex;
+  align-items:     center;
+  justify-content: center;
+  gap:             var(--sp-2);
+  border:          none;
+  border-radius:   var(--r-md);
+  font-family:     var(--font-display);
+  font-weight:     700;
+  letter-spacing:  var(--ls-wide);
+  text-transform:  uppercase;
+  cursor:          pointer;
+  white-space:     nowrap;
+  user-select:     none;
+  text-decoration: none;
+  transition:
+    background  var(--dur-fast) var(--ease-out),
+    color       var(--dur-fast) var(--ease-out),
+    box-shadow  var(--dur-fast) var(--ease-out),
+    transform   var(--dur-fast) var(--ease-spring),
+    opacity     var(--dur-fast);
+  position: relative;
+  overflow: hidden;
+}
+
+/* ── Tailles ─────────────────────────────────────────────── */
+
+.btn--sm {
+  padding:   var(--sp-2) var(--sp-4);
+  font-size: var(--fs-xs);
+  height:    32px;
+}
+.btn--md {
+  padding:   var(--sp-3) var(--sp-6);
+  font-size: var(--fs-sm);
+  height:    42px;
+}
+.btn--lg {
+  padding:   var(--sp-4) var(--sp-8);
+  font-size: var(--fs-base);
+  height:    52px;
+}
+
+/* ── Variantes ───────────────────────────────────────────── */
+
+/* Primary */
+.btn--primary {
+  background:  var(--c-forest-800);
+  color:       var(--c-white);
+  box-shadow:  0 2px 8px color-mix(in oklch, var(--c-forest-800) 25%, transparent);
+}
+.btn--primary:hover:not(:disabled) {
+  background:  var(--c-forest-500);
+  box-shadow:  0 4px 14px color-mix(in oklch, var(--c-forest-800) 30%, transparent);
+  transform:   translateY(-1px);
+}
+.btn--primary:active:not(:disabled) {
+  transform:   translateY(0);
+  box-shadow:  0 1px 4px color-mix(in oklch, var(--c-forest-800) 20%, transparent);
+}
+.btn--primary:focus-visible {
+  outline:      none;
+  box-shadow:   var(--shadow-focus), 0 2px 8px color-mix(in oklch, var(--c-forest-800) 25%, transparent);
+}
+
+/* Secondary */
+.btn--secondary {
+  background:  transparent;
+  color:       var(--c-forest-800);
+  box-shadow:  inset 0 0 0 1.5px var(--c-forest-800);
+}
+.btn--secondary:hover:not(:disabled) {
+  background:  var(--c-forest-100);
+  transform:   translateY(-1px);
+}
+.btn--secondary:active:not(:disabled) {
+  transform: translateY(0);
+}
+.btn--secondary:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 1.5px var(--c-forest-800), var(--shadow-focus);
+}
+
+/* Ghost */
+.btn--ghost {
+  background:  transparent;
+  color:       var(--c-ink-500);
+}
+.btn--ghost:hover:not(:disabled) {
+  background:  var(--c-ink-100);
+  color:       var(--c-ink-950);
+}
+.btn--ghost:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}
+
+/* Danger */
+.btn--danger {
+  background:  var(--c-error);
+  color:       var(--c-white);
+  box-shadow:  0 2px 8px color-mix(in oklch, var(--c-error) 20%, transparent);
+}
+.btn--danger:hover:not(:disabled) {
+  background:  var(--c-error-hover);
+  transform:   translateY(-1px);
+}
+.btn--danger:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in oklch, var(--c-error) 30%, transparent);
+}
+
+/* ── États ───────────────────────────────────────────────── */
+
+.btn:disabled {
+  opacity:  0.45;
+  cursor:   not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+/* Loading */
+.btn--loading { cursor: wait; }
+
+.btn__spinner {
+  display:    flex;
+  align-items: center;
+  animation:  im-spin 0.7s linear infinite;
+}
+
+/* Icônes */
+.btn__icon {
+  display: flex;
+  align-items: center;
+  transition: transform var(--dur-fast) var(--ease-spring);
+}
+.btn:hover:not(:disabled) .btn__icon--right { transform: translateX(2px); }
+
+/* Full width */
+.btn--fullwidth { width: 100%; }

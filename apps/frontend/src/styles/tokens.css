@@ -173,6 +173,31 @@
   --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
 }
 
+/* Couleurs décoratives des cartes : palettes par métier HCR et avatars.
+   Aucune n'utilise l'orange (réservé aux CTA). Purement décoratives : le
+   sens n'est jamais porté par la couleur seule. */
+:root {
+  --c-error-hover: oklch(0.45 0.19 27);
+
+  --c-job-serveur-bg: oklch(0.94 0.02 165);
+  --c-job-serveur-fg: oklch(0.44 0.095 165);
+  --c-job-chef-bg: oklch(0.94 0.03 85);
+  --c-job-chef-fg: oklch(0.5 0.11 75);
+  --c-job-barman-bg: oklch(0.92 0.02 250);
+  --c-job-barman-fg: oklch(0.4 0.1 250);
+  --c-job-reception-bg: oklch(0.93 0.015 200);
+  --c-job-reception-fg: oklch(0.42 0.09 200);
+  --c-job-plongeur-bg: oklch(0.93 0.012 165);
+  --c-job-plongeur-fg: oklch(0.38 0.06 165);
+  --c-job-default-bg: oklch(0.92 0.015 165);
+  --c-job-default-fg: oklch(0.38 0.065 165);
+
+  --c-avatar-1: var(--c-forest-800);
+  --c-avatar-2: oklch(0.4 0.09 200);
+  --c-avatar-3: oklch(0.38 0.1 280);
+  --c-avatar-4: var(--c-ink-700);
+}
+
 /* prefers-reduced-motion : toutes les durées du design system passent à 0.
    Les animations infinies (shimmer, pulse) sont coupées dans animations.css. */
 @media (prefers-reduced-motion: reduce) {
