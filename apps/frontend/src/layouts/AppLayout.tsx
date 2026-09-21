@@ -17,29 +17,40 @@ import {
   UserCircle,
   MapPin,
   ClipboardList,
+  type LucideIcon,
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
+import { NavigationItem } from "../components/ui/NavigationItem";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface NavItem {
   label: string;
   to: string;
-  icon: React.ReactNode;
+  icon: LucideIcon;
+  /** Actif uniquement sur l'URL exacte (racine d'un espace) */
+  end?: boolean;
+}
+
+// Actif sur l'URL exacte, ou sur une sous-page (/company/missions/12 → « Mes missions »)
+function isNavActive(pathname: string, item: NavItem): boolean {
+  return item.end
+    ? pathname === item.to
+    : pathname === item.to || pathname.startsWith(`${item.to}/`);
 }
 
 // ─── Navigation par rôle ──────────────────────────────────────────────────────
 
 const WORKER_NAV: NavItem[] = [
-  { label: "Missions", to: "/worker/missions", icon: <MapPin size={18} aria-hidden="true" /> },
-  { label: "Mes candidatures", to: "/worker/applications", icon: <ClipboardList size={18} aria-hidden="true" /> },
-  { label: "Mon profil", to: "/worker/profile", icon: <UserCircle size={18} aria-hidden="true" /> },
+  { label: "Missions", to: "/worker/missions", icon: MapPin },
+  { label: "Mes candidatures", to: "/worker/applications", icon: ClipboardList },
+  { label: "Mon profil", to: "/worker/profile", icon: UserCircle },
 ];
 
 const COMPANY_NAV: NavItem[] = [
-  { label: "Tableau de bord", to: "/company", icon: <LayoutDashboard size={18} aria-hidden="true" /> },
-  { label: "Mes missions", to: "/company/missions", icon: <Briefcase size={18} aria-hidden="true" /> },
-  { label: "Candidatures", to: "/company/applications", icon: <FileText size={18} aria-hidden="true" /> },
+  { label: "Tableau de bord", to: "/company", icon: LayoutDashboard, end: true },
+  { label: "Mes missions", to: "/company/missions", icon: Briefcase },
+  { label: "Candidatures", to: "/company/applications", icon: FileText },
 ];
 
 // ─── Composant ────────────────────────────────────────────────────────────────
@@ -111,15 +122,16 @@ export function AppLayout() {
 
           {/* Navigation desktop */}
           <nav className="app-header__nav" aria-label="Navigation principale">
-            {navItems.map((item) => (
+            {navItems.map(({ icon: Icon, ...item }) => (
               <NavLink
                 key={item.to}
                 to={item.to}
+                end={item.end}
                 className={({ isActive }) =>
                   ["app-header__nav-link", isActive ? "is-active" : ""].join(" ").trim()
                 }
               >
-                {item.icon}
+                <Icon size={18} aria-hidden="true" />
                 <span>{item.label}</span>
               </NavLink>
             ))}
@@ -173,29 +185,26 @@ export function AppLayout() {
             role="dialog"
             aria-label="Menu de navigation"
           >
-            <nav aria-label="Navigation mobile">
+            <nav className="app-header__mobile-nav" aria-label="Navigation mobile">
               {navItems.map((item) => (
-                <NavLink
+                <NavigationItem
                   key={item.to}
                   to={item.to}
-                  className={({ isActive }) =>
-                    ["app-header__mobile-link", isActive ? "is-active" : ""].join(" ").trim()
-                  }
+                  icon={item.icon}
+                  label={item.label}
+                  isActive={isNavActive(pathname, item)}
+                  tone="inverse"
                   onClick={() => setMenuOpen(false)}
-                >
-                  {item.icon}
-                  <span>{item.label}</span>
-                </NavLink>
+                />
               ))}
             </nav>
 
-            <button
-              className="app-header__mobile-signout"
+            <NavigationItem
+              icon={LogOut}
+              label="Se déconnecter"
+              tone="inverse"
               onClick={handleSignOut}
-            >
-              <LogOut size={18} aria-hidden="true" />
-              Se déconnecter
-            </button>
+            />
           </div>
         )}
       </header>
