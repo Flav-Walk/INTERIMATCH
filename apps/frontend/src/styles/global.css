@@ -9,9 +9,7 @@ body {
   margin: 0;
   background: var(--background);
   color: var(--ink);
-  font:
-    1rem/1.6 system-ui,
-    sans-serif;
+  font: 1rem/1.6 var(--font-ui);
 }
 a {
   color: inherit;

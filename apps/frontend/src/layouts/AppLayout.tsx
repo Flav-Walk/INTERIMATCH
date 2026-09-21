@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { NavigationItem } from "../components/ui/NavigationItem";
+import { destination } from "../services/session";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -57,7 +58,8 @@ const COMPANY_NAV: NavItem[] = [
 
 export function AppLayout() {
   // On ne lit que `user` depuis useAuth — role et signOut n'y sont pas exposés
-  useAuth(); const navigate = useNavigate();
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const { pathname } = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -67,7 +69,9 @@ export function AppLayout() {
       pathname.startsWith("/worker") ? "worker" :
         null;
 
-  const navItems = role === "company" ? COMPANY_NAV : WORKER_NAV;
+  // Pages publiques (accueil, connexion) : pas de navigation d'espace
+  const navItems =
+    role === "company" ? COMPANY_NAV : role === "worker" ? WORKER_NAV : [];
 
   // Déconnexion — redirige vers /login (à brancher sur le vrai signOut quand AuthContext sera lu)
   function handleSignOut() {
@@ -89,7 +93,7 @@ export function AppLayout() {
 
           {/* Logo */}
           <Link
-            to={role === "company" ? "/company" : "/worker/missions"}
+            to={role === "company" ? "/company" : role === "worker" ? "/worker/missions" : "/"}
             className="app-header__logo"
             aria-label="ALP'EMPLOI — Retour à l'accueil"
           >
@@ -150,35 +154,54 @@ export function AppLayout() {
               </span>
             )}
 
-            {/* Déconnexion desktop */}
-            <button
-              className="app-header__signout"
-              onClick={handleSignOut}
-              aria-label="Se déconnecter"
-              title="Se déconnecter"
-            >
-              <LogOut size={18} aria-hidden="true" />
-              <span className="app-header__signout-label">Déconnexion</span>
-            </button>
+            {/* Espace connecté : déconnexion + burger */}
+            {role && (
+              <>
+                <button
+                  className="app-header__signout"
+                  onClick={handleSignOut}
+                  aria-label="Se déconnecter"
+                  title="Se déconnecter"
+                >
+                  <LogOut size={18} aria-hidden="true" />
+                  <span className="app-header__signout-label">Déconnexion</span>
+                </button>
 
-            {/* Burger mobile */}
-            <button
-              className="app-header__burger"
-              onClick={() => setMenuOpen((v) => !v)}
-              aria-expanded={menuOpen}
-              aria-controls="mobile-menu"
-              aria-label={menuOpen ? "Fermer le menu" : "Ouvrir le menu"}
-            >
-              {menuOpen
-                ? <X size={22} aria-hidden="true" />
-                : <Menu size={22} aria-hidden="true" />
-              }
-            </button>
+                <button
+                  className="app-header__burger"
+                  onClick={() => setMenuOpen((v) => !v)}
+                  aria-expanded={menuOpen}
+                  aria-controls="mobile-menu"
+                  aria-label={menuOpen ? "Fermer le menu" : "Ouvrir le menu"}
+                >
+                  {menuOpen
+                    ? <X size={22} aria-hidden="true" />
+                    : <Menu size={22} aria-hidden="true" />
+                  }
+                </button>
+              </>
+            )}
+
+            {/* Pages publiques : accès au compte */}
+            {!role && (user ? (
+              <Link className="app-header__cta" to={destination(user)}>
+                Mon espace
+              </Link>
+            ) : (
+              <>
+                <Link className="app-header__link" to="/login">
+                  Se connecter
+                </Link>
+                <Link className="app-header__cta" to="/register">
+                  Créer un compte
+                </Link>
+              </>
+            ))}
           </div>
         </div>
 
         {/* ── Menu mobile ──────────────────────────────────────────────────── */}
-        {menuOpen && (
+        {role && menuOpen && (
           <div
             id="mobile-menu"
             className="app-header__mobile-menu"
@@ -213,6 +236,36 @@ export function AppLayout() {
       <main id="main-content" className="app-main" tabIndex={-1}>
         <Outlet />
       </main>
+
+      {/* ── Pied de page ──────────────────────────────────────────────────── */}
+      <footer className="app-footer">
+        <div className="app-footer__inner">
+          <div className="app-footer__brand">
+            <span className="app-footer__logo">
+              ALP<span aria-hidden="true">'</span>EMPLOI
+            </span>
+            <p>
+              L'intérim hôtellerie-restauration en Auvergne-Rhône-Alpes, sans
+              intermédiaire.
+            </p>
+          </div>
+
+          <nav className="app-footer__col" aria-label="Pied de page">
+            <h2>Plateforme</h2>
+            <Link to="/">Accueil</Link>
+            <Link to="/login">Se connecter</Link>
+            <Link to="/register">Créer un compte</Link>
+          </nav>
+
+          <div className="app-footer__col">
+            <h2>Secteur</h2>
+            <p>Hôtellerie · Cafés · Restauration</p>
+            <p>Auvergne-Rhône-Alpes</p>
+          </div>
+        </div>
+
+        <p className="app-footer__legal">© ALP'EMPLOI — projet Epitech D-WEB-901</p>
+      </footer>
     </>
   );
 }
