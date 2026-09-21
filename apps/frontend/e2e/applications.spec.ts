@@ -43,6 +43,7 @@ async function missionIdFromCompany(page: Page, title: string) {
 test("un worker postule, l’entreprise accepte et l’état persiste", async ({
   page,
 }, testInfo) => {
+  test.slow();
   const workerEmail = `application.worker.${testInfo.project.name}@example.test`;
   const companyEmail = `application.company.${testInfo.project.name}@example.test`;
 
@@ -249,7 +250,15 @@ test("un worker postule, l’entreprise accepte et l’état persiste", async ({
   ).toBe(true);
 
   if (testInfo.project.name === "desktop") {
-    const sizes = [1920, 1440, 768, 390];
+    const sizes = [1920, 1440, 1280, 1024, 768, 390];
+    const workerRoutes = [
+      ["/worker", "Tableau de bord"],
+      ["/worker/profile", "Mon profil"],
+      ["/worker/missions", "Missions"],
+      ["/worker/applications", "Mes candidatures"],
+      ["/worker/documents", "Mes documents"],
+      ["/worker/public-offers", "Offres France Travail"],
+    ] as const;
     const assertFits = () =>
       page.evaluate(
         () => document.documentElement.scrollWidth <= window.innerWidth,
@@ -276,6 +285,24 @@ test("un worker postule, l’entreprise accepte et l’état persiste", async ({
         fullPage: true,
       });
       expect(await assertFits()).toBe(true);
+      const headerHeights: number[] = [];
+      for (const [route, label] of workerRoutes) {
+        await page.goto(route);
+        await expect(
+          page.getByRole("link", { name: label, exact: true }),
+        ).toBeVisible();
+        await expect(page.locator(".app-header__nav-link.is-active")).toHaveCount(
+          1,
+        );
+        headerHeights.push(
+          await page.locator(".app-header").evaluate((header) =>
+            header.getBoundingClientRect().height,
+          ),
+        );
+        expect(await assertFits()).toBe(true);
+      }
+      expect(new Set(headerHeights).size).toBe(1);
+      await page.goto("/worker/documents");
       await finalizedDocument.getByRole("link", { name: "Voir" }).click();
     }
 

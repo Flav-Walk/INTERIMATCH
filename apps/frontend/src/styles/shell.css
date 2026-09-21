@@ -888,7 +888,7 @@
   display: flex;
   align-items: center;
   gap: 1rem;
-  max-width: 1280px;
+  max-width: 1440px;
   margin-inline: auto;
   padding-inline: 1.5rem;
   height: 64px;
@@ -918,11 +918,13 @@
   align-items: center;
   gap: 0.25rem;
   margin-left: auto; /* pousse vers la droite */
+  flex-shrink: 0;
 }
 
 .app-header__nav-link {
   display: flex;
   align-items: center;
+  flex: 0 0 auto;
   gap: 0.4rem;
   padding: 0.4rem 0.875rem;
   border-radius: var(--radius);
@@ -930,6 +932,7 @@
   text-decoration: none;
   font-size: 0.875rem;
   font-weight: 500;
+  white-space: nowrap;
   transition:
     background 0.15s ease,
     color 0.15s ease;
@@ -2256,9 +2259,9 @@
 
 /* ── En-tête : repli sur deux rangs ─────────────────────────────────────
    Navigation, recherche et compte ne tiennent plus sur une seule ligne dès
-   que les quatre libellés sont affichés : sous 1200 px le bandeau passe donc
+   que les six libellés worker sont affichés : sous 1320 px le bandeau passe donc
    sur deux rangs plutôt que de déborder. */
-@media (width < 1200px) {
+@media (width < 1320px) {
   .app-header__inner {
     flex-wrap: wrap;
     height: auto;
@@ -2270,6 +2273,11 @@
     margin-left: 0;
     order: 3;
     width: 100%;
+    justify-content: space-between;
+  }
+
+  .app-header__nav-link {
+    padding-inline: 0.625rem;
   }
 
   .app-header__actions {
@@ -2277,7 +2285,7 @@
   }
 }
 
-@media (width < 768px) {
+@media (width <= 800px) {
   .app-header__inner {
     padding-inline: 1rem;
   }
@@ -2288,7 +2296,7 @@
 
   /* Le libellé reste dans le document — donc dans le nom accessible et sous le
      curseur des lecteurs d'écran — mais cède la place aux seules icônes. Les
-     quatre entrées tiennent alors sans défilement horizontal. */
+     six entrées tiennent alors sans défilement horizontal. */
   .app-header__nav-link > span:not(.nav-badge) {
     position: absolute;
     width: 1px;
