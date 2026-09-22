@@ -12,6 +12,8 @@ import { PolitiqueConfidentialite } from "./pages/PolitiqueConfidentialite";
 import { Accessibilite } from "./pages/Accessibilite";
 import { usePageSeo } from "./hooks/usePageSeo";
 import "./styles/global.css";
+// Tailwind, limité aux composants importés (voir le fichier pour le détail).
+import "./styles/tailwind.css";
 
 function NotFound() {
   usePageSeo({

@@ -1,0 +1,37 @@
+/*
+ * Tailwind CSS, uniquement pour les composants importés (dossier
+ * `components/ui`) : Magic UI, Aceternity UI, SmoothUI.
+ *
+ * TROIS PRÉCAUTIONS POUR NE RIEN CASSER
+ *
+ * 1. Pas de « preflight » (le reset CSS de Tailwind). On n'importe que le
+ *    thème et les utilitaires : les styles existants du site restent intacts.
+ *
+ * 2. Tout est rangé dans des couches (@layer). En CSS, une règle hors couche
+ *    l'emporte toujours sur une règle en couche : nos feuilles existantes
+ *    gardent donc la priorité en cas de conflit.
+ *
+ * 3. `source(none)` : Tailwind ne parcourt PAS tout le projet. Sinon il
+ *    générerait des classes pour nos noms existants (`inline`, `hidden`…) et
+ *    changerait leur rendu. Il ne lit que le dossier des composants importés.
+ */
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities) source(none);
+
+@source "../components/ui";
+
+/*
+ * Les composants shadcn parlent en « background », « border », « muted »…
+ * On relie ces noms à nos couleurs InteriMatch : c'est la seule adaptation
+ * de couleur nécessaire.
+ */
+@theme inline {
+  --color-background: var(--surface);
+  --color-foreground: var(--ink);
+  --color-border: var(--border);
+  --color-muted: var(--tint);
+  --color-muted-foreground: var(--muted);
+  --color-brand: var(--orange);
+  --color-ring: var(--forest);
+}
