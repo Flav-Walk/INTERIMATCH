@@ -238,3 +238,35 @@ html :is(.mission-status, .profile-slot-status) {
     transition: none !important;
   }
 }
+
+/* ======================================================================
+ * Boutons : retour au clic (ajustement maison)
+ * Les boutons du site sont des classes CSS posées dans toutes les pages, pas
+ * un composant : le retour au clic se règle donc ici, sans toucher aux pages.
+ * Le bouton s'enfonce légèrement quand on appuie.
+ * ==================================================================== */
+
+:is(.button, .secondary-button, .button-ghost, .icon-button) {
+  transition:
+    transform 120ms ease-out,
+    background-color 220ms ease-out,
+    border-color 220ms ease-out,
+    color 220ms ease-out,
+    box-shadow 220ms ease-out;
+}
+
+:is(.button, .secondary-button, .button-ghost, .icon-button):active:not(
+    :disabled
+  ) {
+  transform: scale(0.97);
+}
+
+.button:not(:disabled):hover {
+  box-shadow: 0 6px 18px oklch(0.75 0.17 43 / 0.28);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :is(.button, .secondary-button, .button-ghost, .icon-button):active {
+    transform: none;
+  }
+}
