@@ -14,6 +14,8 @@ import { usePageSeo } from "./hooks/usePageSeo";
 import "./styles/global.css";
 // Tailwind, limité aux composants importés (voir le fichier pour le détail).
 import "./styles/tailwind.css";
+// Finitions des composants animés.
+import "./styles/motion.css";
 
 function NotFound() {
   usePageSeo({

@@ -1,7 +1,7 @@
 import {
   NavLink,
-  Outlet,
   useLocation,
+  useOutlet,
   useNavigate,
   useSearchParams,
 } from "react-router-dom";
@@ -21,6 +21,12 @@ import {
   UserCircle,
 } from "lucide-react";
 import { useRef, useState, type FormEvent, type ReactNode } from "react";
+import {
+  AnimatePresence,
+  MotionConfig,
+  motion,
+  useReducedMotion,
+} from "motion/react";
 import { useAuth } from "../hooks/useAuth";
 import { useCompanyData } from "../hooks/CompanyData";
 import {
@@ -124,6 +130,20 @@ const initials = (user: User) => {
   return (letters || user.email.slice(0, 2)).toLocaleUpperCase("fr");
 };
 
+/**
+ * Ressort de la pastille de navigation, repris tel quel du composant
+ * « Animated Tabs » de SmoothUI (smoothui.dev) : un glissement court, sans
+ * rebond visible.
+ */
+const TAB_SPRING = {
+  bounce: 0.05,
+  duration: 0.25,
+  type: "spring" as const,
+};
+
+/** Courbe de sortie des transitions de page : rapide, puis douce. */
+const PAGE_EASE = [0.16, 1, 0.3, 1] as const;
+
 export function AppLayout() {
   const auth = useAuth(),
     // Candidatures en attente : le seul chiffre qui appelle une action.
@@ -135,6 +155,11 @@ export function AppLayout() {
     [replay, setReplay] = useState(false);
   const account = useRef<HTMLDetailsElement>(null);
   const user = auth.user;
+  // La page courante, capturée ici plutôt que via <Outlet /> : pendant sa
+  // sortie animée, l'ancienne page doit continuer d'afficher SON contenu, et
+  // non celui de la page suivante.
+  const outlet = useOutlet();
+  const reduceMotion = useReducedMotion();
   const pending = user?.role === "company" ? counts.pending : 0;
 
   async function logout() {
@@ -222,20 +247,38 @@ export function AppLayout() {
                       "app-header__nav-link" + (isActive ? " is-active" : "")
                     }
                   >
-                    {link.icon}
-                    <span>{link.label}</span>
+                    {({ isActive }) => (
+                      <>
+                        {/* Pastille du lien actif : même `layoutId` pour tous
+                            les liens, Motion la fait donc glisser d'un lien à
+                            l'autre (indicateur d'« Animated Tabs », SmoothUI). */}
+                        {isActive && (
+                          <motion.span
+                            className="nav-indicator"
+                            aria-hidden="true"
+                            layoutId="nav-indicator"
+                            transition={
+                              reduceMotion ? { duration: 0 } : TAB_SPRING
+                            }
+                          />
+                        )}
+                        {link.icon}
+                        <span>{link.label}</span>
                     {/* Le badge ne compte que de vraies candidatures en
                         attente. Il porte son propre texte : une pastille
                         colorée seule ne dit rien à qui ne distingue pas les
                         couleurs, ni à un lecteur d'écran. */}
-                    {link.to === "/company/applications" && pending > 0 && (
-                      <span className="nav-badge">
-                        {pending}
-                        <span className="sr-only">
-                          {" "}
-                          candidature{pending > 1 ? "s" : ""} en attente
-                        </span>
-                      </span>
+                        {link.to === "/company/applications" &&
+                          pending > 0 && (
+                            <span className="nav-badge">
+                              {pending}
+                              <span className="sr-only">
+                                {" "}
+                                candidature{pending > 1 ? "s" : ""} en attente
+                              </span>
+                            </span>
+                          )}
+                      </>
                     )}
                   </NavLink>
                 ))}
@@ -326,7 +369,26 @@ export function AppLayout() {
         </p>
       )}
       <main id="content" className="app-main" tabIndex={-1}>
-        <Outlet />
+        {/* Transition entre les pages, avec Motion (le moteur d'animation de
+            Magic UI, Aceternity et SmoothUI). La clé suit le chemin : filtrer
+            une liste (?q=…) ne relance pas l'animation. `mode="wait"` : la
+            page suivante entre une fois la précédente sortie.
+            `reducedMotion="user"` coupe tout mouvement si l'utilisateur l'a
+            demandé à son système. */}
+        <MotionConfig reducedMotion="user">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={location.pathname}
+              className="page-transition"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.22, ease: PAGE_EASE }}
+            >
+              {outlet}
+            </motion.div>
+          </AnimatePresence>
+        </MotionConfig>
       </main>
       <footer className="shell-footer">
         <span className="shell-brand">

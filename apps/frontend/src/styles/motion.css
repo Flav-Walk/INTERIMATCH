@@ -1,0 +1,47 @@
+/*
+ * Finitions des composants animés.
+ *
+ * Importé par `main.tsx` juste après `global.css`. Chaque bloc indique s'il
+ * accompagne un composant importé (Magic UI, Aceternity UI, SmoothUI) ou s'il
+ * s'agit d'un ajustement maison.
+ */
+
+/* ======================================================================
+ * Navigation : pastille du lien actif
+ * Elle est rendue par Motion (indicateur d'« Animated Tabs », SmoothUI) ;
+ * ici, seulement sa forme, aux couleurs du bandeau vert.
+ * ==================================================================== */
+
+.app-header__nav-link {
+  position: relative;
+  /* Nouveau contexte d'empilement : la pastille passe sous l'icône et le
+     texte du lien, mais au-dessus de son fond. */
+  isolation: isolate;
+}
+
+/* La pastille remplace l'ancien fond du lien actif. */
+.app-header__nav-link.is-active {
+  background: transparent;
+}
+
+.nav-indicator {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: var(--radius);
+  background: oklch(1 0 0 / 0.12);
+  pointer-events: none;
+}
+
+/* Point orange sous le lien actif, comme sur la maquette (image.png). */
+.nav-indicator::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 3px;
+  width: 4px;
+  height: 4px;
+  margin-left: -2px;
+  border-radius: 50%;
+  background: var(--orange);
+}
