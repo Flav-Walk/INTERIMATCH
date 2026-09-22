@@ -651,6 +651,35 @@ describe("lecture des candidatures", () => {
     expect(workerMissionContext(finie).key).toBe("completed");
   });
 
+  it.each(["pending", "accepted", "rejected"] as const)(
+    "présente une candidature %s comme annulée sans réécrire son statut",
+    (status) => {
+      const application = withMission(
+        status,
+        future(3),
+        future(4),
+        "cancelled",
+      );
+      expect(application.status).toBe(status);
+      expect(workerMissionContext(application)).toEqual({
+        key: "cancelled",
+        label: "Mission annulée",
+      });
+    },
+  );
+
+  it("ne modifie pas le contexte des candidatures appartenant aux autres missions", () => {
+    const cancelled = withMission(
+      "pending",
+      future(3),
+      future(4),
+      "cancelled",
+    );
+    const active = withMission("pending", future(5), future(6), "open");
+    expect(workerMissionContext(cancelled).key).toBe("cancelled");
+    expect(workerMissionContext(active).key).toBe("pending");
+  });
+
   it("compte toujours la candidature dépassée parmi celles sans réponse", () => {
     // Le décompte dit un fait : l'entreprise n'a pas répondu. Le contexte dit
     // ce qui reste possible. Les deux sont vrais et ne se remplacent pas.
