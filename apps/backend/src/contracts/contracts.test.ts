@@ -10,6 +10,10 @@ import { ContractService } from "./service.js";
 import { memoryContractStore } from "./testing.js";
 import type { ContractNotification } from "./notification.js";
 import { MissionService } from "../missions/service.js";
+import {
+  documentRequestSignatureValue,
+} from "./integration-routes.js";
+import { hmacSha256 } from "../events/signature.js";
 
 const pg = new PGlite();
 const db: Db = {
@@ -30,6 +34,7 @@ const db: Db = {
 const logger = { info: vi.fn(), error: vi.fn() };
 const sent: ContractNotification[] = [];
 const memory = memoryContractStore();
+const n8nSecret = "contract-test-secret";
 const contracts = new ContractService(
   db,
   memory.store,
@@ -39,7 +44,11 @@ const contracts = new ContractService(
 );
 const accounts = new AccountService(db);
 const app = createApp(
-  readConfig({ NODE_ENV: "test" }),
+  readConfig({
+    NODE_ENV: "test",
+    N8N_WEBHOOK_URL: "https://n8n.test/webhook",
+    N8N_WEBHOOK_SECRET: n8nSecret,
+  }),
   accounts,
   undefined,
   undefined,
@@ -180,6 +189,34 @@ describe("contrats de mission", () => {
       eventType: "contract.available",
       data: {
         contract: { id: contractId, status: "awaiting_worker_signature" },
+        worker: {
+          id: workerId,
+          first_name: "Camille",
+          last_name: "Martin",
+          email: "worker.contract@example.test",
+        },
+        company: {
+          id: companyId,
+          name: "Le Comptoir",
+          legal_name: "InteriMatch Démo",
+          email: "company.contract@example.test",
+          phone: "0102030405",
+          address: "1 rue Test",
+        },
+        mission: {
+          title: "Service du soir",
+          job: "serveur",
+          city: "Lyon",
+        },
+        document: {
+          id: contractId,
+          type: "mission_agreement",
+          filename: `interimatch-document-${contractId}.pdf`,
+          mime_type: "application/pdf",
+          download_path: expect.stringContaining(
+            `/api/v1/integrations/n8n/documents/${contractId}/deliveries/`,
+          ),
+        },
         links: {
           document: `https://interimatch.example/worker/documents/${contractId}`,
         },
@@ -270,6 +307,9 @@ describe("contrats de mission", () => {
       },
     });
     expect(JSON.stringify(sent)).not.toContain("supabase");
+    expect(JSON.stringify([logger.info.mock.calls, logger.error.mock.calls])).not.toContain(
+      "@example.test",
+    );
     expect(
       (await db.query<{ n: string }>(
         "SELECT count(*)::text AS n FROM contract_email_deliveries",
@@ -435,6 +475,71 @@ describe("contrats de mission", () => {
       .expect(200)
       .expect("Content-Type", "application/pdf");
     expect(download.body.subarray(0, 5).toString()).toBe("%PDF-");
+  });
+
+  it("sert le PDF à n8n uniquement avec une signature fraîche liée à la livraison", async () => {
+    const deliveryId = (
+      await db.query<{ id: string }>(
+        `SELECT id FROM contract_email_deliveries
+          WHERE contract_id=$1 AND kind='contract_completed_worker'`,
+        [contractId],
+      )
+    ).rows[0].id;
+    const path =
+      `/api/v1/integrations/n8n/documents/${contractId}` +
+      `/deliveries/${deliveryId}`;
+    const timestamp = Math.floor(Date.now() / 1_000).toString();
+    const signature = `sha256=${hmacSha256(
+      n8nSecret,
+      documentRequestSignatureValue(timestamp, "GET", path),
+    )}`;
+
+    const valid = await request(app)
+      .get(path)
+      .set("x-interimatch-timestamp", timestamp)
+      .set("x-interimatch-signature", signature)
+      .expect(200)
+      .expect("Content-Type", "application/pdf");
+    expect(valid.body.subarray(0, 5).toString()).toBe("%PDF-");
+
+    await request(app)
+      .get(path)
+      .set("x-interimatch-timestamp", timestamp)
+      .set("x-interimatch-signature", `sha256=${"0".repeat(64)}`)
+      .expect(401);
+
+    const expired = String(Number(timestamp) - 301);
+    await request(app)
+      .get(path)
+      .set("x-interimatch-timestamp", expired)
+      .set(
+        "x-interimatch-signature",
+        `sha256=${hmacSha256(
+          n8nSecret,
+          documentRequestSignatureValue(expired, "GET", path),
+        )}`,
+      )
+      .expect(401);
+
+    const unknownPath =
+      `/api/v1/integrations/n8n/documents/${contractId}` +
+      `/deliveries/${crypto.randomUUID()}`;
+    const unknownSignature = `sha256=${hmacSha256(
+      n8nSecret,
+      documentRequestSignatureValue(timestamp, "GET", unknownPath),
+    )}`;
+    await request(app)
+      .get(unknownPath)
+      .set("x-interimatch-timestamp", timestamp)
+      .set("x-interimatch-signature", unknownSignature)
+      .expect(404);
+
+    expect(JSON.stringify([logger.info.mock.calls, logger.error.mock.calls])).not.toContain(
+      n8nSecret,
+    );
+    expect(JSON.stringify([logger.info.mock.calls, logger.error.mock.calls])).not.toContain(
+      signature,
+    );
   });
 
   it("rattrape une acceptation sans contrat une seule fois", async () => {

@@ -82,6 +82,15 @@ const applicationDataSchema = (status: "pending" | "accepted" | "rejected") =>
     })
     .strict();
 
+const cancelledMissionApplicationSchema = z
+  .object({
+    application_id: z.uuid(),
+    worker_id: z.uuid(),
+    worker: z.object({ email: z.email() }).strict(),
+    status: z.enum(["pending", "accepted", "rejected"]),
+  })
+  .strict();
+
 const contractNotificationBase = {
   delivery_id: z.uuid(),
   mission: z
@@ -93,10 +102,43 @@ const contractNotificationBase = {
       address: z.string(),
       city: z.string(),
       postal_code: z.string(),
+      job: z.string(),
     })
     .strict(),
   links: z.object({ document: z.url() }).strict(),
+  document: z
+    .object({
+      id: z.uuid(),
+      type: z.literal("mission_agreement"),
+      filename: z.string().min(1),
+      mime_type: z.literal("application/pdf"),
+      download_path: z.string().startsWith("/api/v1/integrations/n8n/documents/"),
+    })
+    .strict(),
 };
+
+const contractWorkerSchema = z
+  .object({
+    id: z.uuid(),
+    first_name: z.string(),
+    last_name: z.string(),
+    email: z.email(),
+  })
+  .strict();
+
+const contractCompanySchema = z
+  .object({
+    id: z.uuid(),
+    name: z.string().min(1),
+    legal_name: z.string().nullable(),
+    establishment_name: z.string().nullable(),
+    email: z.email(),
+    phone: z.string().nullable(),
+    address: z.string().nullable(),
+    city: z.string().nullable(),
+    postal_code: z.string().nullable(),
+  })
+  .strict();
 
 const contractSchema = <T extends "awaiting_worker_signature" | "awaiting_company_signature" | "completed">(
   status: T,
@@ -144,19 +186,8 @@ export const businessEventSchema = z.discriminatedUnion("event_type", [
         .strict(),
     })
     .strict(),
-  /**
-   * Annulation d'une mission publiée.
-   *
-   * Même forme que `mission.published`, volontairement : c'est la même mission,
-   * au même format, et n8n peut réutiliser tel quel ce qu'il sait déjà en lire.
-   * Le payload porte donc `status: "cancelled"` — la mission telle qu'elle est
-   * APRÈS la décision, relue dans la transaction qui l'a écrite.
-   *
-   * Ce que le backend ne fait pas : décider qui prévenir. Les candidatures ne
-   * sont pas jointes à l'événement — les lister ici figerait dans un payload une
-   * question qui appartient à l'automatisation, et n8n dispose de
-   * `mission_id` pour interroger ce dont il a besoin.
-   */
+  /** Annulation autosuffisante : état final de la mission et candidatures
+   * figées avec leur statut historique avant la décision. */
   z
     .object({
       ...envelope,
@@ -166,6 +197,7 @@ export const businessEventSchema = z.discriminatedUnion("event_type", [
           mission_id: z.uuid(),
           mission: missionSchema,
           company: companySchema,
+          applications: z.array(cancelledMissionApplicationSchema),
         })
         .strict(),
     })
@@ -199,10 +231,8 @@ export const businessEventSchema = z.discriminatedUnion("event_type", [
         .object({
           ...contractNotificationBase,
           contract: contractSchema("awaiting_worker_signature"),
-          worker: z
-            .object({ first_name: z.string(), email: z.email() })
-            .strict(),
-          company: z.object({ name: z.string().min(1) }).strict(),
+          worker: contractWorkerSchema,
+          company: contractCompanySchema,
         })
         .strict(),
     })
@@ -215,12 +245,8 @@ export const businessEventSchema = z.discriminatedUnion("event_type", [
         .object({
           ...contractNotificationBase,
           contract: contractSchema("awaiting_company_signature"),
-          worker: z
-            .object({ first_name: z.string(), last_name: z.string() })
-            .strict(),
-          company: z
-            .object({ name: z.string().min(1), email: z.email() })
-            .strict(),
+          worker: contractWorkerSchema,
+          company: contractCompanySchema,
         })
         .strict(),
     })
@@ -240,10 +266,8 @@ export const businessEventSchema = z.discriminatedUnion("event_type", [
               email: z.email(),
             })
             .strict(),
-          worker: z
-            .object({ first_name: z.string(), last_name: z.string() })
-            .strict(),
-          company: z.object({ name: z.string().min(1) }).strict(),
+          worker: contractWorkerSchema,
+          company: contractCompanySchema,
         })
         .strict(),
     })

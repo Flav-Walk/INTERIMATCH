@@ -580,6 +580,67 @@ describe("annulation — événement métier", () => {
     expect((await cancel(id)).status).toBe(409);
     expect(publish).not.toHaveBeenCalled();
   });
+
+  it("fige tous les candidats, leurs emails et leurs statuts historiques", async () => {
+    const id = await published("Annulation candidats", {
+      headcount: 2,
+      ...slotAt(62, 9, 6),
+    });
+    const accepted = await newWorker("cancel.accepted@example.test");
+    const pending = await newWorker("cancel.pending@example.test");
+    const rejected = await newWorker("cancel.rejected@example.test");
+    const acceptedId = (await applyTo(id, accepted.token)).body.id;
+    const pendingId = (await applyTo(id, pending.token)).body.id;
+    const rejectedId = (await applyTo(id, rejected.token)).body.id;
+    await decide(id, acceptedId, "accepted");
+    await decide(id, rejectedId, "rejected");
+
+    publish.mockClear();
+    await cancel(id);
+
+    expect(publish).toHaveBeenCalledTimes(1);
+    const data = publish.mock.calls[0][1];
+    expect(data.applications).toHaveLength(3);
+    expect(data.applications).toEqual(
+      expect.arrayContaining([
+        {
+          application_id: acceptedId,
+          worker_id: accepted.id,
+          worker: { email: "cancel.accepted@example.test" },
+          status: "accepted",
+        },
+        {
+          application_id: pendingId,
+          worker_id: pending.id,
+          worker: { email: "cancel.pending@example.test" },
+          status: "pending",
+        },
+        {
+          application_id: rejectedId,
+          worker_id: rejected.id,
+          worker: { email: "cancel.rejected@example.test" },
+          status: "rejected",
+        },
+      ]),
+    );
+    expect(new Set(data.applications.map((one: { application_id: string }) => one.application_id)).size).toBe(3);
+
+    const again = await cancel(id);
+    expect(again.status).toBe(409);
+    expect(publish).toHaveBeenCalledTimes(1);
+  });
+
+  it("émet une liste vide quand la mission n'a aucun candidat", async () => {
+    const id = await published("Annulation sans candidat", {
+      ...slotAt(63, 9, 6),
+    });
+    publish.mockClear();
+    await cancel(id);
+    expect(publish).toHaveBeenCalledWith(
+      "mission.cancelled",
+      expect.objectContaining({ applications: [] }),
+    );
+  });
 });
 
 /**

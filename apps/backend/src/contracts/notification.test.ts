@@ -24,12 +24,36 @@ const notification: ContractNotification = {
       address: "10 rue Exemple",
       city: "Lyon",
       postal_code: "69002",
+      job: "serveur",
     },
-    worker: { first_name: "Camille", email: "camille@example.test" },
-    company: { name: "Bistrot Exemple" },
+    worker: {
+      id: "20000000-0000-4000-8000-000000000002",
+      first_name: "Camille",
+      last_name: "Martin",
+      email: "camille@example.test",
+    },
+    company: {
+      id: "40000000-0000-4000-8000-000000000004",
+      name: "Bistrot Exemple",
+      legal_name: "Bistrot Exemple SAS",
+      establishment_name: "Bistrot Exemple",
+      email: "contact@example.test",
+      phone: "+33400000000",
+      address: "10 rue Exemple",
+      city: "Lyon",
+      postal_code: "69002",
+    },
     links: {
       document:
         "https://interimatch.example/worker/documents/60000000-0000-4000-8000-000000000006",
+    },
+    document: {
+      id: "60000000-0000-4000-8000-000000000006",
+      type: "mission_agreement",
+      filename: "interimatch-document-60000000-0000-4000-8000-000000000006.pdf",
+      mime_type: "application/pdf",
+      download_path:
+        "/api/v1/integrations/n8n/documents/60000000-0000-4000-8000-000000000006/deliveries/70000000-0000-4000-8000-000000000007",
     },
   },
 };
@@ -43,6 +67,8 @@ const response = (status: number, body: object) =>
 
 describe("notifications contractuelles n8n", () => {
   it("accepte une réponse duplicate sans changer l'identité de livraison", async () => {
+    logger.info.mockClear();
+    logger.error.mockClear();
     const fetchMock = vi.fn().mockResolvedValue(
       response(200, {
         status: "duplicate",
@@ -67,6 +93,11 @@ describe("notifications contractuelles n8n", () => {
       event_id: notification.deliveryId,
       idempotency_key: `contract.available:${notification.deliveryId}`,
     });
+    const logs = JSON.stringify([logger.info.mock.calls, logger.error.mock.calls]);
+    expect(logs).not.toContain("camille@example.test");
+    expect(logs).not.toContain("contact@example.test");
+    expect(logs).not.toContain("test-secret");
+    expect(logs).not.toContain("sha256=");
   });
 
   it.each([

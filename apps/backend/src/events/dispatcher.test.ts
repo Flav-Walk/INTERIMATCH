@@ -136,4 +136,53 @@ describe("N8nWebhookDelivery", () => {
       JSON.stringify([log.info.mock.calls, log.error.mock.calls]),
     ).not.toContain(secret);
   });
+
+  it("ne journalise aucun email porté par mission.cancelled", async () => {
+    const log = logger();
+    const cancelled = createBusinessEvent("mission.cancelled", {
+      mission_id: "30000000-0000-4000-8000-000000000003",
+      mission: {
+        id: "30000000-0000-4000-8000-000000000003",
+        title: "Service annulé",
+        description: "Renfort",
+        status: "cancelled",
+        starts_at: "2027-01-02T17:00:00.000Z",
+        ends_at: "2027-01-02T23:00:00.000Z",
+        address: "10 rue Exemple",
+        city: "Lyon",
+        postal_code: "69002",
+        job: "serveur",
+        headcount: 1,
+        pay_amount: "15.50",
+        pay_unit: "hour",
+        published_at: "2026-09-18T07:30:00.000Z",
+        skills: [],
+      },
+      company: {
+        id: "40000000-0000-4000-8000-000000000004",
+        email: "company.private@example.test",
+        legal_name: "Entreprise Exemple",
+        establishment_name: "Établissement Exemple",
+        sector: "restaurant",
+        phone: "+33400000000",
+      },
+      applications: [
+        {
+          application_id: "10000000-0000-4000-8000-000000000001",
+          worker_id: workerId,
+          worker: { email: "worker.private@example.test" },
+          status: "pending",
+        },
+      ],
+    });
+    await new N8nWebhookDelivery(
+      "https://n8n.test/webhook",
+      secret,
+      log,
+      vi.fn(async () => json({ status: "accepted" })) as typeof fetch,
+    ).deliver(cancelled);
+    const logs = JSON.stringify([log.info.mock.calls, log.error.mock.calls]);
+    expect(logs).not.toContain("company.private@example.test");
+    expect(logs).not.toContain("worker.private@example.test");
+  });
 });

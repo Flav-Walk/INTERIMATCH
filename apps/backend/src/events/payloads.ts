@@ -40,6 +40,13 @@ interface ApplicationEventRow extends WorkerEventRow {
   application_updated_at: Date | string;
 }
 
+interface MissionCancellationApplicationRow {
+  application_id: string;
+  worker_id: string;
+  worker_email: string;
+  status: "pending" | "accepted" | "rejected";
+}
+
 const iso = (value: Date | string) => new Date(value).toISOString();
 
 /** Identité métier utile aux automatisations, sans donnée d'authentification. */
@@ -123,6 +130,27 @@ export async function loadMissionEventData(db: Db, missionId: string) {
       phone: row.company_phone,
     },
   };
+}
+
+/** Destinataires figés avant l'annulation, sans modifier leur décision passée. */
+export async function loadMissionCancellationApplications(
+  db: Db,
+  missionId: string,
+) {
+  const { rows } = await db.query<MissionCancellationApplicationRow>(
+    `SELECT a.id AS application_id,a.worker_id,p.email AS worker_email,a.status
+       FROM applications a
+       JOIN profiles p ON p.id=a.worker_id AND p.role='worker'
+      WHERE a.mission_id=$1
+      ORDER BY a.id`,
+    [missionId],
+  );
+  return rows.map((row) => ({
+    application_id: row.application_id,
+    worker_id: row.worker_id,
+    worker: { email: row.worker_email },
+    status: row.status,
+  }));
 }
 
 /** Contexte autosuffisant d'une candidature, lu dans la transaction métier. */

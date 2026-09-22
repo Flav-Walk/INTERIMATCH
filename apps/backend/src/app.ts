@@ -19,6 +19,7 @@ import type { PublicJobOfferService } from "./public-data/service.js";
 import { publicJobOffersRouter } from "./public-data/routes.js";
 import type { MissionMediaService } from "./media/service.js";
 import type { ContractService } from "./contracts/service.js";
+import { n8nDocumentRouter } from "./contracts/integration-routes.js";
 import { missionMediaRouter } from "./media/routes.js";
 import { requireAuth, requireRole } from "./auth/routes.js";
 import { HttpError } from "./errors.js";
@@ -142,6 +143,13 @@ export function createApp(
   });
   app.use("/api/v1", healthRouter);
   app.use(cookieParser());
+  // Accès serveur-à-serveur : pas de session utilisateur, mais une signature
+  // HMAC fraîche liée exactement au chemin contrat/livraison demandé.
+  if (contracts && config.N8N_WEBHOOK_SECRET)
+    app.use(
+      "/api/v1",
+      n8nDocumentRouter(contracts, config.N8N_WEBHOOK_SECRET),
+    );
   // Le catalogue appartient à l'espace intérimaire. Le protéger ici, et pas
   // seulement dans React, empêche un appel direct anonyme ou entreprise.
   if (accounts && publicOffers)

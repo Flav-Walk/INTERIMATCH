@@ -1,6 +1,6 @@
-import { createHmac } from "node:crypto";
 import type { BusinessEvent, BusinessEventType } from "./business-event.js";
 import { createBusinessEvent } from "./business-event.js";
+import { hmacSha256 } from "./signature.js";
 
 export interface EventLogger {
   info(fields: Record<string, unknown>, message: string): void;
@@ -55,9 +55,7 @@ export class N8nWebhookDelivery {
     const attempts = this.retryDelays.length + 1;
     for (let attempt = 1; attempt <= attempts; attempt += 1) {
       const timestamp = Math.floor(this.now() / 1_000).toString();
-      const signature = createHmac("sha256", this.secret)
-        .update(`${timestamp}.${rawBody}`)
-        .digest("hex");
+      const signature = hmacSha256(this.secret, `${timestamp}.${rawBody}`);
       try {
         const response = await this.fetchImpl(this.url, {
           method: "POST",

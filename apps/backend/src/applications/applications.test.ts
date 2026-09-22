@@ -818,6 +818,27 @@ describe("candidatures - vue d ensemble entreprise", () => {
     );
     expect(found).toMatchObject({ status: "pending", conflict: true });
   });
+
+  it("retire seulement la mission annulée de la liste active et des compteurs", async () => {
+    const cancelled = await publishedMission("Vue annulée", slotAt(64, 8, 4));
+    const active = await publishedMission("Vue conservée", slotAt(65, 8, 4));
+    const first = await newWorker("vue.cancelled@example.test");
+    const second = await newWorker("vue.active@example.test");
+    const hiddenId = await applyTo(cancelled, first.token);
+    const visibleId = await applyTo(active, second.token);
+
+    await db.query("UPDATE missions SET status='cancelled' WHERE id=$1", [
+      cancelled,
+    ]);
+    const result = (await overview()).body;
+    const ids = result.applications.map((one: { id: string }) => one.id);
+    expect(ids).not.toContain(hiddenId);
+    expect(ids).toContain(visibleId);
+    expect(result.counts.total).toBe(result.applications.length);
+    expect(result.counts.pending).toBe(
+      result.applications.filter((one: { status: string }) => one.status === "pending").length,
+    );
+  });
 });
 
 /**

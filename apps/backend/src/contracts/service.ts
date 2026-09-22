@@ -318,6 +318,39 @@ export class ContractService {
     };
   }
 
+  /** Téléchargement réservé à une livraison n8n connue et rattachée au contrat.
+   * L'authentification HMAC est vérifiée par le routeur avant cet appel. */
+  async downloadForDelivery(contractId: string, deliveryId: string) {
+    const row = (
+      await this.db.query<{
+        kind: ContractNotificationKind;
+        original_file_path: string | null;
+        final_file_path: string | null;
+      }>(
+        `SELECT d.kind,c.original_file_path,c.final_file_path
+           FROM contract_email_deliveries d
+           JOIN contracts c ON c.id=d.contract_id
+          WHERE c.id=$1 AND d.id=$2`,
+        [contractId, deliveryId],
+      )
+    ).rows[0];
+    if (!row)
+      throw new HttpError(404, "DOCUMENT_NOT_FOUND", "Document introuvable.");
+    const path = row.kind.startsWith("contract_completed_")
+      ? row.final_file_path
+      : row.original_file_path;
+    if (!path)
+      throw new HttpError(
+        409,
+        "DOCUMENT_NOT_READY",
+        "Le PDF est encore en préparation.",
+      );
+    return {
+      bytes: await this.store.download(path),
+      filename: `interimatch-document-${contractId}.pdf`,
+    };
+  }
+
   async retryPendingNotifications(limit = 20) {
     if (!this.notifications) return;
     // Un processus peut s'arrêter après avoir revendiqué une livraison. Elle
@@ -676,6 +709,28 @@ export class ContractService {
       (representativeName || "Entreprise");
     const workerUrl = `${this.frontendUrl}/worker/documents/${contract.id}`;
     const companyUrl = `${this.frontendUrl}/company/documents/${contract.id}`;
+    const downloadPath =
+      `/api/v1/integrations/n8n/documents/${contract.id}` +
+      `/deliveries/${delivery.id}`;
+    const worker = {
+      id: snapshot.worker.id,
+      first_name: snapshot.worker.first_name,
+      last_name: snapshot.worker.last_name,
+      email: snapshot.worker.email,
+    };
+    // Le modèle ne distingue pas encore un email de contact d'un email de
+    // compte : `email` expose donc explicitement la seule donnée disponible.
+    const company = {
+      id: snapshot.company.id,
+      name: companyName,
+      legal_name: snapshot.company.legal_name,
+      establishment_name: snapshot.company.establishment_name,
+      email: snapshot.company.email,
+      phone: snapshot.company.phone,
+      address: snapshot.company.address,
+      city: snapshot.company.city,
+      postal_code: snapshot.company.postal_code,
+    };
     const common = {
       delivery_id: delivery.id,
       contract: {
@@ -691,6 +746,14 @@ export class ContractService {
         address: snapshot.mission.address,
         city: snapshot.mission.city,
         postal_code: snapshot.mission.postal_code,
+        job: snapshot.mission.job,
+      },
+      document: {
+        id: contract.id,
+        type: contract.type,
+        filename: `interimatch-document-${contract.id}.pdf`,
+        mime_type: "application/pdf" as const,
+        download_path: downloadPath,
       },
     };
     const templates: Record<
@@ -701,11 +764,8 @@ export class ContractService {
         eventType: "contract.available",
         data: {
           ...common,
-          worker: {
-            first_name: snapshot.worker.first_name,
-            email: delivery.recipient_email,
-          },
-          company: { name: companyName },
+          worker,
+          company,
           links: { document: workerUrl },
         },
       },
@@ -713,11 +773,8 @@ export class ContractService {
         eventType: "contract.worker_signed",
         data: {
           ...common,
-          worker: {
-            first_name: snapshot.worker.first_name,
-            last_name: snapshot.worker.last_name,
-          },
-          company: { name: companyName, email: delivery.recipient_email },
+          worker,
+          company,
           links: { document: companyUrl },
         },
       },
@@ -730,11 +787,8 @@ export class ContractService {
             name: workerName,
             email: delivery.recipient_email,
           },
-          worker: {
-            first_name: snapshot.worker.first_name,
-            last_name: snapshot.worker.last_name,
-          },
-          company: { name: companyName },
+          worker,
+          company,
           links: { document: workerUrl },
         },
       },
@@ -747,11 +801,8 @@ export class ContractService {
             name: companyName,
             email: delivery.recipient_email,
           },
-          worker: {
-            first_name: snapshot.worker.first_name,
-            last_name: snapshot.worker.last_name,
-          },
-          company: { name: companyName },
+          worker,
+          company,
           links: { document: companyUrl },
         },
       },

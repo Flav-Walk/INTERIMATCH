@@ -1,7 +1,10 @@
 import type { Db } from "../db.js";
 import { HttpError } from "../errors.js";
 import type { BusinessEventPublisher } from "../events/dispatcher.js";
-import { loadMissionEventData } from "../events/payloads.js";
+import {
+  loadMissionCancellationApplications,
+  loadMissionEventData,
+} from "../events/payloads.js";
 import type { Geocoder } from "../worker/geocode.js";
 import type { MissionMediaService } from "../media/service.js";
 import type { MissionMedia } from "../media/schemas.js";
@@ -821,6 +824,12 @@ export class MissionService {
           "MISSION_ALREADY_STARTED",
           "Une mission déjà commencée ne peut plus être annulée.",
         );
+      // Capture immuable avant toute écriture : le statut transmis est la
+      // décision historique de chaque candidature, jamais un état recalculé.
+      const applications = await loadMissionCancellationApplications(
+        db,
+        missionId,
+      );
       await db.query(
         "UPDATE missions SET status = 'cancelled' WHERE id = $1 AND company_id = $2",
         [missionId, companyId],
@@ -833,7 +842,10 @@ export class MissionService {
             AND status NOT IN ('completed','cancelled')`,
         [missionId, companyId],
       );
-      return loadMissionEventData(db, missionId);
+      return {
+        ...(await loadMissionEventData(db, missionId)),
+        applications,
+      };
     });
     const mission = await this.get(companyId, missionId);
     // Après COMMIT, comme la publication : une annulation refusée ou rollbackée

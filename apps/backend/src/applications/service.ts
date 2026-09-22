@@ -332,7 +332,7 @@ export class ApplicationService {
            JOIN missions m ON m.id=a.mission_id
            JOIN profiles p ON p.id=a.worker_id
            LEFT JOIN worker_profiles w ON w.profile_id=a.worker_id
-          WHERE m.company_id=$1
+          WHERE m.company_id=$1 AND m.status <> 'cancelled'
           ORDER BY a.created_at DESC,a.id
           LIMIT $2`,
         [companyId, limit],
@@ -340,7 +340,8 @@ export class ApplicationService {
       this.db.query<{ status: ApplicationStatus; n: string }>(
         `SELECT a.status,count(*)::text AS n
            FROM applications a JOIN missions m ON m.id=a.mission_id
-          WHERE m.company_id=$1 GROUP BY a.status`,
+          WHERE m.company_id=$1 AND m.status <> 'cancelled'
+          GROUP BY a.status`,
         [companyId],
       ),
     ]);
