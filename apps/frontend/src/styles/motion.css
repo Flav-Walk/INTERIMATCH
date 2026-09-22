@@ -45,3 +45,60 @@
   border-radius: 50%;
   background: var(--orange);
 }
+
+/* ======================================================================
+ * Cartes missions et offres : « Magic Card » (Magic UI)
+ * La Magic Card dessine elle-même la bordure (dégradé qui suit le curseur) :
+ * la carte perd donc sa bordure d'origine pour ne pas la doubler. La carte
+ * garde son lien, son arrondi et son ombre.
+ * ==================================================================== */
+
+:is(.mission-card, .public-offer-card):has(> .card-surface) {
+  border: 0;
+  padding: 0;
+}
+
+/* La surface occupe toute la carte et empile son contenu en colonne, comme
+   le faisait la carte avant elle (le pied reste collé en bas). */
+.card-surface {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.card-surface > :last-child {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Ajustement maison : la carte se soulève et la photo zoome au survol. */
+:is(.mission-card, .public-offer-card) {
+  transition:
+    transform var(--normal) var(--ease-out),
+    box-shadow var(--normal) var(--ease-out);
+}
+
+:is(.mission-card, .public-offer-card):hover {
+  transform: translateY(-3px);
+}
+
+.mission-card .job-visual {
+  transition: transform 700ms var(--ease-out);
+}
+
+.mission-card:hover .job-visual {
+  transform: scale(1.05);
+}
+
+.mission-card.is-closed:hover,
+.mission-card.is-closed:hover .job-visual {
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :is(.mission-card, .public-offer-card):hover,
+  .mission-card:hover .job-visual {
+    transform: none;
+  }
+}
