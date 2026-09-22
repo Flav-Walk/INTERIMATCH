@@ -16,8 +16,8 @@ import { AdminService } from "./admin/service.js";
 import { ApplicationService } from "./applications/service.js";
 import { PublicJobOfferService } from "./public-data/service.js";
 import { createSupabaseContractStore } from "./contracts/store.js";
-import { BrevoEmailService } from "./contracts/email.js";
 import { ContractService } from "./contracts/service.js";
+import { N8nContractNotificationSender } from "./contracts/notification.js";
 import {
   AsyncBusinessEventPublisher,
   N8nWebhookDelivery,
@@ -35,17 +35,17 @@ const accounts = db
 const eventLogger = pino({
   level: config.NODE_ENV === "test" ? "silent" : "info",
 });
-const events =
+const n8nDelivery =
   config.N8N_WEBHOOK_URL && config.N8N_WEBHOOK_SECRET
-    ? new AsyncBusinessEventPublisher(
-        new N8nWebhookDelivery(
-          config.N8N_WEBHOOK_URL,
-          config.N8N_WEBHOOK_SECRET,
-          eventLogger,
-        ),
+    ? new N8nWebhookDelivery(
+        config.N8N_WEBHOOK_URL,
+        config.N8N_WEBHOOK_SECRET,
         eventLogger,
       )
     : undefined;
+const events = n8nDelivery
+  ? new AsyncBusinessEventPublisher(n8nDelivery, eventLogger)
+  : undefined;
 const workers = db ? new WorkerService(db, geocoder, events) : undefined;
 /**
  * Photos de mission.
@@ -70,25 +70,15 @@ const missionMedia = mediaStore
 const contractStore = supabaseAdmin
   ? createSupabaseContractStore(supabaseAdmin)
   : undefined;
-const contractEmail =
-  config.BREVO_API_KEY &&
-  config.BREVO_SENDER_EMAIL &&
-  config.BREVO_SENDER_NAME
-    ? new BrevoEmailService(
-        config.BREVO_API_KEY,
-        {
-          email: config.BREVO_SENDER_EMAIL,
-          name: config.BREVO_SENDER_NAME,
-        },
-        eventLogger,
-      )
-    : undefined;
+const contractNotifications = n8nDelivery
+  ? new N8nContractNotificationSender(n8nDelivery)
+  : undefined;
 const contracts =
   db && contractStore
     ? new ContractService(
         db,
         contractStore,
-        contractEmail,
+        contractNotifications,
         config.FRONTEND_URL,
         eventLogger,
       )
@@ -126,7 +116,7 @@ const server = createApp(
       mission_media: Boolean(missionMedia),
       unsplash: Boolean(unsplash),
       contracts: Boolean(contracts),
-      brevo: Boolean(contractEmail),
+      contract_notifications: Boolean(contractNotifications),
       trust_proxy: config.TRUST_PROXY,
       frontend_url: config.FRONTEND_URL,
     }),
@@ -137,7 +127,7 @@ const recoverContracts = async () => {
   try {
     await contracts.reconcileAcceptedApplications();
     await contracts.retryPendingDocuments();
-    await contracts.retryPendingEmails();
+    await contracts.retryPendingNotifications();
   } catch (error) {
     const code =
       typeof error === "object" &&

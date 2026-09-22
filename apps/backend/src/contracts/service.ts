@@ -2,9 +2,12 @@ import { createHash } from "node:crypto";
 import type { Profile } from "../auth/schemas.js";
 import type { Db } from "../db.js";
 import { HttpError } from "../errors.js";
-import type { ContractEmailSender, ContractEmailMessage } from "./email.js";
-import { escapeEmailHtml } from "./email.js";
 import { generateContractPdf } from "./pdf.js";
+import type {
+  ContractNotification,
+  ContractNotificationKind,
+  ContractNotificationSender,
+} from "./notification.js";
 import type {
   ContractListItem,
   ContractRow,
@@ -79,12 +82,6 @@ interface DbSignatureEvent
   created_at: Date | string;
 }
 
-type EmailKind =
-  | "contract_available"
-  | "worker_signed"
-  | "contract_completed_worker"
-  | "contract_completed_company";
-
 const iso = (value: Date | string) => new Date(value).toISOString();
 const optionalIso = (value: Date | string | null) =>
   value === null ? null : iso(value);
@@ -110,7 +107,7 @@ export class ContractService {
   constructor(
     public readonly db: Db,
     private readonly store: ContractDocumentStore,
-    private readonly email: ContractEmailSender | undefined,
+    private readonly notifications: ContractNotificationSender | undefined,
     private readonly frontendUrl: string,
     private readonly logger: ContractLogger,
   ) {}
@@ -321,8 +318,8 @@ export class ContractService {
     };
   }
 
-  async retryPendingEmails(limit = 20) {
-    if (!this.email) return;
+  async retryPendingNotifications(limit = 20) {
+    if (!this.notifications) return;
     // Un processus peut s'arrêter après avoir revendiqué une livraison. Elle
     // redevient reprenable au démarrage suivant, sans débloquer les envois qui
     // sont encore réellement en cours dans une autre instance.
@@ -592,7 +589,7 @@ export class ContractService {
   private async enqueue(
     db: Db,
     contract: ContractRow,
-    kind: EmailKind,
+    kind: ContractNotificationKind,
     email: string,
   ) {
     await db.query(
@@ -603,14 +600,15 @@ export class ContractService {
   }
 
   private async deliverForContract(contractId: string) {
-    if (!this.email) return;
+    if (!this.notifications) return;
     const contract = await this.getInternal(contractId);
     const pending = await this.db.query<{
       id: string;
-      kind: EmailKind;
+      kind: ContractNotificationKind;
       recipient_email: string;
+      created_at: Date | string;
     }>(
-      `SELECT id,kind,recipient_email FROM contract_email_deliveries
+      `SELECT id,kind,recipient_email,created_at FROM contract_email_deliveries
         WHERE contract_id=$1 AND status IN ('pending','failed')
         ORDER BY created_at,id`,
       [contractId],
@@ -624,8 +622,8 @@ export class ContractService {
       );
       if (!claimed.rows[0]) continue;
       try {
-        await this.email.send(
-          this.message(contract, delivery.kind, delivery.id),
+        await this.notifications.send(
+          this.notification(contract, delivery),
         );
         await this.db.query(
           `UPDATE contract_email_deliveries
@@ -635,10 +633,10 @@ export class ContractService {
         this.logger.info(
           {
             contract_id: contract.id,
-            email_kind: delivery.kind,
-            attempt_id: delivery.id,
+            notification_kind: delivery.kind,
+            delivery_id: delivery.id,
           },
-          "contract.email.sent",
+          "contract.notification.accepted",
         );
       } catch (error) {
         await this.db.query(
@@ -649,65 +647,120 @@ export class ContractService {
         this.logger.error(
           {
             contract_id: contract.id,
-            email_kind: delivery.kind,
-            attempt_id: delivery.id,
+            notification_kind: delivery.kind,
+            delivery_id: delivery.id,
             error_code: errorCode(error),
           },
-          "contract.email.failed",
+          "contract.notification.failed",
         );
       }
     }
   }
 
-  private message(
+  private notification(
     contract: ContractRow,
-    kind: EmailKind,
-    idempotencyKey: string,
-  ): ContractEmailMessage {
+    delivery: {
+      id: string;
+      kind: ContractNotificationKind;
+      recipient_email: string;
+      created_at: Date | string;
+    },
+  ): ContractNotification {
     const { snapshot } = contract;
     const workerName = `${snapshot.worker.first_name} ${snapshot.worker.last_name}`.trim();
+    const representativeName =
+      `${snapshot.company.representative_first_name} ${snapshot.company.representative_last_name}`.trim();
     const companyName =
       snapshot.company.establishment_name ??
       snapshot.company.legal_name ??
-      "l'entreprise";
+      (representativeName || "Entreprise");
     const workerUrl = `${this.frontendUrl}/worker/documents/${contract.id}`;
     const companyUrl = `${this.frontendUrl}/company/documents/${contract.id}`;
-    const missionDates = `${emailDate(snapshot.mission.starts_at)} – ${emailDate(snapshot.mission.ends_at)}`;
-    const templates: Record<EmailKind, ContractEmailMessage> = {
-      contract_available: emailMessage(
-        snapshot.worker.email,
-        idempotencyKey,
-        workerName,
-        "Votre document de mission est disponible",
-        `Bonjour ${workerName}, le document de la mission « ${snapshot.mission.title} » chez ${companyName}, prévue du ${missionDates}, est disponible dans Mes documents.`,
-        workerUrl,
-      ),
-      worker_signed: emailMessage(
-        snapshot.company.email,
-        idempotencyKey,
-        companyName,
-        "Un document attend votre validation",
-        `${workerName} a validé le document de la mission « ${snapshot.mission.title} ». Votre validation est maintenant attendue.`,
-        companyUrl,
-      ),
-      contract_completed_worker: emailMessage(
-        snapshot.worker.email,
-        idempotencyKey,
-        workerName,
-        "Votre document de mission est finalisé",
-        `Le document de la mission « ${snapshot.mission.title} » est finalisé et disponible dans Mes documents.`,
-        workerUrl,
-      ),
-      contract_completed_company: emailMessage(
-        snapshot.company.email,
-        idempotencyKey,
-        companyName,
-        "Le document de mission est finalisé",
-        `Le document de la mission « ${snapshot.mission.title} » avec ${workerName} est finalisé et disponible dans Documents.`,
-        companyUrl,
-      ),
+    const common = {
+      delivery_id: delivery.id,
+      contract: {
+        id: contract.id,
+        status: contract.status,
+        document_version: contract.document_version,
+      },
+      mission: {
+        id: snapshot.mission.id,
+        title: snapshot.mission.title,
+        starts_at: snapshot.mission.starts_at,
+        ends_at: snapshot.mission.ends_at,
+        address: snapshot.mission.address,
+        city: snapshot.mission.city,
+        postal_code: snapshot.mission.postal_code,
+      },
     };
-    return templates[kind];
+    const templates: Record<
+      ContractNotificationKind,
+      Pick<ContractNotification, "eventType" | "data">
+    > = {
+      contract_available: {
+        eventType: "contract.available",
+        data: {
+          ...common,
+          worker: {
+            first_name: snapshot.worker.first_name,
+            email: delivery.recipient_email,
+          },
+          company: { name: companyName },
+          links: { document: workerUrl },
+        },
+      },
+      worker_signed: {
+        eventType: "contract.worker_signed",
+        data: {
+          ...common,
+          worker: {
+            first_name: snapshot.worker.first_name,
+            last_name: snapshot.worker.last_name,
+          },
+          company: { name: companyName, email: delivery.recipient_email },
+          links: { document: companyUrl },
+        },
+      },
+      contract_completed_worker: {
+        eventType: "contract.completed",
+        data: {
+          ...common,
+          recipient: {
+            role: "worker",
+            name: workerName,
+            email: delivery.recipient_email,
+          },
+          worker: {
+            first_name: snapshot.worker.first_name,
+            last_name: snapshot.worker.last_name,
+          },
+          company: { name: companyName },
+          links: { document: workerUrl },
+        },
+      },
+      contract_completed_company: {
+        eventType: "contract.completed",
+        data: {
+          ...common,
+          recipient: {
+            role: "company",
+            name: companyName,
+            email: delivery.recipient_email,
+          },
+          worker: {
+            first_name: snapshot.worker.first_name,
+            last_name: snapshot.worker.last_name,
+          },
+          company: { name: companyName },
+          links: { document: companyUrl },
+        },
+      },
+    };
+    return {
+      deliveryId: delivery.id,
+      occurredAt: iso(delivery.created_at),
+      ...templates[delivery.kind],
+    };
   }
 
   private async signatures(contractId: string) {
@@ -839,31 +892,6 @@ export class ContractService {
       event,
     );
   }
-}
-
-function emailMessage(
-  email: string,
-  idempotencyKey: string,
-  name: string,
-  subject: string,
-  text: string,
-  url: string,
-): ContractEmailMessage {
-  return {
-    idempotencyKey,
-    to: { email, name },
-    subject,
-    text: `${text}\n\nOuvrir InteriMatch : ${url}`,
-    html: `<p>${escapeEmailHtml(text)}</p><p><a href="${escapeEmailHtml(url)}">Ouvrir InteriMatch</a></p>`,
-  };
-}
-
-function emailDate(value: string) {
-  return new Intl.DateTimeFormat("fr-FR", {
-    dateStyle: "long",
-    timeStyle: "short",
-    timeZone: "Europe/Paris",
-  }).format(new Date(value));
 }
 
 function errorCode(error: unknown) {

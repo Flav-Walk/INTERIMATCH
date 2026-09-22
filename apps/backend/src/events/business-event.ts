@@ -9,6 +9,9 @@ export const businessEventTypes = [
   "application.created",
   "application.accepted",
   "application.rejected",
+  "contract.available",
+  "contract.worker_signed",
+  "contract.completed",
 ] as const;
 
 const workerSchema = z
@@ -76,6 +79,33 @@ const applicationDataSchema = (status: "pending" | "accepted" | "rejected") =>
       worker: workerSchema,
       mission: missionSchema,
       company: companySchema,
+    })
+    .strict();
+
+const contractNotificationBase = {
+  delivery_id: z.uuid(),
+  mission: z
+    .object({
+      id: z.uuid(),
+      title: z.string(),
+      starts_at: z.iso.datetime(),
+      ends_at: z.iso.datetime(),
+      address: z.string(),
+      city: z.string(),
+      postal_code: z.string(),
+    })
+    .strict(),
+  links: z.object({ document: z.url() }).strict(),
+};
+
+const contractSchema = <T extends "awaiting_worker_signature" | "awaiting_company_signature" | "completed">(
+  status: T,
+) =>
+  z
+    .object({
+      id: z.uuid(),
+      status: z.literal(status),
+      document_version: z.number().int().positive(),
     })
     .strict();
 
@@ -159,6 +189,63 @@ export const businessEventSchema = z.discriminatedUnion("event_type", [
       ...envelope,
       event_type: z.literal("application.rejected"),
       data: applicationDataSchema("rejected"),
+    })
+    .strict(),
+  z
+    .object({
+      ...envelope,
+      event_type: z.literal("contract.available"),
+      data: z
+        .object({
+          ...contractNotificationBase,
+          contract: contractSchema("awaiting_worker_signature"),
+          worker: z
+            .object({ first_name: z.string(), email: z.email() })
+            .strict(),
+          company: z.object({ name: z.string().min(1) }).strict(),
+        })
+        .strict(),
+    })
+    .strict(),
+  z
+    .object({
+      ...envelope,
+      event_type: z.literal("contract.worker_signed"),
+      data: z
+        .object({
+          ...contractNotificationBase,
+          contract: contractSchema("awaiting_company_signature"),
+          worker: z
+            .object({ first_name: z.string(), last_name: z.string() })
+            .strict(),
+          company: z
+            .object({ name: z.string().min(1), email: z.email() })
+            .strict(),
+        })
+        .strict(),
+    })
+    .strict(),
+  z
+    .object({
+      ...envelope,
+      event_type: z.literal("contract.completed"),
+      data: z
+        .object({
+          ...contractNotificationBase,
+          contract: contractSchema("completed"),
+          recipient: z
+            .object({
+              role: z.enum(["worker", "company"]),
+              name: z.string().min(1),
+              email: z.email(),
+            })
+            .strict(),
+          worker: z
+            .object({ first_name: z.string(), last_name: z.string() })
+            .strict(),
+          company: z.object({ name: z.string().min(1) }).strict(),
+        })
+        .strict(),
     })
     .strict(),
 ]);

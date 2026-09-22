@@ -77,7 +77,7 @@ CREATE INDEX contract_signature_events_contract_idx
  ON contract_signature_events(contract_id, created_at);
 
 -- Outbox minimale et idempotente. La transaction métier crée une intention
--- unique ; l'appel Brevo, externe, se fait après commit et peut être repris.
+-- unique ; sa livraison au webhook n8n se fait après commit et peut être reprise.
 CREATE TABLE contract_email_deliveries (
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
  contract_id uuid NOT NULL REFERENCES contracts(id) ON DELETE RESTRICT,

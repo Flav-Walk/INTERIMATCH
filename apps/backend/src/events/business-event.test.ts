@@ -12,6 +12,8 @@ const ids = {
   mission: "30000000-0000-4000-8000-000000000003",
   company: "40000000-0000-4000-8000-000000000004",
   skill: "50000000-0000-4000-8000-000000000005",
+  contract: "60000000-0000-4000-8000-000000000006",
+  delivery: "70000000-0000-4000-8000-000000000007",
 };
 const worker = {
   id: ids.worker,
@@ -84,6 +86,71 @@ const dataByType: Record<BusinessEventType, Record<string, unknown>> = {
     mission,
     company,
   },
+  "contract.available": {
+    delivery_id: ids.delivery,
+    contract: {
+      id: ids.contract,
+      status: "awaiting_worker_signature",
+      document_version: 1,
+    },
+    mission: {
+      id: mission.id,
+      title: mission.title,
+      starts_at: mission.starts_at,
+      ends_at: mission.ends_at,
+      address: mission.address,
+      city: mission.city,
+      postal_code: mission.postal_code,
+    },
+    worker: { first_name: worker.first_name, email: worker.email },
+    company: { name: company.establishment_name },
+    links: { document: `https://interimatch.example/worker/documents/${ids.contract}` },
+  },
+  "contract.worker_signed": {
+    delivery_id: ids.delivery,
+    contract: {
+      id: ids.contract,
+      status: "awaiting_company_signature",
+      document_version: 1,
+    },
+    mission: {
+      id: mission.id,
+      title: mission.title,
+      starts_at: mission.starts_at,
+      ends_at: mission.ends_at,
+      address: mission.address,
+      city: mission.city,
+      postal_code: mission.postal_code,
+    },
+    worker: { first_name: worker.first_name, last_name: worker.last_name },
+    company: { name: company.establishment_name, email: company.email },
+    links: { document: `https://interimatch.example/company/documents/${ids.contract}` },
+  },
+  "contract.completed": {
+    delivery_id: ids.delivery,
+    contract: {
+      id: ids.contract,
+      status: "completed",
+      document_version: 1,
+    },
+    mission: {
+      id: mission.id,
+      title: mission.title,
+      starts_at: mission.starts_at,
+      ends_at: mission.ends_at,
+      address: mission.address,
+      city: mission.city,
+      postal_code: mission.postal_code,
+    },
+    recipient: {
+      role: "worker",
+      name: `${worker.first_name} ${worker.last_name}`,
+      email: worker.email,
+    },
+    worker: { first_name: worker.first_name, last_name: worker.last_name },
+    company: { name: company.establishment_name },
+    links: { document: `https://interimatch.example/worker/documents/${ids.contract}` },
+  },
 };
 const envelope = {
   event_id: randomUUID(),
@@ -112,7 +179,7 @@ describe("business event envelope", () => {
     ).toBe(false);
   });
 
-  it("valide le payload exact des six événements officiels", () => {
+  it("valide le payload exact des événements officiels", () => {
     for (const event_type of Object.keys(dataByType) as BusinessEventType[])
       expect(
         businessEventSchema.safeParse({

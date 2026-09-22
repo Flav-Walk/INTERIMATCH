@@ -8,7 +8,7 @@ import { createApp } from "../app.js";
 import { readConfig } from "../config.js";
 import { ContractService } from "./service.js";
 import { memoryContractStore } from "./testing.js";
-import type { ContractEmailMessage } from "./email.js";
+import type { ContractNotification } from "./notification.js";
 import { MissionService } from "../missions/service.js";
 
 const pg = new PGlite();
@@ -28,7 +28,7 @@ const db: Db = {
 };
 
 const logger = { info: vi.fn(), error: vi.fn() };
-const sent: ContractEmailMessage[] = [];
+const sent: ContractNotification[] = [];
 const memory = memoryContractStore();
 const contracts = new ContractService(
   db,
@@ -175,6 +175,16 @@ describe("contrats de mission", () => {
       [applicationId],
     );
     expect(count.rows[0].n).toBe("1");
+    expect(sent).toHaveLength(1);
+    expect(sent[0]).toMatchObject({
+      eventType: "contract.available",
+      data: {
+        contract: { id: contractId, status: "awaiting_worker_signature" },
+        links: {
+          document: `https://interimatch.example/worker/documents/${contractId}`,
+        },
+      },
+    });
     await expect(
       db.query("UPDATE contracts SET status='completed' WHERE id=$1", [contractId]),
     ).rejects.toThrow();
@@ -231,8 +241,35 @@ describe("contrats de mission", () => {
     expect(companyAgain.status).toBe("completed");
     expect(completed.signatures).toHaveLength(2);
     expect(sent).toHaveLength(4);
-    expect(sent[0].text).toContain("25 septembre 2030");
-    expect(sent.every((message) => !message.text.includes("supabase"))).toBe(true);
+    expect(sent.map((notification) => notification.eventType)).toEqual([
+      "contract.available",
+      "contract.worker_signed",
+      "contract.completed",
+      "contract.completed",
+    ]);
+    const workerCompleted = sent.find(
+      (notification) =>
+        notification.eventType === "contract.completed" &&
+        (notification.data.recipient as { role?: string }).role === "worker",
+    );
+    const companyCompleted = sent.find(
+      (notification) =>
+        notification.eventType === "contract.completed" &&
+        (notification.data.recipient as { role?: string }).role === "company",
+    );
+    expect(workerCompleted?.data).toMatchObject({
+      recipient: { role: "worker", email: "worker.contract@example.test" },
+      links: {
+        document: `https://interimatch.example/worker/documents/${contractId}`,
+      },
+    });
+    expect(companyCompleted?.data).toMatchObject({
+      recipient: { role: "company", email: "company.contract@example.test" },
+      links: {
+        document: `https://interimatch.example/company/documents/${contractId}`,
+      },
+    });
+    expect(JSON.stringify(sent)).not.toContain("supabase");
     expect(
       (await db.query<{ n: string }>(
         "SELECT count(*)::text AS n FROM contract_email_deliveries",
@@ -240,7 +277,7 @@ describe("contrats de mission", () => {
     ).toBe("4");
   });
 
-  it("isole une panne email de la validation", async () => {
+  it("isole une panne n8n et reprend la même livraison après redémarrage", async () => {
     await db.query(
       `UPDATE contract_email_deliveries SET status='failed',sent_at=NULL
         WHERE contract_id=$1 AND kind='contract_completed_worker'`,
@@ -253,7 +290,14 @@ describe("contrats de mission", () => {
       "https://interimatch.example",
       logger,
     );
-    await expect(failing.retryPendingEmails()).resolves.toBeUndefined();
+    const delivery = (
+      await db.query<{ id: string }>(
+        `SELECT id FROM contract_email_deliveries
+          WHERE contract_id=$1 AND kind='contract_completed_worker'`,
+        [contractId],
+      )
+    ).rows[0];
+    await expect(failing.retryPendingNotifications()).resolves.toBeUndefined();
     expect((await contracts.getFor(contractId, await accounts.reload(workerId))).status).toBe(
       "completed",
     );
@@ -266,6 +310,26 @@ describe("contrats de mission", () => {
         )
       ).rows[0].status,
     ).toBe("failed");
+
+    const recovered: ContractNotification[] = [];
+    const afterRestart = new ContractService(
+      db,
+      memory.store,
+      { send: async (notification) => void recovered.push(notification) },
+      "https://interimatch.example",
+      logger,
+    );
+    await afterRestart.retryPendingNotifications();
+    expect(recovered).toHaveLength(1);
+    expect(recovered[0].deliveryId).toBe(delivery.id);
+    expect(
+      (
+        await db.query<{ status: string; attempts: number }>(
+          `SELECT status,attempts FROM contract_email_deliveries WHERE id=$1`,
+          [delivery.id],
+        )
+      ).rows[0],
+    ).toMatchObject({ status: "sent", attempts: 3 });
   });
 
   it("annule le processus en cours avec la mission et refuse une création tardive", async () => {
