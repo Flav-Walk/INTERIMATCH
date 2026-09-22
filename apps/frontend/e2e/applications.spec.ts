@@ -195,6 +195,7 @@ test("un worker postule, l’entreprise accepte et l’état persiste", async ({
   // Le parcours poursuit le workflow documentaire réel, sans interception
   // réseau et avec une doublure locale pour le stockage et l'email uniquement.
   await page.goto("/worker/documents");
+  await expect(page.getByText(/Ce prototype propose/)).toHaveCount(0);
   await expect(
     page.getByRole("heading", { name: "Mes documents", exact: true }),
   ).toBeVisible();
@@ -215,6 +216,7 @@ test("un worker postule, l’entreprise accepte et l’état persiste", async ({
   await signIn(page, companyEmail);
   await expect(page).toHaveURL(/\/company$/);
   await page.goto("/company/documents");
+  await expect(page.getByText(/Ce prototype propose/)).toHaveCount(0);
   const companyDocument = page.getByRole("listitem").filter({
     has: page.getByRole("heading", { name: "Serveur candidature" }),
   });

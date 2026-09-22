@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import {
   ArrowRight,
   CalendarDays,
-  FileCheck2,
   FileText,
 } from "lucide-react";
 import { HeroBanner } from "../components/HeroBanner";
@@ -81,15 +80,6 @@ export function DocumentsPage({ role }: { role: "worker" | "company" }) {
         }
         mascotPose="profile"
       />
-
-      <div className="documents-disclaimer" role="note">
-        <FileCheck2 size={20} aria-hidden="true" />
-        <p>
-          Ce prototype propose une validation interne traçable. Elle ne remplace
-          pas une signature électronique qualifiée ni un contrat de travail
-          juridiquement complet.
-        </p>
-      </div>
 
       {error ? (
         <div className="document-load-error">

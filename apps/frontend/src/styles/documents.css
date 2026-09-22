@@ -4,27 +4,6 @@
   gap: var(--space-6);
 }
 
-.documents-disclaimer {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-3);
-  padding: var(--space-4);
-  border: 1px solid color-mix(in oklch, var(--warn-ink) 25%, var(--border));
-  border-radius: var(--radius);
-  color: var(--warn-ink);
-  background: var(--warn-tint);
-}
-
-.documents-disclaimer svg {
-  flex: none;
-  margin-top: 2px;
-}
-
-.documents-disclaimer p {
-  max-width: 74ch;
-  margin: 0;
-}
-
 .document-list {
   margin: 0;
   padding: 0 var(--space-5);
@@ -438,7 +417,6 @@
     grid-template-columns: 1fr;
   }
 
-  .documents-disclaimer,
   .document-legal-notice,
   .document-sign span {
     font-size: 14px;
