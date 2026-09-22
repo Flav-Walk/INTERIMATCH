@@ -1,5 +1,7 @@
 import { useId, useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
+// Champ animé d'Aceternity UI : halo qui suit le curseur (voir le fichier).
+import { Input } from "./ui/input";
 
 /**
  * Champ de mot de passe avec bascule afficher / masquer.
@@ -36,7 +38,7 @@ export function PasswordField({
     <div className="field">
       <label htmlFor={id}>{label}</label>
       <div className="password-input">
-        <input
+        <Input
           id={id}
           name={name}
           type={shown ? "text" : "password"}

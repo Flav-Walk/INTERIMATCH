@@ -1,4 +1,5 @@
 import { useEffect, useRef, type ReactNode } from "react";
+import { InputGlow } from "../ui/input-glow";
 
 /**
  * Primitives de formulaire partagées.
@@ -59,11 +60,16 @@ export function Field({
           {hint}
         </p>
       )}
-      {children({
-        id: name,
-        ...(error ? { "aria-invalid": true as const } : {}),
-        ...(described ? { "aria-describedby": described } : {}),
-      })}
+      {/* Cadre animé de l'Input d'Aceternity UI : un halo orange suit le
+          curseur autour du champ. Le champ lui-même vient de la page et ne
+          change pas ; ses propriétés ARIA restent celles calculées ici. */}
+      <InputGlow>
+        {children({
+          id: name,
+          ...(error ? { "aria-invalid": true as const } : {}),
+          ...(described ? { "aria-describedby": described } : {}),
+        })}
+      </InputGlow>
       {error && (
         <p className="field-error" id={`${name}-error`}>
           {error}

@@ -102,3 +102,32 @@
     transform: none;
   }
 }
+
+/* ======================================================================
+ * Champs : « Input » d'Aceternity UI
+ * Le composant pose un cadre de 2px autour du champ ; au survol, un halo
+ * orange y suit le curseur. Le champ lui-même garde le style du site
+ * (bordure, fond, arrondi, police) : nos règles passent avant celles de
+ * Tailwind. Seule la hauteur fixe du composant (h-10) est neutralisée, pour
+ * garder la hauteur habituelle des champs.
+ * ==================================================================== */
+
+.group\/input > input {
+  height: auto;
+}
+
+/* Un seul signal de focus : le contour vert du site, pas l'anneau gris. */
+.group\/input > input:focus-visible {
+  box-shadow: none;
+}
+
+/* Le cadre n'a de sens qu'autour d'un vrai champ : quand Field reçoit autre
+   chose (case à cocher, groupe de choix), il s'efface. */
+.group\/input:not(:has(> :is(input, select, textarea))) {
+  padding: 0;
+  background: none !important;
+}
+
+.group\/input > :is(select, textarea) {
+  display: block;
+}
