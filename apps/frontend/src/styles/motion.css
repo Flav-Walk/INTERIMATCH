@@ -131,3 +131,110 @@
 .group\/input > :is(select, textarea) {
   display: block;
 }
+
+/* ======================================================================
+ * Badges de statut (ajustement maison, animés avec Motion)
+ * - Forme commune : coins de 6px au lieu de la pilule à 999px.
+ * - Un point de couleur devant le libellé ; il pulse tant que l'état attend
+ *   une suite (candidature en attente, signature attendue, mission à
+ *   pourvoir ou en cours).
+ * Préfixe `html` : certaines feuilles (candidatures, profil) arrivent après
+ * celle-ci avec leur page ; il faut quand même l'emporter sur leur arrondi.
+ * ==================================================================== */
+
+html
+  :is(
+    .mission-status,
+    .application-status,
+    .mission-context-status,
+    .document-status,
+    .profile-slot-status,
+    .match-badge,
+    .badge
+  ) {
+  border-radius: 6px;
+}
+
+html :is(.mission-status, .profile-slot-status) {
+  display: inline-flex;
+  align-items: center;
+}
+
+:is(
+    .mission-status,
+    .mission-context-status,
+    .document-status,
+    .profile-slot-status
+  )::before,
+.status-dot {
+  content: "";
+  display: inline-block;
+  flex: none;
+  width: 6px;
+  height: 6px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.application-status .status-dot {
+  margin-right: 0;
+}
+
+.application-status.is-pending .status-dot,
+.mission-status.is-open::before,
+.mission-status.is-running::before,
+.mission-context-status:is(.is-pending, .is-running)::before,
+.document-status:is(
+    .is-awaiting_worker_signature,
+    .is-awaiting_company_signature,
+    .is-awaiting_finalization
+  )::before {
+  animation: status-pulse 1.8s ease-out infinite;
+}
+
+@keyframes status-pulse {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in oklch, currentColor 55%, transparent);
+  }
+  70%,
+  100% {
+    box-shadow: 0 0 0 6px transparent;
+  }
+}
+
+/* ======================================================================
+ * Jauge de complétion : « Animated Circular Progress Bar » (Magic UI)
+ * Taille donnée par CircularGauge (--gauge-size), chiffre à la taille
+ * habituelle, suivi du signe %.
+ * ==================================================================== */
+
+.completion-gauge__magic {
+  flex: none;
+  width: var(--gauge-size, 78px);
+  height: var(--gauge-size, 78px);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.completion-gauge__magic [data-current-value]::after {
+  content: "%";
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .status-dot,
+  :is(
+      .mission-status,
+      .mission-context-status,
+      .document-status,
+      .profile-slot-status
+    )::before {
+    animation: none;
+  }
+
+  /* Les transitions de l'anneau sont écrites en ligne par le composant. */
+  .completion-gauge__magic circle {
+    transition: none !important;
+  }
+}

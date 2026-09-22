@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { motion } from "motion/react";
 import { ArrowRight, CalendarDays, Check, Coins, MapPin } from "lucide-react";
 import {
   missionStatePresentation,
@@ -112,9 +113,17 @@ export function MissionCard({
               decoding="async"
             />
           )}
-          <span className={`mission-status ${status.className}`}>
+          {/* Badge d'état : recréé quand l'état change (clé), il rejoue alors
+              son entrée avec Motion. */}
+          <motion.span
+            key={status.className}
+            className={`mission-status ${status.className}`}
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ type: "spring", bounce: 0.3, duration: 0.4 }}
+          >
             {status.label}
-          </span>
+          </motion.span>
           {pendingApplications > 0 && (
             <span className="mission-pending">
               {pendingApplications}

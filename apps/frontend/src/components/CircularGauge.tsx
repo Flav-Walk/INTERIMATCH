@@ -1,3 +1,6 @@
+import { useEffect, useState, type CSSProperties } from "react";
+import { AnimatedCircularProgressBar } from "./ui/animated-circular-progress-bar";
+
 interface CircularGaugeProps {
   value: number;
   label: string;
@@ -6,7 +9,26 @@ interface CircularGaugeProps {
   variant?: "forest" | "on-dark";
 }
 
-/** Indicateur purement visuel : sa valeur vient toujours de la donnée appelante. */
+/** Couleurs de l'anneau pour chaque fond : la valeur, puis le reste du tour. */
+const GAUGE_COLORS = {
+  forest: {
+    primary: "var(--forest)",
+    secondary: "oklch(0.32 0.065 165 / 0.14)",
+  },
+  "on-dark": {
+    primary: "oklch(0.75 0.12 158)",
+    secondary: "oklch(1 0 0 / 0.18)",
+  },
+} as const;
+
+/**
+ * Indicateur purement visuel : sa valeur vient toujours de la donnée appelante.
+ *
+ * L'anneau est l'« Animated Circular Progress Bar » de Magic UI. Il s'anime
+ * quand sa valeur change : on lui donne donc 0 au premier affichage, puis la
+ * vraie valeur à l'image suivante, pour qu'il se remplisse sous les yeux.
+ * L'étiquette accessible, elle, annonce directement la valeur finale.
+ */
 export function CircularGauge({
   value,
   label,
@@ -15,38 +37,28 @@ export function CircularGauge({
   variant = "forest",
 }: CircularGaugeProps) {
   const percentage = Math.min(100, Math.max(0, Math.round(value)));
-  const radius = 31;
-  const circumference = 2 * Math.PI * radius;
-  const offset = circumference * (1 - percentage / 100);
+  const [shown, setShown] = useState(0);
+
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setShown(percentage));
+    return () => cancelAnimationFrame(frame);
+  }, [percentage]);
+
+  const colors = GAUGE_COLORS[variant];
 
   return (
     <div
       className={`completion-gauge completion-gauge--${variant}`}
       role="img"
       aria-label={`${label} : ${percentage} %${subtitle ? `. ${subtitle}` : ""}`}
+      style={{ "--gauge-size": `${size}px` } as CSSProperties}
     >
-      <span
-        className="completion-gauge__ring"
-        style={{ width: size, height: size }}
-      >
-        <svg viewBox="0 0 72 72" aria-hidden="true">
-          <circle
-            className="completion-gauge__track"
-            cx="36"
-            cy="36"
-            r={radius}
-          />
-          <circle
-            className="completion-gauge__value"
-            cx="36"
-            cy="36"
-            r={radius}
-            strokeDasharray={circumference}
-            strokeDashoffset={offset}
-          />
-        </svg>
-        <strong>{percentage}%</strong>
-      </span>
+      <AnimatedCircularProgressBar
+        className="completion-gauge__magic"
+        value={shown}
+        gaugePrimaryColor={colors.primary}
+        gaugeSecondaryColor={colors.secondary}
+      />
       <span className="completion-gauge__copy">
         <strong>{label}</strong>
         {subtitle && <small>{subtitle}</small>}
