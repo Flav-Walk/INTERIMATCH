@@ -366,3 +366,68 @@
     transition: none;
   }
 }
+
+/* ── Couverture et carte cliquable (septembre 2026) ─────────────────────────
+ * Couverture de marque, sans photo : même visuel que les missions sans photo
+ * (dégradé vert, trame de points), icône du métier dans un cercle en verre.
+ */
+.public-offer-card__cover {
+  position: relative;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 16 / 8;
+  overflow: hidden;
+  background:
+    radial-gradient(oklch(1 0 0 / 0.09) 1px, transparent 1.5px) 0 0 / 14px 14px,
+    radial-gradient(
+      circle at 30% 20%,
+      oklch(0.44 0.075 165),
+      var(--forest) 55%,
+      oklch(0.24 0.05 165)
+    );
+  color: oklch(0.92 0.05 160);
+}
+
+/* Les badges passent en haut à gauche de la couverture, en verre. */
+.public-offer-card__cover .public-offer-card__badges {
+  position: absolute;
+  top: var(--space-3);
+  left: var(--space-3);
+}
+
+.public-offer-card__cover .badge {
+  border: 1px solid oklch(1 0 0 / 0.2);
+  border-radius: var(--radius-pill);
+  background: oklch(1 0 0 / 0.14);
+  backdrop-filter: blur(8px);
+  color: var(--surface);
+}
+
+.public-offer-card__header {
+  padding-top: var(--space-4);
+}
+
+/* Carte cliquable : le lien du titre s'étend sur toute la carte. */
+.public-offer-card {
+  position: relative;
+  cursor: pointer;
+}
+
+.public-offer-card__title a::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border-radius: inherit;
+}
+
+/* Focus clavier : on entoure toute la carte, pas seulement le titre. */
+.public-offer-card__title a:focus-visible {
+  outline: none;
+}
+
+.public-offer-card:has(.public-offer-card__title a:focus-visible) {
+  outline: 3px solid var(--forest);
+  outline-offset: 3px;
+}
+

@@ -1,11 +1,7 @@
 import { useEffect, useId, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import {
-  AnimatePresence,
-  motion,
-  useReducedMotion,
-  type Variants,
-} from "motion/react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { EASE, cascade, rise } from "../lib/motion";
 import { useAuth } from "../hooks/useAuth";
 import { usePageSeo } from "../hooks/usePageSeo";
 import { destination, errorMessage } from "../services/session";
@@ -25,23 +21,6 @@ import { MIN_PASSWORD_LENGTH } from "../services/password";
  * 4. Connexion réussie : la carte entière s'efface en douceur, puis on
  *    navigue vers l'espace de l'utilisateur.
  */
-const EASE = [0.22, 1, 0.36, 1] as const;
-
-const cascade: Variants = {
-  hidden: {},
-  visible: { transition: { staggerChildren: 0.08, delayChildren: 0.15 } },
-};
-
-const rise: Variants = {
-  hidden: { opacity: 0, y: 14, filter: "blur(6px)" },
-  visible: {
-    opacity: 1,
-    y: 0,
-    filter: "blur(0px)",
-    transition: { duration: 0.6, ease: EASE },
-  },
-};
-
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export function Login({ register = false }: { register?: boolean }) {

@@ -3,6 +3,7 @@ import { Building2, MapPin, Clock, ArrowRight, ExternalLink } from "lucide-react
 import type { PublicJobOffer } from "../../services/publicOffers";
 import { MagicCard } from "../ui/magic-card";
 import { MAGIC_CARD_COLORS } from "../../lib/brand";
+import { illustrationFor } from "../../lib/job-photos";
 
 interface PublicOfferCardProps {
   offer: PublicJobOffer;
@@ -17,6 +18,16 @@ interface PublicOfferCardProps {
  * Les compétences, l'expérience demandée et le code ROME restent sur la page
  * de détail (bouton « Voir l'offre »). Avant, on avait jusqu'à 10 pastilles
  * par carte, et les compétences longues débordaient de la carte.
+ *
+ * Couverture : une photo en rapport avec le métier, choisie automatiquement
+ * (lib/job-photos). Une offre France Travail n'a jamais de photo : celle-ci
+ * est donc toujours signalée « Illustration », pour ne pas laisser croire
+ * qu'elle montre l'établissement. Le visuel vert reste dessous pendant le
+ * chargement de l'image.
+ *
+ * Toute la carte est cliquable : le lien du titre s'étend sur toute la carte
+ * (pseudo-élément ::after en CSS). Un seul lien par carte, donc un lecteur
+ * d'écran n'annonce pas deux fois la même destination.
  */
 
 /*
@@ -65,9 +76,17 @@ export function PublicOfferCard({
       {/* Même Magic Card que les cartes mission, pour que toutes les cartes
           du site réagissent pareil au survol. */}
       <MagicCard className="card-surface" {...MAGIC_CARD_COLORS}>
-        {/* AUCUNE IMAGE. Une offre France Travail n'en transporte pas, et lui en
-            donner une laisserait croire qu'elle vient de l'établissement. */}
-        <div className="public-offer-card__header">
+        {/* Couverture : visuel vert (pendant le chargement), photo du métier
+            par-dessus, badges en verre et mention « Illustration ». */}
+        <div className="public-offer-card__cover">
+          <img
+            className="public-offer-card__photo"
+            src={illustrationFor(offer.title, offer.id).thumb_url}
+            alt=""
+            loading="lazy"
+            decoding="async"
+          />
+          <span className="photo-illustration-tag">Illustration</span>
           <div className="public-offer-card__badges">
             <span className="badge badge--france-travail">
               <ExternalLink size={12} aria-hidden="true" />
@@ -75,6 +94,8 @@ export function PublicOfferCard({
             </span>
             <span className="badge badge--contract">{offer.contract_label}</span>
           </div>
+        </div>
+        <div className="public-offer-card__header">
           <h2 id={`offer-${offer.id}`} className="public-offer-card__title">
             <Link to={href}>{offer.title}</Link>
           </h2>
@@ -111,14 +132,12 @@ export function PublicOfferCard({
               Salaire non précisé
             </span>
           )}
-          <Link
-            to={href}
-            className="public-offer-card__cta"
-            aria-label={`Voir l’offre : ${offer.title}`}
-          >
+          {/* Simple repère visuel : le vrai lien est celui du titre, étendu
+              à toute la carte. */}
+          <span className="public-offer-card__cta" aria-hidden="true">
             Voir l’offre
             <ArrowRight size={14} aria-hidden="true" />
-          </Link>
+          </span>
         </div>
       </MagicCard>
     </article>

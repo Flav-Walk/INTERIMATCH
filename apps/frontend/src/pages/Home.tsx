@@ -8,7 +8,9 @@ import {
   Sparkles,
   Users,
 } from "lucide-react";
-import { MatchyMascot } from "../components/MatchyMascot";
+// Fond photo animé et carte « parcours », à la place des arches et de Matchy.
+import { PhotoBackdrop } from "../components/PhotoBackdrop";
+import { JourneyCard } from "../components/home/JourneyCard";
 // Grille bento (Aceternity UI) pour les avantages, à la place des 3 blocs
 // identiques qu'on avait avant.
 import { FeatureBento } from "../components/home/FeatureBento";
@@ -86,8 +88,7 @@ export function Home() {
   return (
     <div className="home">
       <section className="home-hero" aria-labelledby="hero-title">
-        <span className="home-hero__arch home-hero__arch--one" aria-hidden />
-        <span className="home-hero__arch home-hero__arch--two" aria-hidden />
+        <PhotoBackdrop src="/images/hero/accueil.jpg" />
         <div className="home-hero__inner">
           <div className="home-hero__body">
             <span className="home-hero__eyeline">
@@ -127,13 +128,7 @@ export function Home() {
             )}
           </div>
           <div className="home-hero__visual">
-            <div className="home-hero__matchy-frame">
-              <p>
-                <strong>InteriMatch vous accompagne</strong>
-                <span>Du profil jusqu’à la mission confirmée.</span>
-              </p>
-              <MatchyMascot pose="missions" includeBackground size={310} />
-            </div>
+            <JourneyCard />
           </div>
         </div>
       </section>

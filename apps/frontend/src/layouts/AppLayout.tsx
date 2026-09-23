@@ -25,7 +25,9 @@ import {
   AnimatePresence,
   MotionConfig,
   motion,
+  useMotionValueEvent,
   useReducedMotion,
+  useScroll,
 } from "motion/react";
 import { useAuth } from "../hooks/useAuth";
 import { useCompanyData } from "../hooks/CompanyData";
@@ -161,6 +163,12 @@ export function AppLayout() {
   const outlet = useOutlet();
   // true si l'utilisateur a coché « réduire les animations » sur son système.
   const reduceMotion = useReducedMotion();
+  // L'en-tête se compacte dès qu'on a défilé de quelques pixels (classe
+  // is-scrolled, voir da.css). useMotionValueEvent n'appelle setScrolled que
+  // lorsque la valeur de scroll change, sans écouteur à nettoyer à la main.
+  const { scrollY } = useScroll();
+  const [scrolled, setScrolled] = useState(false);
+  useMotionValueEvent(scrollY, "change", (y) => setScrolled(y > 8));
   const pending = user?.role === "company" ? counts.pending : 0;
 
   async function logout() {
@@ -223,7 +231,7 @@ export function AppLayout() {
       <a className="skip-link" href="#content">
         Aller au contenu
       </a>
-      <header className="app-header">
+      <header className={`app-header${scrolled ? " is-scrolled" : ""}`}>
         <div className="app-header__inner">
           <NavLink
             className="app-header__logo"

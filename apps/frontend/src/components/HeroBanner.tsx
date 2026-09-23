@@ -1,13 +1,8 @@
-import { useRef, useState, type MouseEvent, type ReactNode } from "react";
+import type { MouseEvent, ReactNode } from "react";
 import { useLocation } from "react-router-dom";
-import {
-  motion,
-  useReducedMotion,
-  useScroll,
-  useTransform,
-  type Variants,
-} from "motion/react";
-import { FALLBACK_HERO_IMAGE, heroImageFor } from "../lib/hero-images";
+import { motion, useReducedMotion, type Variants } from "motion/react";
+import { heroImageFor } from "../lib/hero-images";
+import { PhotoBackdrop } from "./PhotoBackdrop";
 
 interface HeroBannerProps {
   eyeline?: string;
@@ -26,9 +21,8 @@ interface HeroBannerProps {
  * les props restent les mêmes).
  *
  * Ce qui bouge, dans l'ordre d'apparition :
- * 1. La photo de fond arrive avec un zoom lent (effet « Ken Burns »), puis
- *    descend un peu moins vite que la page au scroll (parallaxe, useScroll
- *    de Motion).
+ * 1. La photo de fond (composant PhotoBackdrop) arrive avec un zoom lent,
+ *    puis descend un peu moins vite que la page au scroll (parallaxe).
  * 2. Le titre apparaît mot par mot, chaque mot sortant d'un flou (même
  *    principe que le Blur Fade de Magic UI, appliqué mot à mot).
  * 3. Le sous-titre, le bouton et la jauge suivent en fondu.
@@ -74,18 +68,6 @@ export function HeroBanner({
   const reduceMotion = useReducedMotion();
   const { pathname } = useLocation();
   const image = heroImageFor(pathname);
-  // Si la photo de la rubrique n'est pas encore déposée, on bascule sur la
-  // photo provisoire (voir lib/hero-images.ts).
-  const [imageSrc, setImageSrc] = useState(image.src);
-
-  // Parallaxe : on suit le scroll du bandeau, de « haut de l'écran » jusqu'à
-  // « complètement sorti par le haut », et on décale la photo de 0 à 18 %.
-  const sectionRef = useRef<HTMLElement>(null);
-  const { scrollYProgress } = useScroll({
-    target: sectionRef,
-    offset: ["start start", "end start"],
-  });
-  const imageY = useTransform(scrollYProgress, [0, 1], ["0%", "18%"]);
 
   // Petit utilitaire : fondu qui démarre après `delay` secondes.
   const fadeIn = (delay: number) =>
@@ -110,29 +92,12 @@ export function HeroBanner({
 
   return (
     <section
-      ref={sectionRef}
       onMouseMove={handleMouseMove}
       className={`brand-hero brand-hero--photo${compact ? " brand-hero--compact" : ""}`}
     >
-      {/* 1. Photo de fond, décorative (alt vide + aria-hidden). */}
-      <div className="brand-hero__media" aria-hidden="true">
-        <motion.img
-          src={imageSrc}
-          alt=""
-          decoding="async"
-          onError={() => setImageSrc(FALLBACK_HERO_IMAGE)}
-          style={{
-            y: reduceMotion ? 0 : imageY,
-            objectPosition: image.position,
-          }}
-          initial={reduceMotion ? false : { scale: 1.12 }}
-          animate={{ scale: 1 }}
-          transition={{ duration: 14, ease: "easeOut" }}
-        />
-      </div>
-      {/* Voile vert + grain : garantit la lisibilité et donne la couleur
-          InteriMatch à n'importe quelle photo. */}
-      <div className="brand-hero__veil" aria-hidden="true" />
+      {/* 1. Photo de fond + voile vert (décoratifs). La clé force une
+          nouvelle photo quand on change de rubrique. */}
+      <PhotoBackdrop key={image.src} src={image.src} position={image.position} />
 
       <div className="brand-hero__copy">
         {/* Badge avec une pastille orange qui « respire » (voir brand.css). */}

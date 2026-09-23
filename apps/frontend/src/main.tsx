@@ -21,6 +21,9 @@ import "./styles/global.css";
 import "./styles/tailwind.css";
 // Mes réglages CSS pour les animations (cartes, champs, badges, menu…).
 import "./styles/motion.css";
+// Nouvelle direction artistique (navigation, cartes, fiches mission). Chargée
+// en dernier : elle ajuste les styles d'origine sans les réécrire.
+import "./styles/da.css";
 
 function NotFound() {
   usePageSeo({
