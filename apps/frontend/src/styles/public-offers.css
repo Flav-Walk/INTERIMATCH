@@ -294,3 +294,75 @@
   font-weight: 600;
   text-decoration: none;
 }
+
+/* ── Carte allégée (septembre 2026) ────────────────────────────────────────
+ * Titre limité à 2 lignes, une seule ligne « ville · temps de travail »,
+ * puis le salaire et le bouton dans le pied de carte.
+ */
+.public-offer-card__title {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+}
+
+.public-offer-card__facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-4);
+  margin: 0 0 var(--space-4);
+  padding-inline: var(--space-4);
+  font-size: var(--text-sm);
+  color: var(--ink);
+}
+
+.public-offer-card__facts span {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.public-offer-card__facts svg {
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.public-offer-card__salary {
+  font-size: var(--text-base);
+  font-weight: 700;
+  color: var(--forest);
+  font-variant-numeric: tabular-nums;
+}
+
+.public-offer-card__salary--none {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.public-offer-card__footer {
+  gap: var(--space-3);
+}
+
+.public-offer-card__cta {
+  flex-shrink: 0;
+  white-space: nowrap;
+  color: var(--forest);
+  font-size: var(--text-sm);
+}
+
+.public-offer-card__cta svg {
+  transition: transform var(--fast) var(--ease-out);
+}
+
+.public-offer-card__cta:hover svg,
+.public-offer-card:hover .public-offer-card__cta svg {
+  transform: translateX(3px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .public-offer-card__cta svg {
+    transition: none;
+  }
+}
