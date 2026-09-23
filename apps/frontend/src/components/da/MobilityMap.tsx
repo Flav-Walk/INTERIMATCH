@@ -175,8 +175,8 @@ export function MobilityMap({
       role="img"
       aria-label={
         km
-          ? `Carte : zone de mobilité de ${km} km autour de ${city || "votre ville"}`
-          : `Carte : ${city || "votre ville"}`
+          ? `Carte : zone de mobilité de ${km} km autour de ${city || "votre commune"}`
+          : `Carte : ${city || "votre commune"}`
       }
     >
       <div className="mobility-map__tiles" aria-hidden="true">
