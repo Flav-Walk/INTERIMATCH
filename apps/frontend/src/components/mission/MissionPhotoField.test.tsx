@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { MissionPhotoField, UnsplashCredit } from "./MissionPhotoField";
 import { MissionCard } from "./MissionCard";
 import { PublicOfferCard } from "../public-offers/PublicOfferCard";
+import { illustrationFor, offerIllustrationFor } from "../../lib/job-photos";
 import { MemoryRouter } from "react-router-dom";
 import type { Mission, MissionMedia } from "../../services/missions";
 import type { PublicJobOffer } from "../../services/publicOffers";
@@ -162,11 +163,30 @@ const offer: PublicJobOffer = {
 };
 
 describe("carte France Travail", () => {
-  it("n'affiche aucune image", () => {
+  // Règle initiale (commit 0bf62c3) : aucune image, car une photo générique
+  // pouvait passer pour celle de l'établissement. Règle actuelle : une seule
+  // image, une photo d'OBJETS du métier (bibliothèque des offres), jamais une
+  // photo de lieu ou de personne des missions, décorative et toujours
+  // signalée « Illustration ».
+  it("n'affiche qu'une photo d'objets du métier, signalée « Illustration »", () => {
     const html = render(<PublicOfferCard offer={offer} />);
-    expect(html).not.toContain("<img");
-    expect(html).not.toContain("images.unsplash.com");
+    const expected = offerIllustrationFor(offer.title, offer.id);
+    expect(html.match(/<img/g)).toHaveLength(1);
+    expect(html).toContain(`photo-${expected.external_id}`);
+    expect(html).toContain('alt=""');
+    expect(html).toContain("Illustration");
+    // Jamais une image locale (qui pourrait être celle d'un établissement).
     expect(html).not.toContain("/images/");
+  });
+
+  it("n'utilise pas les photos de salles ou de personnes des missions", () => {
+    for (let i = 0; i < 40; i++) {
+      const html = render(
+        <PublicOfferCard offer={{ ...offer, id: `ft-${i}` }} />,
+      );
+      const mission = illustrationFor(offer.title, `ft-${i}`);
+      expect(html).not.toContain(`photo-${mission.external_id}`);
+    }
   });
 
   it("conserve tout ce qui identifie l'offre externe", () => {

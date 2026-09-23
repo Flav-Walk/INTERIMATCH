@@ -3,6 +3,7 @@ import { Building2, MapPin, Clock, ArrowRight, ExternalLink } from "lucide-react
 import type { PublicJobOffer } from "../../services/publicOffers";
 import { MagicCard } from "../ui/magic-card";
 import { MAGIC_CARD_COLORS } from "../../lib/brand";
+import { offerIllustrationFor } from "../../lib/job-photos";
 
 interface PublicOfferCardProps {
   offer: PublicJobOffer;
@@ -18,8 +19,12 @@ interface PublicOfferCardProps {
  * de détail (bouton « Voir l'offre »). Avant, on avait jusqu'à 10 pastilles
  * par carte, et les compétences longues débordaient de la carte.
  *
- * Aucune image n'est inventée : France Travail n'en fournit pas, et une photo
- * générique pourrait être prise pour celle de l'établissement.
+ * Couverture : France Travail ne fournit aucune image. On affiche une photo
+ * d'OBJETS du métier (couverts, couteau et planche, ustensiles de bar,
+ * cloche et clés), jamais un lieu ni une personne : elle ne peut pas être
+ * prise pour une photo de l'établissement (voir lib/job-photos,
+ * offerIllustrationFor). Toujours signalée « Illustration ». Le fond vert
+ * de la couverture reste visible pendant le chargement de l'image.
  */
 
 /*
@@ -47,7 +52,17 @@ export function PublicOfferCard({
       {/* Même Magic Card que les cartes mission, pour que toutes les cartes
           du site réagissent pareil au survol. */}
       <MagicCard className="card-surface" {...MAGIC_CARD_COLORS}>
-        <div className="public-offer-card__header">
+        {/* Couverture : photo d'objets du métier, badges en verre par-dessus
+            et mention « Illustration ». Image décorative (alt vide). */}
+        <div className="public-offer-card__cover">
+          <img
+            className="public-offer-card__photo"
+            src={offerIllustrationFor(offer.title, offer.id).thumb_url}
+            alt=""
+            loading="lazy"
+            decoding="async"
+          />
+          <span className="photo-illustration-tag">Illustration</span>
           <div className="public-offer-card__badges">
             <span className="badge badge--france-travail">
               <ExternalLink size={12} aria-hidden="true" />
@@ -55,6 +70,8 @@ export function PublicOfferCard({
             </span>
             <span className="badge badge--contract">{offer.contract_label}</span>
           </div>
+        </div>
+        <div className="public-offer-card__header">
           <h2 id={`offer-${offer.id}`} className="public-offer-card__title">
             <Link to={href}>{offer.title}</Link>
           </h2>

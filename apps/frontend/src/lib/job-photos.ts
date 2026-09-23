@@ -103,3 +103,61 @@ export function illustrationFor(title: string, seed: string): UnsplashMedia {
     alt: photo.alt,
   };
 }
+
+/* ======================================================================
+   Offres France Travail : photos d'OBJETS uniquement
+   ----------------------------------------------------------------------
+   Pourquoi une bibliothèque à part : une offre France Travail vient d'un
+   établissement réel qui ne nous a fourni aucune image. Une photo de salle,
+   de comptoir ou de serveur pourrait être prise pour une photo de CET
+   établissement (objection de revue, commit 0bf62c3).
+
+   Règle de choix, vérifiée photo par photo :
+   - des objets du métier en plan serré (couverts, couteau et planche,
+     ustensiles de bar, cloche et clés) ;
+   - aucun lieu reconnaissable, aucune personne, aucune marque ;
+   - photos gratuites Unsplash (pas Unsplash+), crédit du photographe
+     affiché sur la page de l'offre, mention « Illustration » sur la carte.
+   ====================================================================== */
+const OFFER_LIBRARY: Record<JobFamily, LibraryPhoto[]> = {
+  salle: [
+    { cdn: "1630527152680-500b5453fb04", author: "Karen Sewell", handle: "sewellkare12", alt: "Assiette, couverts et verre dressés sur une table blanche" },
+    { cdn: "1693219672584-198f9475d413", author: "Wolfgang Rottmann", handle: "quadratmedia", alt: "Fourchette posée sur une serviette en tissu" },
+    { cdn: "1785951166125-7de8a097d862", author: "Timur Seyfelmlyukov", handle: "timurse", alt: "Serviette blanche et couverts dorés sur une assiette" },
+  ],
+  cuisine: [
+    { cdn: "1604543447675-5e7a5c508407", author: "Kevin Doran", handle: "kfitzdor", alt: "Couteau de cuisine sur une planche en bois" },
+    { cdn: "1604543648342-6a500ad7b5c7", author: "Kevin Doran", handle: "kfitzdor", alt: "Couteau, ail et herbes fraîches sur une planche" },
+    { cdn: "1604543456734-4559dd906a0c", author: "Kevin Doran", handle: "kfitzdor", alt: "Couteau, concombre et herbes sur une planche" },
+  ],
+  bar: [
+    { cdn: "1717735050402-2747fe8c4df2", author: "Jez Timms", handle: "jeztimms", alt: "Ustensiles de bar rangés dans un verre" },
+    { cdn: "1760463502141-2b5166df169e", author: "Jax Elledge", handle: "nextgenpics", alt: "Rangée de shakers à cocktail" },
+    { cdn: "1778008522518-bb26f283bdb0", author: "Milan Trninic", handle: "wedesignmarbella", alt: "Timbales en métal alignées" },
+  ],
+  reception: [
+    { cdn: "1758708536313-e7055ddba277", author: "Jonathan Cosens Photography", handle: "jcosens", alt: "Cloche de service en laiton" },
+    { cdn: "1562701447-8ec5d514a2a1", author: "Jen Theodore", handle: "jentheodore", alt: "Clés anciennes en laiton" },
+    { cdn: "1609587415882-97552f39c6c2", author: "Nerene Grobler", handle: "nerene_g", alt: "Trousseau de clés anciennes sur du bois" },
+  ],
+};
+
+/**
+ * Photo de couverture d'une offre France Travail : même famille de métier
+ * que les missions, mais tirée de la bibliothèque « objets seulement ».
+ * `seed` : l'identifiant de l'offre (toujours la même photo pour une offre).
+ */
+export function offerIllustrationFor(title: string, seed: string): UnsplashMedia {
+  const photos = OFFER_LIBRARY[jobFamily(title)];
+  const photo = photos[hash(seed) % photos.length];
+  const base = `https://images.unsplash.com/photo-${photo.cdn}?auto=format&fit=crop`;
+  return {
+    provider: "unsplash",
+    url: `${base}&w=1400&q=70`,
+    thumb_url: `${base}&w=600&q=60`,
+    external_id: photo.cdn,
+    author_name: photo.author,
+    author_url: `https://unsplash.com/@${photo.handle}${UTM}`,
+    alt: photo.alt,
+  };
+}
