@@ -1,5 +1,5 @@
 import { LayoutGroup, motion, useReducedMotion } from "motion/react";
-import { CircleX, Plus } from "lucide-react";
+import { Check, CircleX, Plus } from "lucide-react";
 import type { ReactNode } from "react";
 import AnimatedToggle from "../ui/animated-toggle";
 import { cn } from "../../lib/utils";
@@ -120,6 +120,113 @@ export function ChoiceTags({
         {available.map((option) => tag(option, false))}
       </div>
     </LayoutGroup>
+  );
+}
+
+// ── 1 bis. Grille de tuiles à cocher (vue « tout d'un coup d'œil ») ───────
+
+/*
+ * Variante de ChoiceTags pour la carte Bento « Compétences & Métiers ».
+ *
+ * Différence volontaire : ici les tuiles NE BOUGENT PAS quand on les coche.
+ * Chaque option garde sa place dans une grille régulière (2 → 3 → 4
+ * colonnes), donc l'œil retrouve « Relation client » toujours au même
+ * endroit : saisie plus rapide, pas de saut de mise en page.
+ *
+ * - Forme « bulle » (pastille ronde) conservée, comme les anciens chips.
+ * - Au repos : fond gris clair, texte sombre, anneau vide.
+ * - Cochée : fond vert foncé, texte blanc, coche (✓) qui apparaît.
+ *
+ * Le groupe est un <fieldset> + <legend> : il est exposé comme « group »
+ * nommé par sa légende (getByRole("group", { name: "Vos compétences" })).
+ */
+export function ChoiceGrid({
+  name,
+  legend,
+  options,
+  selected,
+  onToggle,
+  optional = false,
+  hint,
+}: {
+  name: string;
+  /** Titre visible du groupe, aussi son nom accessible. */
+  legend: string;
+  options: TagOption[];
+  selected: string[];
+  onToggle: (value: string, checked: boolean) => void;
+  optional?: boolean;
+  hint?: ReactNode;
+}) {
+  const reduceMotion = useReducedMotion();
+  // On ne compte que les choix encore présents dans le référentiel.
+  const count = options.filter((option) => selected.includes(option.value)).length;
+
+  return (
+    <fieldset className="profile-chip-group da-scope m-0 grid min-w-0 gap-2 border-0 bg-transparent p-0">
+      <legend className="mb-1 flex w-full flex-wrap items-baseline gap-x-2 p-0 font-sans text-base font-bold text-foreground">
+        <span>{legend}</span>
+        {optional && (
+          <span className="text-sm font-medium text-muted-foreground">(facultatif)</span>
+        )}
+        {/* Compteur : repère immédiat de ce qui est déjà choisi. */}
+        <span className="ml-auto text-sm font-semibold tabular-nums text-muted-foreground">
+          {count} / {options.length}
+        </span>
+      </legend>
+      {hint && <p className="m-0 text-sm text-muted-foreground">{hint}</p>}
+
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4">
+        {options.map((option) => {
+          const checked = selected.includes(option.value);
+          return (
+            <label
+              key={option.value}
+              className={cn(
+                "relative flex min-h-11 min-w-0 cursor-pointer items-center gap-2.5 rounded-full border py-2 pl-2.5 pr-4 text-sm leading-tight",
+                "transition-colors duration-150 active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100",
+                "has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring has-[:focus-visible]:ring-offset-2",
+                checked
+                  ? "border-forest bg-forest font-bold text-white"
+                  : "border-transparent bg-foreground/[0.05] font-semibold text-foreground hover:border-forest/40 hover:bg-tint/70",
+              )}
+            >
+              {/* La vraie case à cocher, invisible, par-dessus toute la tuile. */}
+              <input
+                type="checkbox"
+                name={name}
+                value={option.value}
+                checked={checked}
+                onChange={(event) => onToggle(option.value, event.target.checked)}
+                className="absolute inset-0 m-0 size-full cursor-pointer opacity-0"
+              />
+              {/* Indicateur : anneau vide → pastille blanche avec coche. */}
+              <span
+                aria-hidden="true"
+                className={cn(
+                  "inline-flex size-5 flex-none items-center justify-center rounded-full border-[1.5px] transition-colors duration-150",
+                  checked
+                    ? "border-white bg-white text-forest"
+                    : "border-foreground/30 bg-surface",
+                )}
+              >
+                {checked && (
+                  <motion.span
+                    initial={reduceMotion ? false : { scale: 0.4, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ type: "spring", bounce: 0.35, duration: 0.3 }}
+                    className="inline-flex"
+                  >
+                    <Check size={13} strokeWidth={3} />
+                  </motion.span>
+                )}
+              </span>
+              <span className="min-w-0 [overflow-wrap:anywhere]">{option.label}</span>
+            </label>
+          );
+        })}
+      </div>
+    </fieldset>
   );
 }
 

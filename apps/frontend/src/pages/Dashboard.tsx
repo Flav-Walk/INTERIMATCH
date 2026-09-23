@@ -28,7 +28,7 @@ import {
 } from "../services/applications";
 import { ConfirmedMissions } from "../components/applications/ConfirmedMissions";
 import { HeroBanner } from "../components/HeroBanner";
-import { CircularGauge } from "../components/CircularGauge";
+import { RequirementMeter } from "../components/da/RequirementMeter";
 import {
   AvailabilityWidget,
   LeadNumber,
@@ -36,6 +36,7 @@ import {
 } from "../components/da/DashboardWidgets";
 import { workerRequirementProgress } from "../services/completion";
 import { EmptyState } from "../components/da/EmptyState";
+import { MobilityMap } from "../components/da/MobilityMap";
 
 /**
  * Rappel de complétion. Il n'apparaît que tant qu'il reste quelque chose à
@@ -175,15 +176,11 @@ export function Dashboard() {
             }
             mascotPose="dashboard"
             gauge={
-              requirementProgress !== null ? (
-                <CircularGauge
-                  value={requirementProgress}
-                  label="Prérequis missions"
-                  subtitle={
-                    readyForMissions
-                      ? "Tous réunis"
-                      : `${user.missing_requirements?.length ?? 0} à compléter`
-                  }
+              // Un segment par prérequis + ce qui manque, en toutes lettres
+              // (remplace la jauge « 100 » en fer à cheval).
+              requirementProgress !== null && user.missing_requirements ? (
+                <RequirementMeter
+                  missing={user.missing_requirements}
                   variant="on-dark"
                 />
               ) : undefined
@@ -362,8 +359,21 @@ export function Dashboard() {
                 <h2>{p.city ?? "Votre mobilité"}</h2>
                 {p.city && p.mobility_radius_km != null ? (
                   <>
-                    {/* Ripple (Magic UI) : le rayon de mobilité, dessiné. */}
-                    <MobilityRadar city={p.city} radius={p.mobility_radius_km} />
+                    {/* Vraie carte (Plan IGN) avec le rayon à l'échelle,
+                        la même que sur la page Profil. La ville est déjà
+                        le titre du panneau : pas d'étiquette sur la carte. */}
+                    <MobilityMap
+                      city={p.city}
+                      postalCode={p.postal_code ?? ""}
+                      radiusKm={p.mobility_radius_km}
+                      saved={
+                        p.latitude != null && p.longitude != null
+                          ? { lat: p.latitude, lon: p.longitude }
+                          : null
+                      }
+                      height={220}
+                      showLabel={false}
+                    />
                     <p>
                       {p.postal_code} · jusqu’à {p.mobility_radius_km} km autour
                       de chez vous

@@ -135,7 +135,8 @@ test("public landing, login and registration share the InteriMatch identity", as
   await expect(
     page.getByRole("heading", { name: "Les bonnes personnes, au bon moment." }),
   ).toBeVisible();
-  await expect(page.locator(".home-hero .journey-card")).toBeVisible();
+  // La carte « parcours » a été remplacée par les faisceaux Animated Beam.
+  await expect(page.locator(".home-hero .home-hero__beam")).toBeVisible();
   await expect(page.getByText("Publiez en 3 minutes")).toHaveCount(0);
   await expect(page.getByText(/professionnels vérifiés/)).toHaveCount(0);
   await page.screenshot({
@@ -460,7 +461,7 @@ test("profile lists persist, reject incomplete rows, and allow slot editing", as
   await page.getByRole("link", { name: "Mon profil", exact: true }).click();
   const jobs = section(page, "Votre métier");
   await jobs.getByLabel("Métier principal").selectOption("barman");
-  await jobs
+  await section(page, "Autres métiers exercés")
     .getByRole("checkbox", { name: "Chef de rang", exact: true })
     .check();
   await jobs
@@ -501,7 +502,10 @@ test("profile lists persist, reject incomplete rows, and allow slot editing", as
   await page.reload();
   await expect(jobs.getByLabel("Métier principal")).toHaveValue("barman");
   await expect(
-    jobs.getByRole("checkbox", { name: "Chef de rang", exact: true }),
+    section(page, "Autres métiers exercés").getByRole("checkbox", {
+      name: "Chef de rang",
+      exact: true,
+    }),
   ).toBeChecked();
   await expect(
     jobs.getByLabel("Années d’expérience du métier (facultatif)"),
@@ -817,8 +821,9 @@ test("secondary jobs and licence save without the main job blocking the form", a
 
   // Profil neuf : aucun métier principal choisi. Cocher un métier secondaire
   // seul doit s'enregistrer, sans blocage de la validation native du navigateur.
-  const job = section(page, "Votre métier");
-  await job.getByLabel("Barman / Barmaid", { exact: true }).check();
+  await section(page, "Autres métiers exercés")
+    .getByLabel("Barman / Barmaid", { exact: true })
+    .check();
   await save(page, "Votre métier");
   expect(
     await page.evaluate(() => {
@@ -836,7 +841,7 @@ test("secondary jobs and licence save without the main job blocking the form", a
 
   await page.reload();
   await expect(
-    section(page, "Votre métier").getByLabel("Barman / Barmaid", {
+    section(page, "Autres métiers exercés").getByLabel("Barman / Barmaid", {
       exact: true,
     }),
   ).toBeChecked();
@@ -848,8 +853,7 @@ test("secondary jobs and licence save without the main job blocking the form", a
     .selectOption("serveur");
   await save(page, "Votre métier");
   await page.reload();
-  await section(page, "Votre métier")
-    .getByRole("group", { name: /Autres métiers exercés/ })
+  await section(page, "Autres métiers exercés")
     .getByText("Chef de rang", { exact: true })
     .click();
   await save(page, "Votre métier");
@@ -858,7 +862,9 @@ test("secondary jobs and licence save without the main job blocking the form", a
     section(page, "Votre métier").getByLabel("Métier principal"),
   ).toHaveValue("serveur");
   await expect(
-    section(page, "Votre métier").getByLabel("Chef de rang", { exact: true }),
+    section(page, "Autres métiers exercés").getByLabel("Chef de rang", {
+      exact: true,
+    }),
   ).toBeChecked();
 
   // Mobilité : les choix permis/véhicule sont exclusifs et cohérents.

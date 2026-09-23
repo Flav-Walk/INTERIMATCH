@@ -48,6 +48,7 @@
 @theme inline {
   --color-forest: var(--forest);
   --color-forest-mid: var(--forest-mid);
+  --color-orange: var(--orange);
   --color-orange-ink: var(--orange-ink);
   --color-surface: var(--surface);
   --color-tint: var(--tint);

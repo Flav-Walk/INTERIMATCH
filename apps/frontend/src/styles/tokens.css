@@ -61,6 +61,24 @@
   --warn-ink: oklch(0.45 0.11 75);
   --warn-tint: oklch(0.95 0.05 85);
 
+  /* Système de niveaux des jauges (lib/levels.ts).
+     Trois niveaux, toujours dans cet ordre : élevé (vert), moyen (ambre),
+     faible (rouge). Chaque niveau a :
+     - une teinte de REMPLISSAGE (barres), ≥ 3:1 sur blanc ;
+     - une ENCRE pour le texte, contrastée sur fond blanc (≥ 4,5:1) ;
+     - une variante « on-dark » pour les bandeaux photo verts.
+     La couleur ne porte jamais l'information seule : le chiffre ou le
+     libellé est toujours écrit à côté. */
+  --level-high: oklch(0.6 0.13 155);
+  --level-high-ink: oklch(0.4 0.1 155);
+  --level-high-on-dark: oklch(0.82 0.15 155);
+  --level-mid: oklch(0.66 0.15 65); /* 3,2:1 sur blanc (WCAG 1.4.11) */
+  --level-mid-ink: oklch(0.47 0.11 65);
+  --level-mid-on-dark: oklch(0.85 0.14 80);
+  --level-low: oklch(0.6 0.19 27);
+  --level-low-ink: oklch(0.5 0.19 27);
+  --level-low-on-dark: oklch(0.75 0.16 27);
+
   /* --- Mouvement. Sorties exponentielles, jamais de rebond. --- */
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --fast: 120ms;

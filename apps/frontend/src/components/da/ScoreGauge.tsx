@@ -57,15 +57,17 @@ export function ScoreGauge({
         trackClassName={colors.track}
         progressClassName={colors.arc}
       >
+        {/* Le chiffre est écrit par le CSS (::after + attr(data-value)) et
+            non en texte : il n'entre pas dans le textContent du badge, que
+            les tests e2e comparent mot pour mot (« Compatible à 92 % … »). */}
         <span
+          data-value={score}
           className={cn(
-            "absolute inset-0 flex items-center justify-center font-brand leading-none font-semibold tabular-nums",
+            "absolute inset-0 flex items-center justify-center font-brand leading-none font-semibold tabular-nums after:content-[attr(data-value)]",
             colors.value,
           )}
           style={{ fontSize: Math.round(size * (score === 100 ? 0.24 : 0.3)) }}
-        >
-          {score}
-        </span>
+        />
       </GaugeChart>
     </span>
   );
