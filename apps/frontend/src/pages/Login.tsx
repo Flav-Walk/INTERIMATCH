@@ -1,7 +1,7 @@
 import { useEffect, useId, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { EASE, cascade, rise } from "../lib/motion";
+import { cascade, rise } from "../lib/motion";
 import { useAuth } from "../hooks/useAuth";
 import { usePageSeo } from "../hooks/usePageSeo";
 import { destination, errorMessage } from "../services/session";
@@ -18,10 +18,9 @@ import { MIN_PASSWORD_LENGTH } from "../services/password";
  *    (stagger), chaque bloc sortant d'un léger flou.
  * 2. Le bouton passe par 3 états : normal → chargement → coche validée.
  * 3. Une erreur arrive en secouant la ligne, pour attirer l'œil.
- * 4. Connexion réussie : la carte entière s'efface en douceur, puis on
- *    navigue vers l'espace de l'utilisateur.
+ * 4. Connexion réussie : le bouton confirme brièvement l'action et la
+ *    navigation reste immédiate.
  */
-const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /** Logo « G » de Google, aux couleurs officielles, pour le bouton. */
 function GoogleLogo() {
@@ -57,9 +56,8 @@ export function Login({ register = false }: { register?: boolean }) {
     // secousse même si le message est identique.
     [errorCount, setErrorCount] = useState(0),
     [busy, setBusy] = useState(false),
-    // État du bouton d'envoi, et « sortie en cours » après la connexion.
+    // État du bouton d'envoi.
     [submitState, setSubmitState] = useState<SubmitState>("idle"),
-    [leaving, setLeaving] = useState(false),
     // Contrôlés : l'indicateur de force a besoin de la valeur saisie, et la
     // bascule afficher/masquer ne doit jamais la reconstruire.
     [password, setPassword] = useState(""),
@@ -75,14 +73,7 @@ export function Login({ register = false }: { register?: boolean }) {
       if (register && password !== confirm)
         throw new Error("Les mots de passe ne correspondent pas.");
       const user = await auth.login(String(f.get("email")), password, register);
-      // On laisse le temps de voir la coche, puis la carte s'efface avant
-      // de changer de page. Sans animation : navigation immédiate.
-      if (!reduceMotion) {
-        setSubmitState("success");
-        await wait(650);
-        setLeaving(true);
-        await wait(320);
-      }
+      setSubmitState("success");
       navigate(destination(user), { replace: true });
     } catch (e) {
       setError(errorMessage(e));
@@ -111,15 +102,7 @@ export function Login({ register = false }: { register?: boolean }) {
     }
   }
   return (
-    <motion.div
-      className="auth-grid"
-      animate={
-        leaving
-          ? { opacity: 0, scale: 0.985, filter: "blur(6px)" }
-          : { opacity: 1, scale: 1, filter: "blur(0px)" }
-      }
-      transition={{ duration: 0.32, ease: EASE }}
-    >
+    <motion.div className="auth-grid">
       <section className="auth-story">
         {/* Photo pleine hauteur, voile sombre en bas sous le texte. Pas de
             parallaxe : ce panneau ne défile pas. */}

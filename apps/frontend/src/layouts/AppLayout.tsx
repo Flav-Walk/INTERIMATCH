@@ -1,7 +1,7 @@
 import {
   NavLink,
+  Outlet,
   useLocation,
-  useOutlet,
   useNavigate,
   useSearchParams,
 } from "react-router-dom";
@@ -22,7 +22,6 @@ import {
 } from "lucide-react";
 import { useRef, useState, type FormEvent, type ReactNode } from "react";
 import {
-  AnimatePresence,
   MotionConfig,
   motion,
   useMotionValueEvent,
@@ -157,11 +156,6 @@ export function AppLayout() {
     [replay, setReplay] = useState(false);
   const account = useRef<HTMLDetailsElement>(null);
   const user = auth.user;
-  // J'utilise useOutlet() au lieu de <Outlet /> : ça me donne la page sous
-  // forme de variable. Pendant que l'ancienne page disparaît, elle garde
-  // SON contenu. Avec <Outlet />, elle afficherait déjà la nouvelle page
-  // pendant sa sortie, et on verrait un flash.
-  const outlet = useOutlet();
   // true si l'utilisateur a coché « réduire les animations » sur son système.
   const reduceMotion = useReducedMotion();
   // L'en-tête se compacte dès qu'on a défilé de quelques pixels (classe
@@ -389,26 +383,19 @@ export function AppLayout() {
         </p>
       )}
       <main id="content" className="app-main" tabIndex={-1} ref={mainRef}>
-        {/* Transition entre les pages.
-            - key = le chemin de la page : quand il change, AnimatePresence
-              fait sortir l'ancienne page et entrer la nouvelle. Une recherche
-              (?q=…) ne change pas le chemin, donc pas d'animation inutile.
-            - mode="wait" : la nouvelle page attend que l'ancienne soit partie.
-            - reducedMotion="user" : aucune animation pour ceux qui l'ont
-              désactivée sur leur ordinateur. */}
+        {/* La page entrante apparaît en douceur, sans retenir l'ancienne route :
+            les redirections et chargements d'authentification restent ainsi
+            synchrones avec l'URL. */}
         <MotionConfig reducedMotion="user">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={location.pathname}
-              className="page-transition"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -6 }}
-              transition={{ duration: 0.22, ease: PAGE_EASE }}
-            >
-              {outlet}
-            </motion.div>
-          </AnimatePresence>
+          <motion.div
+            key={location.pathname}
+            className="page-transition"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.22, ease: PAGE_EASE }}
+          >
+            <Outlet />
+          </motion.div>
         </MotionConfig>
       </main>
       <footer className="shell-footer">

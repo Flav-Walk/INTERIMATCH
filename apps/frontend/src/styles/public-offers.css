@@ -242,6 +242,8 @@
 }
 
 .public-offer-card__cta {
+  position: relative;
+  z-index: 2;
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
@@ -430,4 +432,3 @@
   outline: 3px solid var(--forest);
   outline-offset: 3px;
 }
-

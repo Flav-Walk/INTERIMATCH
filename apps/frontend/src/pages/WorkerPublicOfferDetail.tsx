@@ -2,8 +2,6 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { motion, useReducedMotion } from "motion/react";
 import { cascade, revealOnScroll, rise } from "../lib/motion";
-import { illustrationFor } from "../lib/job-photos";
-import { UnsplashCredit } from "../components/mission/MissionPhotoField";
 import {
   ArrowLeft,
   Briefcase,
@@ -105,32 +103,12 @@ export function WorkerPublicOfferDetail() {
   const requiredSkills = offer.skills.filter((s) => s.required);
   const desiredSkills = offer.skills.filter((s) => !s.required);
   const sourceUrl = safeExternalUrl(offer.source_url);
-  // Une offre France Travail n'a pas de photo : on affiche celle du métier,
-  // toujours signalée « Photo d'illustration ».
-  const media = illustrationFor(offer.title, offer.id);
   // « Réduire les animations » : tout s'affiche directement.
   const reveal = reduceMotion ? {} : revealOnScroll;
 
   return (
     <div className="detail-page">
       <div className="detail-hero detail-hero--offer">
-        {/* Photo du métier en fond, avec un zoom lent à l'arrivée. */}
-        <figure className="detail-hero__photo">
-          <motion.img
-            src={media.url}
-            alt=""
-            decoding="async"
-            initial={reduceMotion ? false : { scale: 1.1 }}
-            animate={{ scale: 1 }}
-            transition={{ duration: 14, ease: "easeOut" }}
-          />
-          <figcaption>
-            <span className="photo-illustration-tag is-inline">
-              Photo d’illustration
-            </span>
-            <UnsplashCredit media={media} />
-          </figcaption>
-        </figure>
         {/* Le contenu arrive en cascade : retour, titre, infos. */}
         <motion.div
           className="detail-hero__inner"
