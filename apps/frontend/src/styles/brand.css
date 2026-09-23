@@ -1,7 +1,7 @@
 /* Identité Gemini portée sur les écrans fonctionnels, sans styles globaux. */
 .brand-wordmark {
   display: inline-block;
-  font-family: Georgia, "Times New Roman", serif;
+  font-family: var(--font-display);
   font-size: 1.3rem;
   font-weight: 700;
   line-height: 1;
@@ -78,7 +78,7 @@
   max-width: 22ch;
   margin: 0;
   color: var(--surface);
-  font-family: Georgia, "Times New Roman", serif;
+  font-family: var(--font-display);
   font-size: clamp(1.75rem, 3vw, 2.55rem);
   line-height: 1.1;
   letter-spacing: -0.025em;

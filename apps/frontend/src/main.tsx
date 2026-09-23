@@ -11,6 +11,10 @@ import { MentionsLegales } from "./pages/MentionsLegales";
 import { PolitiqueConfidentialite } from "./pages/PolitiqueConfidentialite";
 import { Accessibilite } from "./pages/Accessibilite";
 import { usePageSeo } from "./hooks/usePageSeo";
+// Polices auto-hébergées (Fontsource) : Fraunces pour les titres, Geist
+// pour le texte. Voir --font-display et --font-body dans tokens.css.
+import "@fontsource-variable/fraunces";
+import "@fontsource-variable/geist";
 import "./styles/global.css";
 // Tailwind : uniquement pour les composants copiés depuis Magic UI, Aceternity
 // et SmoothUI (dossier components/ui). Il ne touche pas au reste du site.
