@@ -1,7 +1,7 @@
 import {
   NavLink,
+  Outlet,
   useLocation,
-  useOutlet,
   useNavigate,
   useSearchParams,
 } from "react-router-dom";
@@ -21,14 +21,6 @@ import {
   UserCircle,
 } from "lucide-react";
 import { useRef, useState, type FormEvent, type ReactNode } from "react";
-import {
-  AnimatePresence,
-  MotionConfig,
-  motion,
-  useMotionValueEvent,
-  useReducedMotion,
-  useScroll,
-} from "motion/react";
 import { useAuth } from "../hooks/useAuth";
 import { useCompanyData } from "../hooks/CompanyData";
 import {
@@ -40,7 +32,6 @@ import {
 } from "../services/session";
 import { GuidedTour } from "../components/GuidedTour";
 import { Logo } from "../components/Logo";
-import { useSiteReveal } from "../lib/site-reveal";
 import {
   CURRENT_TOUR_VERSION,
   shouldRunTour,
@@ -133,19 +124,6 @@ const initials = (user: User) => {
   return (letters || user.email.slice(0, 2)).toLocaleUpperCase("fr");
 };
 
-// Réglage du ressort de la pastille du menu. Je l'ai repris tel quel du
-// composant « Animated Tabs » de SmoothUI : 0,25 s et presque pas de rebond,
-// sinon la pastille "tremble" en arrivant sur le lien.
-const TAB_SPRING = {
-  bounce: 0.05,
-  duration: 0.25,
-  type: "spring" as const,
-};
-
-// Courbe d'animation des pages : ça démarre vite puis ça freine doucement.
-// Les 4 chiffres sont les points d'une courbe de Bézier.
-const PAGE_EASE = [0.16, 1, 0.3, 1] as const;
-
 export function AppLayout() {
   const auth = useAuth(),
     // Candidatures en attente : le seul chiffre qui appelle une action.
@@ -157,19 +135,6 @@ export function AppLayout() {
     [replay, setReplay] = useState(false);
   const account = useRef<HTMLDetailsElement>(null);
   const user = auth.user;
-  // J'utilise useOutlet() au lieu de <Outlet /> : ça me donne la page sous
-  // forme de variable. Pendant que l'ancienne page disparaît, elle garde
-  // SON contenu. Avec <Outlet />, elle afficherait déjà la nouvelle page
-  // pendant sa sortie, et on verrait un flash.
-  const outlet = useOutlet();
-  // true si l'utilisateur a coché « réduire les animations » sur son système.
-  const reduceMotion = useReducedMotion();
-  // L'en-tête se compacte dès qu'on a défilé de quelques pixels (classe
-  // is-scrolled, voir da.css). useMotionValueEvent n'appelle setScrolled que
-  // lorsque la valeur de scroll change, sans écouteur à nettoyer à la main.
-  const { scrollY } = useScroll();
-  const [scrolled, setScrolled] = useState(false);
-  useMotionValueEvent(scrollY, "change", (y) => setScrolled(y > 8));
   const pending = user?.role === "company" ? counts.pending : 0;
 
   async function logout() {
@@ -185,13 +150,6 @@ export function AppLayout() {
   // La visite pointe des zones du tableau de bord : elle ne démarre que là,
   // pour ne jamais mettre en évidence un élément absent de la page courante.
   const onDashboard = Boolean(user) && location.pathname === destination(user!);
-  // L'accueil est la vitrine du site : même connecté, on y garde l'en-tête
-  // public (Connexion / Créer un compte), qui ouvrent toujours leurs pages.
-  const onPublicHome = location.pathname === "/";
-  // Motion de l'accueil étendu à tout le site : les cartes et panneaux des
-  // pages internes apparaissent au scroll (voir lib/site-reveal.ts).
-  const mainRef = useRef<HTMLElement>(null);
-  useSiteReveal(mainRef, location.pathname, Boolean(reduceMotion));
   const runTour =
     Boolean(user) &&
     user!.role !== "admin" &&
@@ -239,7 +197,7 @@ export function AppLayout() {
       <a className="skip-link" href="#content">
         Aller au contenu
       </a>
-      <header className={`app-header${scrolled ? " is-scrolled" : ""}`}>
+      <header className="app-header">
         <div className="app-header__inner">
           <NavLink
             className="app-header__logo"
@@ -248,7 +206,7 @@ export function AppLayout() {
             <Logo variant="light" />
           </NavLink>
 
-          {user && !onPublicHome ? (
+          {user ? (
             <>
               <nav
                 aria-label="Navigation principale"
@@ -264,39 +222,20 @@ export function AppLayout() {
                       "app-header__nav-link" + (isActive ? " is-active" : "")
                     }
                   >
-                    {({ isActive }) => (
-                      <>
-                        {/* La pastille n'existe que sur le lien actif. Comme
-                            elle a le même layoutId partout, quand on change de
-                            page Motion ne la recrée pas : il la fait glisser
-                            de l'ancien lien vers le nouveau. */}
-                        {isActive && (
-                          <motion.span
-                            className="nav-indicator"
-                            aria-hidden="true"
-                            layoutId="nav-indicator"
-                            transition={
-                              reduceMotion ? { duration: 0 } : TAB_SPRING
-                            }
-                          />
-                        )}
-                        {link.icon}
-                        <span>{link.label}</span>
+                    {link.icon}
+                    <span>{link.label}</span>
                     {/* Le badge ne compte que de vraies candidatures en
                         attente. Il porte son propre texte : une pastille
                         colorée seule ne dit rien à qui ne distingue pas les
                         couleurs, ni à un lecteur d'écran. */}
-                        {link.to === "/company/applications" &&
-                          pending > 0 && (
-                            <span className="nav-badge">
-                              {pending}
-                              <span className="sr-only">
-                                {" "}
-                                candidature{pending > 1 ? "s" : ""} en attente
-                              </span>
-                            </span>
-                          )}
-                      </>
+                    {link.to === "/company/applications" && pending > 0 && (
+                      <span className="nav-badge">
+                        {pending}
+                        <span className="sr-only">
+                          {" "}
+                          candidature{pending > 1 ? "s" : ""} en attente
+                        </span>
+                      </span>
                     )}
                   </NavLink>
                 ))}
@@ -375,9 +314,7 @@ export function AppLayout() {
           ) : (
             <nav className="account-link" aria-label="Compte">
               <NavLink to="/login">Connexion</NavLink>
-              <NavLink className="account-link__cta" to="/register">
-                Créer un compte
-              </NavLink>
+              <NavLink to="/register">Créer un compte</NavLink>
             </nav>
           )}
         </div>
@@ -388,28 +325,8 @@ export function AppLayout() {
           {error}
         </p>
       )}
-      <main id="content" className="app-main" tabIndex={-1} ref={mainRef}>
-        {/* Transition entre les pages.
-            - key = le chemin de la page : quand il change, AnimatePresence
-              fait sortir l'ancienne page et entrer la nouvelle. Une recherche
-              (?q=…) ne change pas le chemin, donc pas d'animation inutile.
-            - mode="wait" : la nouvelle page attend que l'ancienne soit partie.
-            - reducedMotion="user" : aucune animation pour ceux qui l'ont
-              désactivée sur leur ordinateur. */}
-        <MotionConfig reducedMotion="user">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={location.pathname}
-              className="page-transition"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -6 }}
-              transition={{ duration: 0.22, ease: PAGE_EASE }}
-            >
-              {outlet}
-            </motion.div>
-          </AnimatePresence>
-        </MotionConfig>
+      <main id="content" className="app-main" tabIndex={-1}>
+        <Outlet />
       </main>
       <footer className="shell-footer">
         <span className="shell-brand">

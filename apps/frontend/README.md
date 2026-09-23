@@ -57,12 +57,3 @@ npm run test:e2e
 
 * **Vitest :** 230 tests couvrant les services, hooks, composants, pages légales (`/mentions-legales`, `/politique-confidentialite`, `/accessibilite`), SEO et accessibilité.
 * **Playwright :** 66 tests (desktop et mobile) validant les parcours utilisateur complets, démarrant localement un serveur Vite et une API de test avec base PGlite éphémère (aucun secret ni service distant requis).
-
-## Mode démo (sans backend ni Supabase)
-
-`npm run dev:demo` lance le front sur http://127.0.0.1:5175 avec une fausse API
-en mémoire (`dev/demo-api.ts`) : aucune base, aucun compte. Ouvrir
-http://127.0.0.1:5175/__demo pour choisir l'espace à parcourir (intérimaire,
-entreprise, administrateur). Ce qu'on fait pendant la démo (candidater,
-publier, signer) est oublié au redémarrage. Rien de ce mode n'entre dans le
-build.

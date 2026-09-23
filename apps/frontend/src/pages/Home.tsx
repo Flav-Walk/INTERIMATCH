@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import {
   ArrowRight,
   Briefcase,
@@ -8,22 +9,10 @@ import {
   Sparkles,
   Users,
 } from "lucide-react";
-// Fond photo animé et carte « parcours », à la place des arches et de Matchy.
-import { PhotoBackdrop } from "../components/PhotoBackdrop";
-import { JourneyCard } from "../components/home/JourneyCard";
-// Sections « Intérimaires » et « Établissements » : liste d'avantages à
-// gauche, grande photo du métier à droite (en miroir pour les établissements).
-import { FeatureList } from "../components/home/FeatureList";
-import { PathPhoto } from "../components/home/PathPhoto";
-import { illustrationFor } from "../lib/job-photos";
-import { UnsplashCredit } from "../components/mission/MissionPhotoField";
-import { motion, useReducedMotion } from "motion/react";
-import { cascade, revealOnScroll, rise } from "../lib/motion";
-// CTA : halo qui suit la souris (principaux, Hover.dev) et fond qui glisse
-// au survol (secondaires). Les classes home-cta gardent le style d'origine.
-import { SpotlightLink } from "../components/ui/spotlight-button";
-import { SlideFillLink } from "../components/ui/slide-fill-button";
+import { MatchyMascot } from "../components/MatchyMascot";
+import { useAuth } from "../hooks/useAuth";
 import { usePageSeo } from "../hooks/usePageSeo";
+import { destination } from "../services/session";
 
 const WORKER_FEATURES = [
   {
@@ -79,14 +68,31 @@ const HOW_STEPS = [
   },
 ];
 
-/*
- * Photos d'illustration de l'accueil, prises dans la bibliothèque des métiers
- * (lib/job-photos.ts). La « graine » fixe le choix : la page affiche toujours
- * les mêmes photos.
- */
-const WORKER_PHOTO = illustrationFor("Serveur en salle", "accueil-interimaires");
-const COMPANY_PHOTO = illustrationFor("Cuisinier", "accueil-etablissements");
-const FINAL_PHOTO = illustrationFor("Barman", "accueil-appel-final");
+function FeatureList({
+  features,
+  tone = "forest",
+}: {
+  features: typeof WORKER_FEATURES;
+  tone?: "forest" | "orange";
+}) {
+  return (
+    <ul className="home-feature-list">
+      {features.map((feature) => (
+        <li key={feature.title}>
+          <span
+            className={`home-feature-list__icon home-feature-list__icon--${tone}`}
+          >
+            {feature.icon}
+          </span>
+          <div>
+            <h3>{feature.title}</h3>
+            <p>{feature.desc}</p>
+          </div>
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 export function Home() {
   usePageSeo({
@@ -95,14 +101,13 @@ export function Home() {
       "Plateforme de mise en relation entre professionnels et établissements de l’hôtellerie-restauration. Missions adaptées, compétences et disponibilités.",
     robots: "index,follow",
   });
-  const reduceMotion = useReducedMotion();
-  // Révélation au scroll, sauf si « Réduire les animations » est activé.
-  const reveal = reduceMotion ? {} : revealOnScroll;
+  const { user } = useAuth();
 
   return (
     <div className="home">
       <section className="home-hero" aria-labelledby="hero-title">
-        <PhotoBackdrop src="/images/hero/accueil.jpg" />
+        <span className="home-hero__arch home-hero__arch--one" aria-hidden />
+        <span className="home-hero__arch home-hero__arch--two" aria-hidden />
         <div className="home-hero__inner">
           <div className="home-hero__body">
             <span className="home-hero__eyeline">
@@ -117,24 +122,34 @@ export function Home() {
               profils disponibles, avec des critères visibles et un suivi
               simple de chaque candidature.
             </p>
-            {/* Toujours la version publique : l'accueil est la vitrine du
-                site, il s'affiche pareil pour tout le monde. */}
-            <div className="home-hero__ctas">
-              <SpotlightLink className="home-cta home-cta--primary" to="/register">
-                Créer mon profil
-                <ArrowRight size={18} aria-hidden="true" />
-              </SpotlightLink>
-              <SlideFillLink
-                className="home-cta home-cta--ghost"
-                to="/login"
-                color="var(--surface)"
+            {user ? (
+              <Link
+                className="home-cta home-cta--primary"
+                to={destination(user)}
               >
-                Me connecter
-              </SlideFillLink>
-            </div>
+                Retrouver mon espace
+                <ArrowRight size={18} aria-hidden="true" />
+              </Link>
+            ) : (
+              <div className="home-hero__ctas">
+                <Link className="home-cta home-cta--primary" to="/register">
+                  Créer mon profil
+                  <ArrowRight size={18} aria-hidden="true" />
+                </Link>
+                <Link className="home-cta home-cta--ghost" to="/login">
+                  Me connecter
+                </Link>
+              </div>
+            )}
           </div>
           <div className="home-hero__visual">
-            <JourneyCard />
+            <div className="home-hero__matchy-frame">
+              <p>
+                <strong>InteriMatch vous accompagne</strong>
+                <span>Du profil jusqu’à la mission confirmée.</span>
+              </p>
+              <MatchyMascot pose="missions" includeBackground size={310} />
+            </div>
           </div>
         </div>
       </section>
@@ -148,28 +163,14 @@ export function Home() {
               Plus votre situation est précise, plus les propositions sont
               faciles à comprendre et à choisir.
             </p>
-            <FeatureList features={WORKER_FEATURES} />
-            <SlideFillLink
-              className="home-cta home-cta--outline"
-              to="/register"
-            >
-              <Briefcase size={16} aria-hidden="true" />
-              Créer mon profil intérimaire
-            </SlideFillLink>
+            {!user && (
+              <Link className="home-cta home-cta--outline" to="/register">
+                <Briefcase size={16} aria-hidden="true" />
+                Créer mon profil intérimaire
+              </Link>
+            )}
           </div>
-          <PathPhoto
-            photo={WORKER_PHOTO}
-            chips={[
-              {
-                icon: <MapPin size={15} aria-hidden="true" />,
-                label: "Auvergne-Rhône-Alpes",
-              },
-              {
-                icon: <Sparkles size={15} aria-hidden="true" />,
-                label: "Critères visibles",
-              },
-            ]}
-          />
+          <FeatureList features={WORKER_FEATURES} />
         </div>
       </section>
 
@@ -177,7 +178,7 @@ export function Home() {
         className="home-section home-section--tinted home-path home-path--company"
         aria-labelledby="company-title"
       >
-        <div className="home-section__inner home-path__inner home-path__inner--reverse">
+        <div className="home-section__inner home-path__inner">
           <div className="home-path__intro">
             <span className="home-section__tag home-section__tag--orange">
               Établissements
@@ -187,32 +188,17 @@ export function Home() {
               Décrivez la mission, consultez les candidatures et attribuez les
               postes depuis le même espace.
             </p>
-            <FeatureList features={COMPANY_FEATURES} tone="orange" />
-            <div className="home-company-access">
-              <span>Vous disposez déjà d’un accès établissement ?</span>
-              <SlideFillLink
-                className="home-cta home-cta--outline"
-                to="/login"
-                >
-                <Users size={16} aria-hidden="true" />
-                Accéder à l’espace entreprise
-              </SlideFillLink>
-            </div>
+            {!user && (
+              <div className="home-company-access">
+                <span>Vous disposez déjà d’un accès établissement ?</span>
+                <Link className="home-cta home-cta--outline" to="/login">
+                  <Users size={16} aria-hidden="true" />
+                  Accéder à l’espace entreprise
+                </Link>
+              </div>
+            )}
           </div>
-          <PathPhoto
-            photo={COMPANY_PHOTO}
-            tone="orange"
-            chips={[
-              {
-                icon: <ClipboardList size={15} aria-hidden="true" />,
-                label: "Mission publiée",
-              },
-              {
-                icon: <Users size={15} aria-hidden="true" />,
-                label: "Candidatures au même endroit",
-              },
-            ]}
-          />
+          <FeatureList features={COMPANY_FEATURES} tone="orange" />
         </div>
       </section>
 
@@ -223,15 +209,9 @@ export function Home() {
             <h2 id="how-title">Trois étapes, sans détour</h2>
             <p>Chaque étape correspond à une action réellement disponible.</p>
           </div>
-          {/* Les étapes apparaissent l'une après l'autre au scroll. */}
-          <motion.ol
-            className="home-steps"
-            aria-label="Étapes pour utiliser InteriMatch"
-            variants={cascade}
-            {...reveal}
-          >
+          <ol className="home-steps" aria-label="Étapes pour utiliser InteriMatch">
             {HOW_STEPS.map((step) => (
-              <motion.li key={step.num} className="home-step" variants={rise}>
+              <li key={step.num} className="home-step">
                 <span className="home-step__num" aria-hidden="true">
                   {step.num}
                 </span>
@@ -239,34 +219,32 @@ export function Home() {
                   <h3 className="home-step__title">{step.title}</h3>
                   <p className="home-step__desc">{step.desc}</p>
                 </div>
-              </motion.li>
+              </li>
             ))}
-          </motion.ol>
+          </ol>
         </div>
       </section>
 
-      <section className="home-final-cta" aria-labelledby="final-cta-title">
-        {/* Photo de fond (illustration), voile vert, crédit en bas. */}
-        <PhotoBackdrop src={FINAL_PHOTO.url} />
-        <motion.div
-          className="home-final-cta__inner"
-          variants={rise}
-          {...reveal}
-        >
-          <div>
-            <h2 id="final-cta-title">Prêt à construire votre profil ?</h2>
-            <p>
-              Commencez par vos informations professionnelles, puis complétez
-              vos disponibilités à votre rythme.
-            </p>
+      {!user && (
+        <section className="home-final-cta" aria-labelledby="final-cta-title">
+          <div className="home-final-cta__inner">
+            <span className="home-final-cta__icon" aria-hidden="true">
+              <Sparkles size={22} />
+            </span>
+            <div>
+              <h2 id="final-cta-title">Prêt à construire votre profil ?</h2>
+              <p>
+                Commencez par vos informations professionnelles, puis complétez
+                vos disponibilités à votre rythme.
+              </p>
+            </div>
+            <Link className="home-cta home-cta--primary" to="/register">
+              Créer mon compte intérimaire
+              <ArrowRight size={18} aria-hidden="true" />
+            </Link>
           </div>
-          <SpotlightLink className="home-cta home-cta--primary" to="/register">
-            Créer mon compte intérimaire
-            <ArrowRight size={18} aria-hidden="true" />
-          </SpotlightLink>
-        </motion.div>
-        <UnsplashCredit media={FINAL_PHOTO} className="photo-credit home-final-cta__credit" />
-      </section>
+        </section>
+      )}
     </div>
   );
 }

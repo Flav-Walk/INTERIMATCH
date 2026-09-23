@@ -1,14 +1,10 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { motion, useReducedMotion } from "motion/react";
-import { cascade, pop, revealOnScroll, rise } from "../lib/motion";
-import { illustrationFor } from "../lib/job-photos";
 import {
   ArrowLeft,
   Building2,
   CalendarDays,
   Coins,
-  FileText,
   GraduationCap,
   MapPin,
   Users,
@@ -53,9 +49,6 @@ function DetailSkeleton() {
 export function WorkerMissionDetail() {
   const { id = "" } = useParams();
   const { revision } = useAuth();
-  // Déclaré ici, avant les « return » anticipés : un hook ne doit jamais
-  // être appelé seulement dans certains cas.
-  const reduceMotion = useReducedMotion();
   const [mission, setMission] = useState<OpenMission | null>(null),
     [sectors, setSectors] = useState<ReferenceValue[]>([]),
     [loading, setLoading] = useState(true),
@@ -119,53 +112,31 @@ export function WorkerMissionDetail() {
     sectors.find((s) => s.value === mission.company.sector)?.label ??
     mission.company.sector;
   const presentation = missionStatePresentation(mission);
-  // Photo de l'établissement, ou à défaut une photo du métier (illustration).
-  const media = mission.media ?? illustrationFor(mission.title, mission.id);
-  // « Réduire les animations » : tout s'affiche directement, sans mouvement.
-  const reveal = reduceMotion ? {} : revealOnScroll;
 
   return (
     <div className="detail-page">
       <div className="detail-hero">
-        {media && (
+        {mission.media && (
           <figure className="detail-hero__photo">
-            {/* La photo passe en fond du bandeau, avec un zoom lent à
-                l'arrivée (effet « Ken Burns »). */}
-            <motion.img
-              src={media.url}
-              alt={mission.media ? (media.alt ?? "") : ""}
+            <img
+              src={mission.media.url}
+              alt={mission.media.alt ?? ""}
               decoding="async"
-              initial={reduceMotion ? false : { scale: 1.1 }}
-              animate={{ scale: 1 }}
-              transition={{ duration: 14, ease: "easeOut" }}
             />
             {/* Le crédit voyage avec la photo : Unsplash l'exige partout où
                 l'image est montrée, pas seulement au moment du choix. */}
             <figcaption>
-              {!mission.media && (
-                <span className="photo-illustration-tag is-inline">
-                  Photo d’illustration
-                </span>
-              )}
-              <UnsplashCredit media={media} />
+              <UnsplashCredit media={mission.media} />
             </figcaption>
           </figure>
         )}
-        {/* Le contenu du bandeau arrive en cascade : retour, titre, infos. */}
-        <motion.div
-          className="detail-hero__inner"
-          variants={cascade}
-          initial={reduceMotion ? false : "hidden"}
-          animate="visible"
-        >
-          <motion.div variants={rise}>
-            <Link className="detail-back" to="/worker/missions">
-              <ArrowLeft size={15} aria-hidden="true" />
-              Missions disponibles
-            </Link>
-          </motion.div>
+        <div className="detail-hero__inner">
+          <Link className="detail-back" to="/worker/missions">
+            <ArrowLeft size={15} aria-hidden="true" />
+            Missions disponibles
+          </Link>
 
-          <motion.div className="detail-hero__head" variants={rise}>
+          <div className="detail-hero__head">
             <div className="detail-hero__title-wrap">
               <span
                 className={`mission-status is-inline ${presentation.className}`}
@@ -197,12 +168,9 @@ export function WorkerMissionDetail() {
                 />
               </div>
             )}
-          </motion.div>
+          </div>
 
-          <motion.div
-            className="detail-hero__meta detail-grid"
-            variants={rise}
-          >
+          <div className="detail-hero__meta detail-grid">
             <span className="detail-meta-chip">
               <CalendarDays size={13} aria-hidden="true" />
               {missionSchedule(mission)}
@@ -234,34 +202,23 @@ export function WorkerMissionDetail() {
                 {experience} an{experience > 1 ? "s" : ""} d’expérience attendus
               </span>
             )}
-          </motion.div>
-        </motion.div>
+          </div>
+        </div>
       </div>
 
       <div className="detail-body">
         <div className="detail-layout">
           <div className="detail-main">
             {mission.description && (
-              <motion.section
-                className="detail-card"
-                aria-labelledby="desc-title"
-                variants={rise}
-                {...reveal}
-              >
+              <section className="detail-card" aria-labelledby="desc-title">
                 <h2 id="desc-title" className="detail-card__title">
-                  <FileText size={16} aria-hidden="true" />
                   Description de la mission
                 </h2>
                 <p className="detail-description">{mission.description}</p>
-              </motion.section>
+              </section>
             )}
 
-            <motion.section
-              className="detail-card"
-              aria-labelledby="skills-title"
-              variants={rise}
-              {...reveal}
-            >
+            <section className="detail-card" aria-labelledby="skills-title">
               <h2 id="skills-title" className="detail-card__title">
                 <Wrench size={16} aria-hidden="true" />
                 Compétences attendues
@@ -276,21 +233,13 @@ export function WorkerMissionDetail() {
                       — sans elles, la mission ne vous sera pas proposée
                     </span>
                   </p>
-                  <motion.div
-                    className="skill-options"
-                    variants={cascade}
-                    {...reveal}
-                  >
+                  <div className="skill-options">
                     {required.map((s) => (
-                      <motion.span
-                        className="badge badge--required"
-                        key={s.id}
-                        variants={pop}
-                      >
+                      <span className="badge badge--required" key={s.id}>
                         {s.name}
-                      </motion.span>
+                      </span>
                     ))}
-                  </motion.div>
+                  </div>
                 </div>
               ) : (
                 <p className="quiet">
@@ -307,38 +256,25 @@ export function WorkerMissionDetail() {
                       — elles font la différence
                     </span>
                   </p>
-                  <motion.div
-                    className="skill-options"
-                    variants={cascade}
-                    {...reveal}
-                  >
+                  <div className="skill-options">
                     {desired.map((s) => (
-                      <motion.span className="badge" key={s.id} variants={pop}>
+                      <span className="badge" key={s.id}>
                         {s.name}
-                      </motion.span>
+                      </span>
                     ))}
-                  </motion.div>
+                  </div>
                 </div>
               )}
-            </motion.section>
+            </section>
 
-            {mission.match && (
-              <motion.div variants={rise} {...reveal}>
-                <MatchExplanation match={mission.match} />
-              </motion.div>
-            )}
+            {mission.match && <MatchExplanation match={mission.match} />}
           </div>
 
           <aside
             className="detail-rail"
             aria-label="Établissement et candidature"
           >
-            <motion.section
-              className="detail-card"
-              aria-labelledby="company-title"
-              variants={rise}
-              {...reveal}
-            >
+            <section className="detail-card" aria-labelledby="company-title">
               <h2 id="company-title" className="detail-card__title">
                 <Building2 size={16} aria-hidden="true" />
                 L’établissement
@@ -361,7 +297,7 @@ export function WorkerMissionDetail() {
                   Cet établissement n’a pas encore rédigé sa présentation.
                 </p>
               )}
-            </motion.section>
+            </section>
 
             <div className="detail-rail__sticky">
               <ApplyToMission

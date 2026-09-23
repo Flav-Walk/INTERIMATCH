@@ -76,11 +76,8 @@ describe("Accessibilité RGAA / WCAG (Sous-lot 8C)", () => {
     });
 
     it("porte des attributs aria-label distincts sur les balises <nav>", () => {
-      // Le menu principal n'existe que dans l'espace connecté : l'accueil
-      // (« / ») garde volontairement l'en-tête public. On vérifie donc les
-      // repères sur une page de l'espace intérimaire.
       const html = renderToStaticMarkup(
-        <MemoryRouter initialEntries={["/worker"]}>
+        <MemoryRouter>
           <AppLayout />
         </MemoryRouter>,
       );

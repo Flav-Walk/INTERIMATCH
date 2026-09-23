@@ -1,10 +1,4 @@
 :root {
-  /* Polices (choix B) : Fraunces pour les grands titres, Geist pour le texte.
-     Chargées depuis node_modules (Fontsource) dans main.tsx : aucun appel
-     à Google Fonts. Georgia et system-ui servent de secours. */
-  --font-display: "Fraunces Variable", Georgia, serif;
-  --font-body: "Geist Variable", system-ui, sans-serif;
-
   --forest: oklch(0.32 0.065 165);
   --orange: oklch(0.75 0.17 43);
   --orange-hover: oklch(0.8 0.14 43);

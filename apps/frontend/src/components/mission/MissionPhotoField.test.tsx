@@ -122,19 +122,14 @@ describe("carte mission", () => {
   });
 
   /**
-   * Une mission sans photo reçoit une photo en rapport avec le métier
-   * (lib/job-photos), TOUJOURS signalée « Illustration » : elle ne doit
-   * jamais passer pour une photo de l'établissement.
+   * Le cœur du lot : plus aucune image n'est choisie pour l'entreprise. Une
+   * mission héritée, sans photo, laisse le cadre vide plutôt que de recevoir
+   * une illustration générique qui prétendrait montrer son établissement.
    */
-  it("donne une photo d'illustration signalée comme telle à une mission sans photo", () => {
+  it("ne fabrique aucune image pour une mission qui n'en a pas", () => {
     const html = render(<MissionCard mission={mission(null)} />);
-    expect(html).toContain("images.unsplash.com");
-    expect(html).toContain("Illustration");
-  });
-
-  it("n'ajoute pas la mention « Illustration » à la vraie photo d'une mission", () => {
-    const html = render(<MissionCard mission={mission(uploaded)} />);
-    expect(html).not.toContain("Illustration");
+    expect(html).not.toContain("<img");
+    expect(html).not.toContain("/images/jobs/");
   });
 });
 
@@ -166,13 +161,11 @@ const offer: PublicJobOffer = {
 };
 
 describe("carte France Travail", () => {
-  // Une offre France Travail n'a jamais de photo : elle reçoit celle de son
-  // métier, signalée « Illustration », et jamais une image d'établissement.
-  it("affiche une photo d'illustration signalée comme telle", () => {
+  it("n'affiche aucune image", () => {
     const html = render(<PublicOfferCard offer={offer} />);
-    expect(html).toContain("images.unsplash.com");
-    expect(html).toContain("Illustration");
-    expect(html).not.toContain("/images/fixtures/");
+    expect(html).not.toContain("<img");
+    expect(html).not.toContain("images.unsplash.com");
+    expect(html).not.toContain("/images/");
   });
 
   it("conserve tout ce qui identifie l'offre externe", () => {
