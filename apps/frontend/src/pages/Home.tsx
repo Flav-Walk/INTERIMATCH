@@ -1,4 +1,3 @@
-import { Link } from "react-router-dom";
 import {
   ArrowRight,
   Briefcase,
@@ -13,6 +12,10 @@ import { MatchyMascot } from "../components/MatchyMascot";
 // Grille bento (Aceternity UI) pour les avantages, à la place des 3 blocs
 // identiques qu'on avait avant.
 import { FeatureBento } from "../components/home/FeatureBento";
+// CTA de Hover.dev : halo qui suit la souris (principaux) et contour qui se
+// dessine au survol (secondaires). Les classes home-cta gardent le style.
+import { SpotlightLink } from "../components/ui/spotlight-button";
+import { DrawOutlineLink } from "../components/ui/draw-outline-button";
 import { useAuth } from "../hooks/useAuth";
 import { usePageSeo } from "../hooks/usePageSeo";
 import { destination } from "../services/session";
@@ -100,22 +103,26 @@ export function Home() {
               simple de chaque candidature.
             </p>
             {user ? (
-              <Link
+              <SpotlightLink
                 className="home-cta home-cta--primary"
                 to={destination(user)}
               >
                 Retrouver mon espace
                 <ArrowRight size={18} aria-hidden="true" />
-              </Link>
+              </SpotlightLink>
             ) : (
               <div className="home-hero__ctas">
-                <Link className="home-cta home-cta--primary" to="/register">
+                <SpotlightLink className="home-cta home-cta--primary" to="/register">
                   Créer mon profil
                   <ArrowRight size={18} aria-hidden="true" />
-                </Link>
-                <Link className="home-cta home-cta--ghost" to="/login">
+                </SpotlightLink>
+                <DrawOutlineLink
+                  className="home-cta home-cta--ghost"
+                  to="/login"
+                  borderWidth={1}
+                >
                   Me connecter
-                </Link>
+                </DrawOutlineLink>
               </div>
             )}
           </div>
@@ -141,10 +148,14 @@ export function Home() {
               faciles à comprendre et à choisir.
             </p>
             {!user && (
-              <Link className="home-cta home-cta--outline" to="/register">
+              <DrawOutlineLink
+                className="home-cta home-cta--outline"
+                to="/register"
+                borderWidth={2}
+              >
                 <Briefcase size={16} aria-hidden="true" />
                 Créer mon profil intérimaire
-              </Link>
+              </DrawOutlineLink>
             )}
           </div>
           <FeatureBento features={WORKER_FEATURES} />
@@ -168,10 +179,14 @@ export function Home() {
             {!user && (
               <div className="home-company-access">
                 <span>Vous disposez déjà d’un accès établissement ?</span>
-                <Link className="home-cta home-cta--outline" to="/login">
+                <DrawOutlineLink
+                  className="home-cta home-cta--outline"
+                  to="/login"
+                  borderWidth={2}
+                >
                   <Users size={16} aria-hidden="true" />
                   Accéder à l’espace entreprise
-                </Link>
+                </DrawOutlineLink>
               </div>
             )}
           </div>
@@ -215,10 +230,10 @@ export function Home() {
                 vos disponibilités à votre rythme.
               </p>
             </div>
-            <Link className="home-cta home-cta--primary" to="/register">
+            <SpotlightLink className="home-cta home-cta--primary" to="/register">
               Créer mon compte intérimaire
               <ArrowRight size={18} aria-hidden="true" />
-            </Link>
+            </SpotlightLink>
           </div>
         </section>
       )}
