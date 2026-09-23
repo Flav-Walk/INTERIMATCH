@@ -834,3 +834,287 @@
   opacity: 1;
   transition: background 0.25s ease, color 0.25s ease;
 }
+
+/* ── Connexion Google ───────────────────────────────────────────────────── */
+.auth-google {
+  margin-top: var(--space-5);
+}
+
+.auth-google .google-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  min-height: 48px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 600;
+  box-shadow: var(--shadow-1);
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
+}
+
+.auth-google .google-button:hover:not(:disabled) {
+  border-color: oklch(0.8 0.01 160);
+  box-shadow: var(--shadow-2);
+  transform: translateY(-1px);
+}
+
+.auth-google .google-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.auth-google__note {
+  margin: var(--space-2) 0 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  text-align: center;
+}
+
+/* « ou avec votre email » entre deux traits. */
+.auth-google .divider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: var(--space-5) 0;
+}
+
+.auth-google .divider::before,
+.auth-google .divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-google .google-button {
+    transition: none;
+  }
+}
+
+/* ── Accueil : sections « Intérimaires » et « Établissements » ──────────────
+ * Texte + liste d'avantages d'un côté, grande photo du métier de l'autre.
+ * La section établissements est en miroir (photo à gauche).
+ */
+.home-path .home-path__inner {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+}
+
+.home-path .home-path__intro {
+  position: static;
+}
+
+.home-path .home-path__intro h2 {
+  max-width: 16ch;
+}
+
+.home-path .home-feature-list {
+  margin-bottom: var(--space-6);
+}
+
+.home-path .home-feature-list li {
+  padding: var(--space-5) 0;
+}
+
+.home-path__inner--reverse .path-photo {
+  order: -1;
+}
+
+/* Photo de section. */
+.path-photo {
+  position: relative;
+  margin: 0;
+}
+
+.path-photo__frame {
+  aspect-ratio: 4 / 5;
+  max-height: 600px;
+  width: 100%;
+  overflow: hidden;
+  border-radius: 24px;
+  background: var(--forest);
+  box-shadow: 0 30px 60px oklch(0.23 0.02 160 / 0.18);
+}
+
+/* L'image dépasse de 12 % pour laisser de la place à la parallaxe. */
+.path-photo__frame img {
+  width: 100%;
+  height: 112%;
+  margin-top: -6%;
+  object-fit: cover;
+}
+
+/* Liseré de couleur décalé derrière la photo : vert ou orange. */
+.path-photo::before {
+  content: "";
+  position: absolute;
+  inset: 24px -18px -18px 24px;
+  z-index: -1;
+  border-radius: 28px;
+  background: oklch(0.32 0.065 165 / 0.1);
+}
+
+.path-photo--orange::before {
+  inset: 24px 24px -18px -18px;
+  background: oklch(0.75 0.17 43 / 0.16);
+}
+
+/* Pastilles en verre posées sur la photo. */
+.path-photo__chip {
+  position: absolute;
+  z-index: 1;
+}
+
+.path-photo__chip--1 {
+  top: 8%;
+  left: -6%;
+}
+
+.path-photo__chip--2 {
+  right: -5%;
+  bottom: 14%;
+}
+
+.path-photo__chip-inner {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1rem;
+  border: 1px solid oklch(1 0 0 / 0.5);
+  border-radius: var(--radius-pill);
+  background: oklch(1 0 0 / 0.82);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 12px 30px oklch(0.23 0.02 160 / 0.18);
+  color: var(--ink);
+  font-size: 0.88rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.path-photo__chip-inner svg {
+  color: var(--forest);
+}
+
+.path-photo--orange .path-photo__chip-inner svg {
+  color: var(--orange-ink);
+}
+
+.path-photo figcaption {
+  margin-top: var(--space-3);
+  font-size: 0.75rem;
+}
+
+.path-photo figcaption .photo-credit {
+  margin: 0;
+  color: var(--muted);
+}
+
+/* ── Accueil : « Trois étapes » en frise ────────────────────────────────────
+ * Grand numéro en Fraunces dans un rond, relié au suivant par un trait.
+ */
+.home-how .home-steps {
+  gap: 0;
+}
+
+.home-how .home-step {
+  position: relative;
+  padding: var(--space-5) 0 var(--space-6);
+  border-bottom: 0;
+}
+
+.home-how .home-step__num {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--surface);
+  box-shadow:
+    0 0 0 1px var(--border),
+    0 8px 20px oklch(0.23 0.02 160 / 0.08);
+  color: var(--orange-ink);
+  font-size: 1.35rem;
+  font-weight: 600;
+}
+
+/* Trait vertical entre deux numéros. */
+.home-how .home-step:not(:last-child)::before {
+  content: "";
+  position: absolute;
+  top: calc(var(--space-5) + 56px);
+  bottom: 0;
+  left: 27px;
+  width: 2px;
+  background: linear-gradient(var(--orange), oklch(0.75 0.12 160 / 0.4));
+}
+
+.home-how .home-step__title {
+  margin-top: 0.35rem;
+  font-size: 1.15rem;
+}
+
+/* ── Accueil : appel final sur photo ────────────────────────────────────── */
+.home-final-cta {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  padding-block: clamp(4.5rem, 9vw, 7rem);
+}
+
+.home-final-cta .home-final-cta__inner {
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.home-final-cta .home-final-cta__inner h2 {
+  font-size: clamp(1.8rem, 3.4vw, 2.6rem);
+  letter-spacing: -0.025em;
+}
+
+.home-final-cta__credit {
+  position: absolute;
+  right: var(--space-4);
+  bottom: var(--space-3);
+  margin: 0;
+  color: oklch(0.85 0.02 160);
+  font-size: 0.72rem;
+}
+
+.home-final-cta__credit a {
+  color: inherit;
+}
+
+@media (width < 900px) {
+  .home-path .home-path__inner {
+    grid-template-columns: 1fr;
+  }
+
+  .home-path__inner--reverse .path-photo {
+    order: 0;
+  }
+
+  .path-photo__frame {
+    aspect-ratio: 4 / 3;
+  }
+
+  .path-photo__chip--1 {
+    left: 4%;
+  }
+
+  .path-photo__chip--2 {
+    right: 4%;
+  }
+
+  .home-final-cta .home-final-cta__inner {
+    grid-template-columns: 1fr;
+  }
+}

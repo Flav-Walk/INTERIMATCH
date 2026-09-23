@@ -11,9 +11,14 @@ import {
 // Fond photo animé et carte « parcours », à la place des arches et de Matchy.
 import { PhotoBackdrop } from "../components/PhotoBackdrop";
 import { JourneyCard } from "../components/home/JourneyCard";
-// Grille bento (Aceternity UI) pour les avantages, à la place des 3 blocs
-// identiques qu'on avait avant.
-import { FeatureBento } from "../components/home/FeatureBento";
+// Sections « Intérimaires » et « Établissements » : liste d'avantages à
+// gauche, grande photo du métier à droite (en miroir pour les établissements).
+import { FeatureList } from "../components/home/FeatureList";
+import { PathPhoto } from "../components/home/PathPhoto";
+import { illustrationFor } from "../lib/job-photos";
+import { UnsplashCredit } from "../components/mission/MissionPhotoField";
+import { motion, useReducedMotion } from "motion/react";
+import { cascade, revealOnScroll, rise } from "../lib/motion";
 // CTA : halo qui suit la souris (principaux, Hover.dev) et fond qui glisse
 // au survol (secondaires). Les classes home-cta gardent le style d'origine.
 import { SpotlightLink } from "../components/ui/spotlight-button";
@@ -76,6 +81,15 @@ const HOW_STEPS = [
   },
 ];
 
+/*
+ * Photos d'illustration de l'accueil, prises dans la bibliothèque des métiers
+ * (lib/job-photos.ts). La « graine » fixe le choix : la page affiche toujours
+ * les mêmes photos.
+ */
+const WORKER_PHOTO = illustrationFor("Serveur en salle", "accueil-interimaires");
+const COMPANY_PHOTO = illustrationFor("Cuisinier", "accueil-etablissements");
+const FINAL_PHOTO = illustrationFor("Barman", "accueil-appel-final");
+
 export function Home() {
   usePageSeo({
     title: "InteriMatch · Missions et recrutement en hôtellerie-restauration",
@@ -84,6 +98,9 @@ export function Home() {
     robots: "index,follow",
   });
   const { user } = useAuth();
+  const reduceMotion = useReducedMotion();
+  // Révélation au scroll, sauf si « Réduire les animations » est activé.
+  const reveal = reduceMotion ? {} : revealOnScroll;
 
   return (
     <div className="home">
@@ -142,6 +159,7 @@ export function Home() {
               Plus votre situation est précise, plus les propositions sont
               faciles à comprendre et à choisir.
             </p>
+            <FeatureList features={WORKER_FEATURES} />
             {!user && (
               <SlideFillLink
                 className="home-cta home-cta--outline"
@@ -152,7 +170,19 @@ export function Home() {
               </SlideFillLink>
             )}
           </div>
-          <FeatureBento features={WORKER_FEATURES} />
+          <PathPhoto
+            photo={WORKER_PHOTO}
+            chips={[
+              {
+                icon: <MapPin size={15} aria-hidden="true" />,
+                label: "Auvergne-Rhône-Alpes",
+              },
+              {
+                icon: <Sparkles size={15} aria-hidden="true" />,
+                label: "Critères visibles",
+              },
+            ]}
+          />
         </div>
       </section>
 
@@ -160,7 +190,7 @@ export function Home() {
         className="home-section home-section--tinted home-path home-path--company"
         aria-labelledby="company-title"
       >
-        <div className="home-section__inner home-path__inner">
+        <div className="home-section__inner home-path__inner home-path__inner--reverse">
           <div className="home-path__intro">
             <span className="home-section__tag home-section__tag--orange">
               Établissements
@@ -170,6 +200,7 @@ export function Home() {
               Décrivez la mission, consultez les candidatures et attribuez les
               postes depuis le même espace.
             </p>
+            <FeatureList features={COMPANY_FEATURES} tone="orange" />
             {!user && (
               <div className="home-company-access">
                 <span>Vous disposez déjà d’un accès établissement ?</span>
@@ -183,7 +214,20 @@ export function Home() {
               </div>
             )}
           </div>
-          <FeatureBento features={COMPANY_FEATURES} tone="orange" />
+          <PathPhoto
+            photo={COMPANY_PHOTO}
+            tone="orange"
+            chips={[
+              {
+                icon: <ClipboardList size={15} aria-hidden="true" />,
+                label: "Mission publiée",
+              },
+              {
+                icon: <Users size={15} aria-hidden="true" />,
+                label: "Candidatures au même endroit",
+              },
+            ]}
+          />
         </div>
       </section>
 
@@ -194,9 +238,15 @@ export function Home() {
             <h2 id="how-title">Trois étapes, sans détour</h2>
             <p>Chaque étape correspond à une action réellement disponible.</p>
           </div>
-          <ol className="home-steps" aria-label="Étapes pour utiliser InteriMatch">
+          {/* Les étapes apparaissent l'une après l'autre au scroll. */}
+          <motion.ol
+            className="home-steps"
+            aria-label="Étapes pour utiliser InteriMatch"
+            variants={cascade}
+            {...reveal}
+          >
             {HOW_STEPS.map((step) => (
-              <li key={step.num} className="home-step">
+              <motion.li key={step.num} className="home-step" variants={rise}>
                 <span className="home-step__num" aria-hidden="true">
                   {step.num}
                 </span>
@@ -204,18 +254,21 @@ export function Home() {
                   <h3 className="home-step__title">{step.title}</h3>
                   <p className="home-step__desc">{step.desc}</p>
                 </div>
-              </li>
+              </motion.li>
             ))}
-          </ol>
+          </motion.ol>
         </div>
       </section>
 
       {!user && (
         <section className="home-final-cta" aria-labelledby="final-cta-title">
-          <div className="home-final-cta__inner">
-            <span className="home-final-cta__icon" aria-hidden="true">
-              <Sparkles size={22} />
-            </span>
+          {/* Photo de fond (illustration), voile vert, crédit en bas. */}
+          <PhotoBackdrop src={FINAL_PHOTO.url} />
+          <motion.div
+            className="home-final-cta__inner"
+            variants={rise}
+            {...reveal}
+          >
             <div>
               <h2 id="final-cta-title">Prêt à construire votre profil ?</h2>
               <p>
@@ -227,7 +280,8 @@ export function Home() {
               Créer mon compte intérimaire
               <ArrowRight size={18} aria-hidden="true" />
             </SpotlightLink>
-          </div>
+          </motion.div>
+          <UnsplashCredit media={FINAL_PHOTO} className="photo-credit home-final-cta__credit" />
         </section>
       )}
     </div>
