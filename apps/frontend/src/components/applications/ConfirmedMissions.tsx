@@ -4,7 +4,6 @@ import {
   workerMissionContext,
   type WorkerApplication,
 } from "../../services/applications";
-import { BorderBeam } from "../ui/border-beam";
 import { BlurFade } from "../ui/blur-fade";
 import { StatusTrack } from "../da/StatusTrack";
 import "../../styles/applications.css";
@@ -43,8 +42,8 @@ function countdown(iso: string, now = Date.now()) {
  * - À gauche de chaque mission, une page d'agenda : jour de la semaine en
  *   orange, numéro du jour en grand (Fraunces), mois. Même idée que le widget
  *   Calendar Event d'Animata.
- * - La prochaine mission est entourée d'un Border Beam (Magic UI) : un trait
- *   de lumière qui fait le tour de la carte. C'est celle qui compte.
+ * - La prochaine mission se distingue par un filet orange à gauche, sur fond
+ *   uni (retour : pas de dégradé ni de trait lumineux sur cet encart).
  * - Le statut n'est plus un badge : c'est la frise StatusTrack (inspirée de
  *   l'Animated Timeline d'Animata). La classe mission-context-status est
  *   gardée : les tests e2e la cherchent.
@@ -120,17 +119,6 @@ export function ConfirmedMissions({
                   <ArrowRight size={14} aria-hidden="true" />
                 </Link>
               </div>
-
-              {/* Trait de lumière autour de la prochaine mission seulement. */}
-              {index === 0 && (
-                <BorderBeam
-                  size={90}
-                  duration={8}
-                  borderWidth={1.5}
-                  colorFrom="oklch(0.75 0.17 43)"
-                  colorTo="oklch(0.42 0.085 165)"
-                />
-              )}
             </BlurFade>
           </li>
         );

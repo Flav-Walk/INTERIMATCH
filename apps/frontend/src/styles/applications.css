@@ -100,10 +100,13 @@
   border-top-color: var(--border);
   border-radius: 0;
 }
+/* Prochaine mission : fond uni, sans dégradé. Un filet orange à gauche la
+   distingue des suivantes. */
 .next-mission-list > li.is-next .next-mission {
   border-color: var(--border);
-  background: linear-gradient(135deg, var(--surface), var(--tint));
-  box-shadow: var(--shadow-2);
+  border-left: 3px solid var(--orange);
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
 }
 /* Page d'agenda : jour, numéro, mois. */
 .next-mission__date {

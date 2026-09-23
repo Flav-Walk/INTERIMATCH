@@ -539,17 +539,14 @@
 }
 
 /* Jauge dans une carte en verre dépoli, calée en bas à droite. */
+/* Jauge du bandeau : plus de boîte en verre dépoli (effet « carte IA »).
+   La jauge Gauge Chart (Animata) est posée directement sur la photo,
+   séparée du texte par un simple filet vertical. */
 .brand-hero--photo .brand-hero__gauge {
   align-self: end;
   min-width: 0;
-  padding: var(--space-3) var(--space-5) var(--space-3) var(--space-3);
-  border: 1px solid oklch(1 0 0 / 0.16);
-  border-radius: var(--radius-lg);
-  background: oklch(0.2 0.03 165 / 0.35);
-  backdrop-filter: blur(14px) saturate(1.2);
-  box-shadow:
-    0 10px 30px oklch(0 0 0 / 0.25),
-    inset 0 1px 0 oklch(1 0 0 / 0.12);
+  padding: 0 0 0 var(--space-6);
+  border-left: 1px solid oklch(1 0 0 / 0.2);
 }
 
 @media (width < 900px) {

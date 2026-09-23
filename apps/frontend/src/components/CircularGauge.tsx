@@ -1,5 +1,5 @@
-import { useEffect, useState, type CSSProperties } from "react";
-import { AnimatedCircularProgressBar } from "./ui/animated-circular-progress-bar";
+import type { CSSProperties } from "react";
+import { ScoreGauge } from "./da/ScoreGauge";
 
 interface CircularGaugeProps {
   value: number;
@@ -9,27 +9,17 @@ interface CircularGaugeProps {
   variant?: "forest" | "on-dark";
 }
 
-// Couleurs de l'anneau selon le fond où la jauge est posée.
-// primary = la partie remplie, secondary = le reste du cercle.
-const GAUGE_COLORS = {
-  forest: {
-    primary: "var(--forest)",
-    secondary: "oklch(0.32 0.065 165 / 0.14)",
-  },
-  "on-dark": {
-    primary: "oklch(0.75 0.12 158)",
-    secondary: "oklch(1 0 0 / 0.18)",
-  },
-} as const;
-
 /**
- * Jauge de complétion du profil.
+ * Jauge de complétion du profil (bandeau du tableau de bord et du profil).
  *
- * L'anneau vient de Magic UI (« Animated Circular Progress Bar »). Il ne
- * s'anime que quand sa valeur CHANGE. Mon astuce : je lui donne 0 au premier
- * affichage, puis la vraie valeur juste après. Résultat : l'anneau se remplit
- * sous les yeux de l'utilisateur au lieu d'apparaître déjà plein.
- * Le lecteur d'écran, lui, lit directement la vraie valeur (aria-label).
+ * Avant : l'anneau « Animated Circular Progress Bar » de Magic UI. Son arc
+ * dépendait de variables CSS calculées et d'un requestAnimationFrame pour
+ * démarrer à 0 : selon le navigateur, il restait vide ou s'affichait mal.
+ *
+ * Maintenant : la jauge en fer à cheval Gauge Chart d'Animata (via
+ * da/ScoreGauge), calculée en nombres dans le SVG. Elle se remplit toute
+ * seule 250 ms après l'affichage, et le chiffre est écrit au centre.
+ * Le lecteur d'écran lit la phrase complète (aria-label).
  */
 export function CircularGauge({
   value,
@@ -39,18 +29,6 @@ export function CircularGauge({
   variant = "forest",
 }: CircularGaugeProps) {
   const percentage = Math.min(100, Math.max(0, Math.round(value)));
-  // Valeur réellement affichée par l'anneau : 0 au départ.
-  const [shown, setShown] = useState(0);
-
-  // requestAnimationFrame = « à la prochaine image ». Le navigateur dessine
-  // d'abord l'anneau vide, puis on passe à la vraie valeur : ça déclenche
-  // l'animation de remplissage.
-  useEffect(() => {
-    const frame = requestAnimationFrame(() => setShown(percentage));
-    return () => cancelAnimationFrame(frame);
-  }, [percentage]);
-
-  const colors = GAUGE_COLORS[variant];
 
   return (
     <div
@@ -60,11 +38,10 @@ export function CircularGauge({
       // Je passe la taille en variable CSS, reprise dans motion.css.
       style={{ "--gauge-size": `${size}px` } as CSSProperties}
     >
-      <AnimatedCircularProgressBar
-        className="completion-gauge__magic"
-        value={shown}
-        gaugePrimaryColor={colors.primary}
-        gaugeSecondaryColor={colors.secondary}
+      <ScoreGauge
+        value={percentage}
+        size={size}
+        tone={variant === "on-dark" ? "on-dark" : "forest"}
       />
       <span className="completion-gauge__copy">
         <strong>{label}</strong>

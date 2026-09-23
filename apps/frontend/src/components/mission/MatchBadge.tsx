@@ -1,4 +1,4 @@
-import { AnimatedCircularProgressBar } from "../ui/animated-circular-progress-bar";
+import { ScoreGauge } from "../da/ScoreGauge";
 
 /**
  * Pastille de compatibilité — purement présentationnelle.
@@ -13,16 +13,15 @@ import { AnimatedCircularProgressBar } from "../ui/animated-circular-progress-ba
  * l'avait rangé dans la tranche 60–69, et le même écran annonçait les deux à la
  * fois. Le palier vient désormais du backend, qui le calcule sur le score réel.
  *
- * NOUVELLE DA : plus de pastille colorée (retour de revue sur les badges).
- * Un petit anneau de progression (Animated Circular Progress Bar, Magic UI)
- * se remplit jusqu'au score, suivi du texte. La couleur de l'anneau suit le
- * palier du serveur (vert foncé, vert moyen, gris), jamais le score arrondi.
+ * NOUVELLE DA : plus de pastille colorée. Une jauge en fer à cheval
+ * (Gauge Chart d'Animata, via da/ScoreGauge) avec le score écrit au centre,
+ * puis « Compatible ». La couleur suit le palier du serveur (vert foncé, vert
+ * moyen, gris), jamais le score arrondi.
+ *
+ * Le texte complet « Compatible à 92 % » reste dans la page (sr-only) : c'est
+ * lui que lisent les lecteurs d'écran et que vérifient les tests.
  */
-const RING = {
-  "is-high": "var(--forest)",
-  "is-mid": "var(--forest-mid)",
-  "is-low": "var(--muted)",
-} as const;
+const TONE = { "is-high": "forest", "is-mid": "mid", "is-low": "muted" } as const;
 export function MatchBadge({
   score,
   band,
@@ -41,15 +40,12 @@ export function MatchBadge({
     <span
       className={`match-badge ${level}${size === "large" ? " is-large" : ""}`}
     >
-      {/* Anneau décoratif : le texte à côté dit déjà le score. */}
-      <span className="match-badge__ring" aria-hidden="true">
-        <AnimatedCircularProgressBar
-          value={score}
-          gaugePrimaryColor={RING[level]}
-          gaugeSecondaryColor="oklch(0.32 0.065 165 / 0.12)"
-        />
+      <ScoreGauge value={score} tone={TONE[level]} size={size === "large" ? 52 : 40} />
+      <span className="match-badge__text" aria-hidden="true">
+        <strong>Compatible</strong>
+        {bandLabel && <small>{bandLabel}</small>}
       </span>
-      Compatible à {score}&nbsp;%
+      <span className="sr-only">Compatible à {score}&nbsp;%</span>
       {/* Le palier ne peut pas tenir à la seule couleur. Deux profils affichés
           « 70 % » — l'un à 70,2 %, l'autre à 69,6 % — portent le même nombre et
           des paliers différents : sans ce rappel, une synthèse vocale les
