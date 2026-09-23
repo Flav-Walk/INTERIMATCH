@@ -12,10 +12,10 @@ import { MatchyMascot } from "../components/MatchyMascot";
 // Grille bento (Aceternity UI) pour les avantages, à la place des 3 blocs
 // identiques qu'on avait avant.
 import { FeatureBento } from "../components/home/FeatureBento";
-// CTA de Hover.dev : halo qui suit la souris (principaux) et contour qui se
-// dessine au survol (secondaires). Les classes home-cta gardent le style.
+// CTA : halo qui suit la souris (principaux, Hover.dev) et fond qui glisse
+// au survol (secondaires). Les classes home-cta gardent le style d'origine.
 import { SpotlightLink } from "../components/ui/spotlight-button";
-import { DrawOutlineLink } from "../components/ui/draw-outline-button";
+import { SlideFillLink } from "../components/ui/slide-fill-button";
 import { useAuth } from "../hooks/useAuth";
 import { usePageSeo } from "../hooks/usePageSeo";
 import { destination } from "../services/session";
@@ -116,13 +116,13 @@ export function Home() {
                   Créer mon profil
                   <ArrowRight size={18} aria-hidden="true" />
                 </SpotlightLink>
-                <DrawOutlineLink
+                <SlideFillLink
                   className="home-cta home-cta--ghost"
                   to="/login"
-                  borderWidth={1}
+                  color="var(--surface)"
                 >
                   Me connecter
-                </DrawOutlineLink>
+                </SlideFillLink>
               </div>
             )}
           </div>
@@ -148,14 +148,13 @@ export function Home() {
               faciles à comprendre et à choisir.
             </p>
             {!user && (
-              <DrawOutlineLink
+              <SlideFillLink
                 className="home-cta home-cta--outline"
                 to="/register"
-                borderWidth={2}
               >
                 <Briefcase size={16} aria-hidden="true" />
                 Créer mon profil intérimaire
-              </DrawOutlineLink>
+              </SlideFillLink>
             )}
           </div>
           <FeatureBento features={WORKER_FEATURES} />
@@ -179,14 +178,13 @@ export function Home() {
             {!user && (
               <div className="home-company-access">
                 <span>Vous disposez déjà d’un accès établissement ?</span>
-                <DrawOutlineLink
+                <SlideFillLink
                   className="home-cta home-cta--outline"
                   to="/login"
-                  borderWidth={2}
-                >
+                  >
                   <Users size={16} aria-hidden="true" />
                   Accéder à l’espace entreprise
-                </DrawOutlineLink>
+                </SlideFillLink>
               </div>
             )}
           </div>

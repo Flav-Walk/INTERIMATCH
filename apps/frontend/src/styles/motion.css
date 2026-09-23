@@ -388,19 +388,32 @@ html :is(.mission-status, .profile-slot-status) {
   }
 }
 
-/* ── CTA de l'accueil : Draw Outline de Hover.dev ───────────────────────────
- * Le bouton « contour » se remplissait en vert au survol. Maintenant, c'est
- * le trait orange qui fait le tour du bouton (composant ui/draw-outline-button).
- * On garde donc le fond transparent : les deux effets ensemble, c'était trop.
+/* ── CTA secondaires de l'accueil : fond qui glisse (ui/slide-fill-button) ───
+ * Le fond glisse de gauche à droite. On neutralise donc le changement de
+ * fond instantané de shell.css, et on fait suivre la couleur du texte.
  */
-.home-cta--outline.draw-outline:hover,
-.home-cta--outline.draw-outline:focus-visible {
+.home-cta.slide-fill {
+  transition:
+    color 0.3s ease,
+    transform 0.1s ease;
+}
+
+/* Sections claires : remplissage vert, texte blanc. */
+.home-cta--outline.slide-fill:hover,
+.home-cta--outline.slide-fill:focus-visible {
   background: transparent;
+  color: var(--surface);
+}
+
+/* Hero sombre : remplissage blanc, texte vert. */
+.home-cta--ghost.slide-fill:hover,
+.home-cta--ghost.slide-fill:focus-visible {
+  background: oklch(1 0 0 / 0.1);
   color: var(--forest);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .draw-outline__line {
+  .slide-fill__bg {
     transition: none;
   }
 }
