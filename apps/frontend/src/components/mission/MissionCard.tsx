@@ -18,7 +18,7 @@ import {
 import { MatchBadge } from "./MatchBadge";
 import { MagicCard } from "../ui/magic-card";
 import { MAGIC_CARD_COLORS } from "../../lib/brand";
-import { jobFamily } from "../../lib/job-photos";
+import { illustrationFor, jobFamily } from "../../lib/job-photos";
 
 /**
  * Carte mission : bloc média, badge d'état en surimpression, titre, lieu,
@@ -132,20 +132,23 @@ export function MissionCard({
     >
       <MagicCard className="card-surface" {...MAGIC_CARD_COLORS}>
         <div className="mission-media">
-          {/* La photo choisie par l'établissement, et rien d'autre. Les
-              anciennes missions sans média gardent le visuel de marque :
-              aucune photo générique ne prétend montrer leur établissement. */}
+          {/* La photo choisie par l'établissement. Sans photo (missions
+              créées avant qu'elle soit obligatoire), une photo en rapport avec
+              le métier, signalée « Illustration » : elle ne prétend pas
+              montrer l'établissement. Le visuel vert reste dessous pendant le
+              chargement. */}
           <span className="mission-media__placeholder" aria-hidden="true">
             {jobIcon(mission.title)}
           </span>
-          {mission.media && (
-            <img
-              className="job-visual"
-              src={mission.media.url}
-              alt=""
-              loading="lazy"
-              decoding="async"
-            />
+          <img
+            className="job-visual"
+            src={(mission.media ?? illustrationFor(mission.title, mission.id)).url}
+            alt=""
+            loading="lazy"
+            decoding="async"
+          />
+          {!mission.media && (
+            <span className="photo-illustration-tag">Illustration</span>
           )}
           {/* key = l'état de la mission. Si l'état change (ex. « À pourvoir »
               → « Pourvue »), React recrée le badge et il refait son petit

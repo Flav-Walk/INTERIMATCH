@@ -135,7 +135,7 @@ test("public landing, login and registration share the InteriMatch identity", as
   await expect(
     page.getByRole("heading", { name: "Les bonnes personnes, au bon moment." }),
   ).toBeVisible();
-  await expect(page.locator(".home-hero .journey-card")).toBeVisible();
+  await expect(page.locator(".home-hero .matchy-mascot")).toBeVisible();
   await expect(page.getByText("Publiez en 3 minutes")).toHaveCount(0);
   await expect(page.getByText(/professionnels vérifiés/)).toHaveCount(0);
   await page.screenshot({
@@ -150,7 +150,7 @@ test("public landing, login and registration share the InteriMatch identity", as
   await expect(page.locator(".auth-story .brand-wordmark")).toContainText(
     "InteriMatch",
   );
-  await expect(page.locator(".auth-story .photo-backdrop")).toBeVisible();
+  await expect(page.locator(".auth-story .matchy-mascot")).toBeVisible();
   await expect(page.getByText(/Créez votre profil intérimaire/)).toBeVisible();
   await expect(page.getByRole("radio")).toHaveCount(0);
   await page.screenshot({
@@ -166,7 +166,7 @@ test("public landing, login and registration share the InteriMatch identity", as
   await expect(page.locator(".auth-story .brand-wordmark")).toContainText(
     "InteriMatch",
   );
-  await expect(page.locator(".auth-story .photo-backdrop")).toBeVisible();
+  await expect(page.locator(".auth-story .matchy-mascot")).toBeVisible();
   await page.screenshot({
     path: testInfo.outputPath("login.png"),
     fullPage: true,
@@ -409,7 +409,7 @@ test("the allowlisted address gets the company space and its own tour", async ({
   ).toBeVisible();
   // L'ecran ne promet plus un moteur « a venir » : il annonce ce qu'il montre.
   await expect(page.locator(".brand-hero")).toContainText("ont postulé");
-  await expect(page.locator(".brand-hero .photo-backdrop")).toHaveCount(1);
+  await expect(page.locator(".brand-hero__mascot")).toHaveCount(1);
   await page.goto("/worker");
   await expect(page).toHaveURL(/\/company$/);
 
@@ -677,7 +677,7 @@ test("the company workspace lists real missions with the maquette layout", async
   await expect(
     page.getByRole("heading", { name: /Prêt à renforcer votre équipe/ }),
   ).toBeVisible();
-  await expect(page.locator(".brand-hero .photo-backdrop")).toHaveCount(1);
+  await expect(page.locator(".brand-hero__mascot")).toHaveCount(1);
 
   // Les missions publiées par la fixture sont réellement affichées.
   // L'onglet groupe par statut serveur et s'appelle « Publiées » ; le badge
@@ -711,7 +711,7 @@ test("the company workspace lists real missions with the maquette layout", async
   // Liste complète et recherche depuis l'en-tête.
   await header.getByRole("link", { name: "Missions", exact: true }).click();
   await expect(page).toHaveURL(/\/company\/missions$/);
-  await expect(page.locator(".brand-hero .photo-backdrop")).toHaveCount(1);
+  await expect(page.locator(".brand-hero__mascot")).toHaveCount(1);
   await expect(page.locator(".mission-card")).toHaveCount(3);
   await header.getByRole("searchbox").fill("villeurbanne");
   await header.getByRole("searchbox").press("Enter");
@@ -849,9 +849,8 @@ test("secondary jobs and licence save without the main job blocking the form", a
   await save(page, "Votre métier");
   await page.reload();
   await section(page, "Votre métier")
-    .getByRole("group", { name: /Autres métiers exercés/ })
-    .getByText("Chef de rang", { exact: true })
-    .click();
+    .getByLabel("Chef de rang", { exact: true })
+    .check();
   await save(page, "Votre métier");
   await page.reload();
   await expect(
