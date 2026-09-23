@@ -1,20 +1,20 @@
 import {
   ArrowRight,
   Briefcase,
-  CalendarCheck,
-  ClipboardList,
-  MapPin,
-  ShieldCheck,
-  Sparkles,
   Users,
 } from "lucide-react";
-// Fond photo animé et carte « parcours », à la place des arches et de Matchy.
+// Fond photo animé. À droite du titre : les faisceaux d'Animated Beam
+// (Magic UI), à la place de l'ancienne carte « InteriMatch vous accompagne ».
 import { PhotoBackdrop } from "../components/PhotoBackdrop";
-import { JourneyCard } from "../components/home/JourneyCard";
-// Sections « Intérimaires » et « Établissements » : liste d'avantages à
-// gauche, grande photo du métier à droite (en miroir pour les établissements).
-import { FeatureList } from "../components/home/FeatureList";
-import { PathPhoto } from "../components/home/PathPhoto";
+import { MatchingBeam } from "../components/da/MatchingBeam";
+// Bandeau défilant des métiers et des villes (Marquee, Magic UI), à la place
+// des pastilles en verre posées sur les photos.
+import { JobsMarquee } from "../components/da/JobsMarquee";
+// Le métier qui change dans l'accroche (Word Rotate, Magic UI).
+import { WordRotate } from "../components/ui/word-rotate";
+// Sections « Intérimaires » et « Établissements » : grille bento (Aceternity)
+// avec la photo du métier et un visuel animé par avantage (Magic UI, Animata).
+import { CompanyBento, WorkerBento } from "../components/da/HomeBento";
 import { illustrationFor } from "../lib/job-photos";
 import { UnsplashCredit } from "../components/mission/MissionPhotoField";
 import { motion, useReducedMotion } from "motion/react";
@@ -27,17 +27,14 @@ import { usePageSeo } from "../hooks/usePageSeo";
 
 const WORKER_FEATURES = [
   {
-    icon: <MapPin size={21} aria-hidden="true" />,
     title: "Des missions dans votre zone",
     desc: "Les besoins publiés en Auvergne-Rhône-Alpes sont rapprochés de votre mobilité.",
   },
   {
-    icon: <Sparkles size={21} aria-hidden="true" />,
     title: "Un rapprochement expliqué",
     desc: "Métier, compétences et distance rendent chaque proposition compréhensible.",
   },
   {
-    icon: <CalendarCheck size={21} aria-hidden="true" />,
     title: "Votre agenda reste le vôtre",
     desc: "Vous renseignez vos créneaux et choisissez les missions auxquelles postuler.",
   },
@@ -45,17 +42,14 @@ const WORKER_FEATURES = [
 
 const COMPANY_FEATURES = [
   {
-    icon: <Users size={21} aria-hidden="true" />,
     title: "Des profils adaptés au besoin",
     desc: "Les compétences, disponibilités et mobilité renseignées alimentent le rapprochement.",
   },
   {
-    icon: <ClipboardList size={21} aria-hidden="true" />,
     title: "Un besoin décrit précisément",
     desc: "Poste, horaires, lieu et compétences structurent chaque mission publiée.",
   },
   {
-    icon: <ShieldCheck size={21} aria-hidden="true" />,
     title: "Des échanges maîtrisés",
     desc: "L’établissement examine les candidatures reçues et décide de l’attribution.",
   },
@@ -105,9 +99,16 @@ export function Home() {
         <PhotoBackdrop src="/images/hero/accueil.jpg" />
         <div className="home-hero__inner">
           <div className="home-hero__body">
-            <span className="home-hero__eyeline">
-              Hôtellerie · Restauration · Auvergne-Rhône-Alpes
-            </span>
+            {/* Accroche en texte simple, plus de pilule : seul le métier
+                bouge (Word Rotate). */}
+            <p className="home-hero__kicker">
+              Missions de{" "}
+              <WordRotate
+                words={["serveur", "cuisinier", "barman", "réceptionniste"]}
+                className="home-hero__kicker-word"
+              />{" "}
+              en Auvergne-Rhône-Alpes
+            </p>
             <h1 id="hero-title" className="home-hero__title">
               Les bonnes personnes,
               <span className="home-hero__accent"> au bon moment.</span>
@@ -133,22 +134,27 @@ export function Home() {
               </SlideFillLink>
             </div>
           </div>
-          <div className="home-hero__visual">
-            <JourneyCard />
+          <div className="home-hero__beam">
+            <MatchingBeam />
           </div>
         </div>
       </section>
 
+      <JobsMarquee />
+
+      {/* Intérimaires : titre et bouton en ligne, puis la grille bento
+          (Aceternity) dont chaque case porte un visuel animé. */}
       <section className="home-section home-path" aria-labelledby="worker-title">
-        <div className="home-section__inner home-path__inner">
-          <div className="home-path__intro">
-            <span className="home-section__tag">Intérimaires</span>
-            <h2 id="worker-title">Votre profil ouvre le bon chemin</h2>
-            <p>
-              Plus votre situation est précise, plus les propositions sont
-              faciles à comprendre et à choisir.
-            </p>
-            <FeatureList features={WORKER_FEATURES} />
+        <div className="home-section__inner home-path__stack">
+          <div className="home-path__head">
+            <div>
+              <span className="home-section__tag">Intérimaires</span>
+              <h2 id="worker-title">Votre profil ouvre le bon chemin</h2>
+              <p>
+                Plus votre situation est précise, plus les propositions sont
+                faciles à comprendre et à choisir.
+              </p>
+            </div>
             <SlideFillLink
               className="home-cta home-cta--outline"
               to="/register"
@@ -157,19 +163,7 @@ export function Home() {
               Créer mon profil intérimaire
             </SlideFillLink>
           </div>
-          <PathPhoto
-            photo={WORKER_PHOTO}
-            chips={[
-              {
-                icon: <MapPin size={15} aria-hidden="true" />,
-                label: "Auvergne-Rhône-Alpes",
-              },
-              {
-                icon: <Sparkles size={15} aria-hidden="true" />,
-                label: "Critères visibles",
-              },
-            ]}
-          />
+          <WorkerBento features={WORKER_FEATURES} photo={WORKER_PHOTO} />
         </div>
       </section>
 
@@ -177,42 +171,27 @@ export function Home() {
         className="home-section home-section--tinted home-path home-path--company"
         aria-labelledby="company-title"
       >
-        <div className="home-section__inner home-path__inner home-path__inner--reverse">
-          <div className="home-path__intro">
-            <span className="home-section__tag home-section__tag--orange">
-              Établissements
-            </span>
-            <h2 id="company-title">Un recrutement lisible, de bout en bout</h2>
-            <p>
-              Décrivez la mission, consultez les candidatures et attribuez les
-              postes depuis le même espace.
-            </p>
-            <FeatureList features={COMPANY_FEATURES} tone="orange" />
+        <div className="home-section__inner home-path__stack">
+          <div className="home-path__head">
+            <div>
+              <span className="home-section__tag home-section__tag--orange">
+                Établissements
+              </span>
+              <h2 id="company-title">Un recrutement lisible, de bout en bout</h2>
+              <p>
+                Décrivez la mission, consultez les candidatures et attribuez
+                les postes depuis le même espace.
+              </p>
+            </div>
             <div className="home-company-access">
               <span>Vous disposez déjà d’un accès établissement ?</span>
-              <SlideFillLink
-                className="home-cta home-cta--outline"
-                to="/login"
-                >
+              <SlideFillLink className="home-cta home-cta--outline" to="/login">
                 <Users size={16} aria-hidden="true" />
                 Accéder à l’espace entreprise
               </SlideFillLink>
             </div>
           </div>
-          <PathPhoto
-            photo={COMPANY_PHOTO}
-            tone="orange"
-            chips={[
-              {
-                icon: <ClipboardList size={15} aria-hidden="true" />,
-                label: "Mission publiée",
-              },
-              {
-                icon: <Users size={15} aria-hidden="true" />,
-                label: "Candidatures au même endroit",
-              },
-            ]}
-          />
+          <CompanyBento features={COMPANY_FEATURES} photo={COMPANY_PHOTO} />
         </div>
       </section>
 
