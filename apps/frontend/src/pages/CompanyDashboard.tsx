@@ -1,3 +1,4 @@
+import { motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
@@ -128,7 +129,19 @@ export function CompanyDashboard() {
                     aria-pressed={tab === entry.key}
                     onClick={() => setTab(entry.key)}
                   >
-                    {entry.label}
+                    {/* Même principe qu'Animated Tabs (SmoothUI, variante
+                        « underline ») : le trait orange est UN élément qui
+                        glisse d'un onglet à l'autre (layoutId). Les boutons
+                        et aria-pressed restent : les tests e2e s'en servent. */}
+                    {tab === entry.key && (
+                      <motion.span
+                        layoutId="dashboard-tab-pill"
+                        className="dashboard-tab__pill"
+                        aria-hidden="true"
+                        transition={{ type: "spring", bounce: 0.05, duration: 0.3 }}
+                      />
+                    )}
+                    <span className="dashboard-tab__label">{entry.label}</span>
                     <span className="dashboard-tab__count">
                       {counts[entry.key] ?? 0}
                     </span>

@@ -1,3 +1,13 @@
+/*
+ * Animated List — Magic UI
+ * https://magicui.design/docs/components/animated-list
+ *
+ * Les éléments arrivent un par un en haut de la liste (comme des
+ * notifications), avec un petit ressort.
+ *
+ * Code copié tel quel ; seul le chemin d'import de cn() change (notre projet
+ * n'a pas le raccourci « @/ »).
+ */
 "use client"
 
 import React, {

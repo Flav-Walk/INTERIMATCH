@@ -1,3 +1,14 @@
+/*
+ * Ripple — Magic UI
+ * https://magicui.design/docs/components/ripple
+ *
+ * Des cercles concentriques qui « respirent » (animation CSS « ripple »,
+ * ajoutée dans styles/tailwind.css), fondus vers le bas par un masque.
+ * Leur couleur vient de --foreground (vert InteriMatch).
+ *
+ * Code copié tel quel ; seul le chemin d'import de cn() change (notre projet
+ * n'a pas le raccourci « @/ »).
+ */
 import React, { type ComponentPropsWithoutRef, type CSSProperties } from "react"
 
 import { cn } from "../../lib/utils"

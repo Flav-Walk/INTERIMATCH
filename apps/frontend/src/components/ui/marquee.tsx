@@ -1,3 +1,13 @@
+/*
+ * Marquee — Magic UI
+ * https://magicui.design/docs/components/marquee
+ *
+ * Un bandeau qui défile sans fin : le contenu est répété (repeat) et glisse
+ * grâce à l'animation CSS « marquee » (ajoutée dans styles/tailwind.css).
+ *
+ * Code copié tel quel ; seul le chemin d'import de cn() change (notre projet
+ * n'a pas le raccourci « @/ »).
+ */
 import { type ComponentPropsWithoutRef } from "react"
 
 import { cn } from "../../lib/utils"

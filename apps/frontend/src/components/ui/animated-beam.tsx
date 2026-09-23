@@ -1,3 +1,14 @@
+/*
+ * Animated Beam — Magic UI
+ * https://magicui.design/docs/components/animated-beam
+ *
+ * Un faisceau lumineux qui circule sur une courbe SVG entre deux éléments.
+ * Le composant mesure la position des deux éléments (refs) dans le
+ * conteneur et redessine la courbe si la fenêtre change de taille.
+ *
+ * Code copié tel quel ; seul le chemin d'import de cn() change (notre projet
+ * n'a pas le raccourci « @/ »).
+ */
 "use client"
 
 import { useEffect, useId, useState, type RefObject } from "react"

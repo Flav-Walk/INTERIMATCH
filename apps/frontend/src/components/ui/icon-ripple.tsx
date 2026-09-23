@@ -1,3 +1,13 @@
+/*
+ * Icon Ripple — Animata
+ * https://animata.design/docs/icon/icon-ripple
+ *
+ * Une icône entourée d'un anneau qui grandit et s'efface en boucle
+ * (animate-ping), comme un sonar.
+ *
+ * Code copié tel quel ; seul le chemin d'import de cn() change (notre projet
+ * n'a pas le raccourci « @/ »).
+ */
 "use client";
 
 import { Mic } from "lucide-react";

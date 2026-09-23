@@ -809,3 +809,75 @@ html .profile-search-status.is-active,
 html .profile-slot-status.is-available {
   color: var(--forest);
 }
+
+/* Missions : chaque carte est emballée dans un Blur Fade (apparition en
+   cascade). Le fondu prend toute la hauteur de la ligne pour que les cartes
+   d'une même rangée gardent la même hauteur. */
+.mission-grid > div {
+  display: flex;
+}
+.mission-grid > div > .mission-card {
+  flex: 1;
+}
+
+/* Compteur des missions : le chiffre en grand, en Fraunces. */
+html .missions-toolbar__count .missions-toolbar__figure {
+  color: var(--forest);
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+/* Encart « Recherche élargie » : plus de bandeau bleu avec icône, un filet
+   orange à gauche sur fond blanc, comme une note en marge. */
+html .public-offers-disclaimer {
+  border: 0;
+  border-left: 3px solid var(--orange);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
+  color: var(--ink);
+}
+html .public-offers-disclaimer > svg {
+  display: none;
+}
+
+/* Onglets des missions (accueil entreprise) : plus de pilules avec pastille
+   de compteur. Des onglets texte avec un trait orange qui glisse sous
+   l'onglet actif (technique d'Animated Tabs, SmoothUI). */
+html .dashboard-tabs {
+  position: relative;
+  gap: var(--space-1);
+  border-bottom: 1px solid var(--border);
+}
+html .dashboard-tab,
+html .dashboard-tab.is-active {
+  position: relative;
+  padding: 0.55rem 0.8rem;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--muted);
+  font-weight: 600;
+}
+html .dashboard-tab.is-active {
+  color: var(--ink);
+}
+html .dashboard-tab__count,
+html .dashboard-tab.is-active .dashboard-tab__count {
+  min-width: 0;
+  height: auto;
+  padding: 0;
+  background: none;
+  color: var(--orange-ink);
+  font-variant-numeric: tabular-nums;
+}
+.dashboard-tab__pill {
+  position: absolute;
+  right: 0.8rem;
+  bottom: -1px;
+  left: 0.8rem;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--orange);
+}

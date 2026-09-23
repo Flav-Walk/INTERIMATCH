@@ -22,7 +22,9 @@ export interface TagOption {
 }
 
 /*
- * Adapté d'Animated Tags (https://smoothui.dev/docs/components/animated-tags).
+ * Adapté d’Animated Tags de SmoothUI (https://smoothui.dev/docs/components/animated-tags) :
+ * le composant d’origine utilise des <div> cliquables sans case à cocher, donc
+ * je reprends son principe et ses animations ici, avec de vrais <input>.
  *
  * Comme dans SmoothUI : les étiquettes choisies (fond vert, croix pour
  * retirer) d'un côté, les disponibles (plus pour ajouter) de l'autre. Quand on

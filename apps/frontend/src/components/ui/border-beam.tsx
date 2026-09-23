@@ -1,3 +1,14 @@
+/*
+ * Border Beam — Magic UI
+ * https://magicui.design/docs/components/border-beam
+ *
+ * Un petit trait de lumière qui fait le tour de la bordure d'une carte, en
+ * boucle (offset-path CSS animé par Motion). Le parent doit être en
+ * position relative.
+ *
+ * Code copié tel quel ; seul le chemin d'import de cn() change (notre projet
+ * n'a pas le raccourci « @/ »).
+ */
 "use client"
 
 import { motion, type MotionStyle, type Transition } from "motion/react"

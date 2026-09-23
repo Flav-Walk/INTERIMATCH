@@ -584,26 +584,25 @@
   padding-top: var(--space-12);
 }
 
-/* Même badge en verre que le bandeau des pages internes. */
+/* Même étiquette que le bandeau des pages internes : un trait orange puis
+   le texte, sans pilule en verre ni pastille (retour de revue). */
 .auth-story .auth-story__eyeline {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.35rem 0.8rem;
-  border: 1px solid oklch(1 0 0 / 0.18);
-  border-radius: var(--radius-pill);
-  background: oklch(1 0 0 / 0.08);
-  backdrop-filter: blur(8px);
+  gap: 0.6rem;
   color: oklch(0.93 0.03 160);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-size: var(--text-xs);
+  font-weight: 700;
 }
 
 .auth-story .auth-story__eyeline::before {
   content: "";
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
+  width: 22px;
+  height: 2px;
+  border-radius: 2px;
   background: var(--orange);
-  animation: brand-hero-pulse 2.4s ease-out infinite;
 }
 
 /* Le texte du panneau arrive en cascade : animé avec Motion dans Login.tsx.

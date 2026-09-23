@@ -1,3 +1,13 @@
+/*
+ * Blur Fade — Magic UI
+ * https://magicui.design/docs/components/blur-fade
+ *
+ * Un bloc qui apparaît en sortant d'un léger flou et en glissant de quelques
+ * pixels. Avec inView, il attend d'être à l'écran pour apparaître.
+ *
+ * Code copié tel quel ; seul le chemin d'import de cn() change (notre projet
+ * n'a pas le raccourci « @/ »).
+ */
 "use client"
 
 import { useRef } from "react"
