@@ -10,6 +10,9 @@ import {
   Users,
 } from "lucide-react";
 import { MatchyMascot } from "../components/MatchyMascot";
+// Grille bento (Aceternity UI) pour les avantages, à la place des 3 blocs
+// identiques qu'on avait avant.
+import { FeatureBento } from "../components/home/FeatureBento";
 import { useAuth } from "../hooks/useAuth";
 import { usePageSeo } from "../hooks/usePageSeo";
 import { destination } from "../services/session";
@@ -67,32 +70,6 @@ const HOW_STEPS = [
     desc: "L’établissement reçoit votre candidature et vous retrouvez son suivi dans votre espace.",
   },
 ];
-
-function FeatureList({
-  features,
-  tone = "forest",
-}: {
-  features: typeof WORKER_FEATURES;
-  tone?: "forest" | "orange";
-}) {
-  return (
-    <ul className="home-feature-list">
-      {features.map((feature) => (
-        <li key={feature.title}>
-          <span
-            className={`home-feature-list__icon home-feature-list__icon--${tone}`}
-          >
-            {feature.icon}
-          </span>
-          <div>
-            <h3>{feature.title}</h3>
-            <p>{feature.desc}</p>
-          </div>
-        </li>
-      ))}
-    </ul>
-  );
-}
 
 export function Home() {
   usePageSeo({
@@ -170,7 +147,7 @@ export function Home() {
               </Link>
             )}
           </div>
-          <FeatureList features={WORKER_FEATURES} />
+          <FeatureBento features={WORKER_FEATURES} />
         </div>
       </section>
 
@@ -198,7 +175,7 @@ export function Home() {
               </div>
             )}
           </div>
-          <FeatureList features={COMPANY_FEATURES} tone="orange" />
+          <FeatureBento features={COMPANY_FEATURES} tone="orange" />
         </div>
       </section>
 
