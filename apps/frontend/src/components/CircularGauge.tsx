@@ -9,7 +9,8 @@ interface CircularGaugeProps {
   variant?: "forest" | "on-dark";
 }
 
-/** Couleurs de l'anneau pour chaque fond : la valeur, puis le reste du tour. */
+// Couleurs de l'anneau selon le fond où la jauge est posée.
+// primary = la partie remplie, secondary = le reste du cercle.
 const GAUGE_COLORS = {
   forest: {
     primary: "var(--forest)",
@@ -22,12 +23,13 @@ const GAUGE_COLORS = {
 } as const;
 
 /**
- * Indicateur purement visuel : sa valeur vient toujours de la donnée appelante.
+ * Jauge de complétion du profil.
  *
- * L'anneau est l'« Animated Circular Progress Bar » de Magic UI. Il s'anime
- * quand sa valeur change : on lui donne donc 0 au premier affichage, puis la
- * vraie valeur à l'image suivante, pour qu'il se remplisse sous les yeux.
- * L'étiquette accessible, elle, annonce directement la valeur finale.
+ * L'anneau vient de Magic UI (« Animated Circular Progress Bar »). Il ne
+ * s'anime que quand sa valeur CHANGE. Mon astuce : je lui donne 0 au premier
+ * affichage, puis la vraie valeur juste après. Résultat : l'anneau se remplit
+ * sous les yeux de l'utilisateur au lieu d'apparaître déjà plein.
+ * Le lecteur d'écran, lui, lit directement la vraie valeur (aria-label).
  */
 export function CircularGauge({
   value,
@@ -37,8 +39,12 @@ export function CircularGauge({
   variant = "forest",
 }: CircularGaugeProps) {
   const percentage = Math.min(100, Math.max(0, Math.round(value)));
+  // Valeur réellement affichée par l'anneau : 0 au départ.
   const [shown, setShown] = useState(0);
 
+  // requestAnimationFrame = « à la prochaine image ». Le navigateur dessine
+  // d'abord l'anneau vide, puis on passe à la vraie valeur : ça déclenche
+  // l'animation de remplissage.
   useEffect(() => {
     const frame = requestAnimationFrame(() => setShown(percentage));
     return () => cancelAnimationFrame(frame);
@@ -51,6 +57,7 @@ export function CircularGauge({
       className={`completion-gauge completion-gauge--${variant}`}
       role="img"
       aria-label={`${label} : ${percentage} %${subtitle ? `. ${subtitle}` : ""}`}
+      // Je passe la taille en variable CSS, reprise dans motion.css.
       style={{ "--gauge-size": `${size}px` } as CSSProperties}
     >
       <AnimatedCircularProgressBar

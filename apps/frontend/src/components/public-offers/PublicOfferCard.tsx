@@ -29,7 +29,8 @@ export function PublicOfferCard({
       className="public-offer-card"
       aria-labelledby={`offer-${offer.id}`}
     >
-      {/* Même « Magic Card » (Magic UI) que les cartes mission. */}
+      {/* Même Magic Card que les cartes mission, pour que toutes les cartes
+          du site réagissent pareil au survol. */}
       <MagicCard className="card-surface" {...MAGIC_CARD_COLORS}>
         {/* AUCUNE IMAGE. Une offre France Travail n'en transporte pas, et lui en
             donner une — locale ou Unsplash — laisserait croire qu'elle vient de

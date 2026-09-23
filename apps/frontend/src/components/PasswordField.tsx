@@ -1,6 +1,6 @@
 import { useId, useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
-// Champ animé d'Aceternity UI : halo qui suit le curseur (voir le fichier).
+// Input d'Aceternity : même champ qu'avant, avec le halo orange au survol.
 import { Input } from "./ui/input";
 
 /**

@@ -130,18 +130,17 @@ const initials = (user: User) => {
   return (letters || user.email.slice(0, 2)).toLocaleUpperCase("fr");
 };
 
-/**
- * Ressort de la pastille de navigation, repris tel quel du composant
- * « Animated Tabs » de SmoothUI (smoothui.dev) : un glissement court, sans
- * rebond visible.
- */
+// Réglage du ressort de la pastille du menu. Je l'ai repris tel quel du
+// composant « Animated Tabs » de SmoothUI : 0,25 s et presque pas de rebond,
+// sinon la pastille "tremble" en arrivant sur le lien.
 const TAB_SPRING = {
   bounce: 0.05,
   duration: 0.25,
   type: "spring" as const,
 };
 
-/** Courbe de sortie des transitions de page : rapide, puis douce. */
+// Courbe d'animation des pages : ça démarre vite puis ça freine doucement.
+// Les 4 chiffres sont les points d'une courbe de Bézier.
 const PAGE_EASE = [0.16, 1, 0.3, 1] as const;
 
 export function AppLayout() {
@@ -155,10 +154,12 @@ export function AppLayout() {
     [replay, setReplay] = useState(false);
   const account = useRef<HTMLDetailsElement>(null);
   const user = auth.user;
-  // La page courante, capturée ici plutôt que via <Outlet /> : pendant sa
-  // sortie animée, l'ancienne page doit continuer d'afficher SON contenu, et
-  // non celui de la page suivante.
+  // J'utilise useOutlet() au lieu de <Outlet /> : ça me donne la page sous
+  // forme de variable. Pendant que l'ancienne page disparaît, elle garde
+  // SON contenu. Avec <Outlet />, elle afficherait déjà la nouvelle page
+  // pendant sa sortie, et on verrait un flash.
   const outlet = useOutlet();
+  // true si l'utilisateur a coché « réduire les animations » sur son système.
   const reduceMotion = useReducedMotion();
   const pending = user?.role === "company" ? counts.pending : 0;
 
@@ -249,9 +250,10 @@ export function AppLayout() {
                   >
                     {({ isActive }) => (
                       <>
-                        {/* Pastille du lien actif : même `layoutId` pour tous
-                            les liens, Motion la fait donc glisser d'un lien à
-                            l'autre (indicateur d'« Animated Tabs », SmoothUI). */}
+                        {/* La pastille n'existe que sur le lien actif. Comme
+                            elle a le même layoutId partout, quand on change de
+                            page Motion ne la recrée pas : il la fait glisser
+                            de l'ancien lien vers le nouveau. */}
                         {isActive && (
                           <motion.span
                             className="nav-indicator"
@@ -369,12 +371,13 @@ export function AppLayout() {
         </p>
       )}
       <main id="content" className="app-main" tabIndex={-1}>
-        {/* Transition entre les pages, avec Motion (le moteur d'animation de
-            Magic UI, Aceternity et SmoothUI). La clé suit le chemin : filtrer
-            une liste (?q=…) ne relance pas l'animation. `mode="wait"` : la
-            page suivante entre une fois la précédente sortie.
-            `reducedMotion="user"` coupe tout mouvement si l'utilisateur l'a
-            demandé à son système. */}
+        {/* Transition entre les pages.
+            - key = le chemin de la page : quand il change, AnimatePresence
+              fait sortir l'ancienne page et entrer la nouvelle. Une recherche
+              (?q=…) ne change pas le chemin, donc pas d'animation inutile.
+            - mode="wait" : la nouvelle page attend que l'ancienne soit partie.
+            - reducedMotion="user" : aucune animation pour ceux qui l'ont
+              désactivée sur leur ordinateur. */}
         <MotionConfig reducedMotion="user">
           <AnimatePresence mode="wait">
             <motion.div

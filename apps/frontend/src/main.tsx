@@ -12,9 +12,10 @@ import { PolitiqueConfidentialite } from "./pages/PolitiqueConfidentialite";
 import { Accessibilite } from "./pages/Accessibilite";
 import { usePageSeo } from "./hooks/usePageSeo";
 import "./styles/global.css";
-// Tailwind, limité aux composants importés (voir le fichier pour le détail).
+// Tailwind : uniquement pour les composants copiés depuis Magic UI, Aceternity
+// et SmoothUI (dossier components/ui). Il ne touche pas au reste du site.
 import "./styles/tailwind.css";
-// Finitions des composants animés.
+// Mes réglages CSS pour les animations (cartes, champs, badges, menu…).
 import "./styles/motion.css";
 
 function NotFound() {

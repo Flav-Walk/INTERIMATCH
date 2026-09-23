@@ -60,9 +60,10 @@ export function Field({
           {hint}
         </p>
       )}
-      {/* Cadre animé de l'Input d'Aceternity UI : un halo orange suit le
-          curseur autour du champ. Le champ lui-même vient de la page et ne
-          change pas ; ses propriétés ARIA restent celles calculées ici. */}
+      {/* Le champ vient de la page (un <input> normal). Plutôt que de
+          toucher aux pages, je l'entoure ici avec le cadre de l'Input
+          d'Aceternity : au survol, un halo orange suit la souris. Le champ
+          garde exactement les mêmes props (id, aria-invalid…). */}
       <InputGlow>
         {children({
           id: name,

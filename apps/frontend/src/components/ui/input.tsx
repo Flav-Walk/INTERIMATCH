@@ -1,9 +1,14 @@
 /*
- * Input — Aceternity UI (champ du « Signup Form »,
- * https://ui.aceternity.com/components/signup-form)
- * Copié depuis le registre officiel (ui.aceternity.com/registry/input.json).
- * Deux modifications, signalées « InteriMatch » ci-dessous : le chemin
- * d'import de `cn`, et la couleur du halo (bleu d'origine → orange de marque).
+ * Input — Aceternity UI (le champ de leur « Signup Form »)
+ * https://ui.aceternity.com/components/signup-form
+ *
+ * Code copié depuis Aceternity. J'ai changé deux choses, marquées
+ * « InteriMatch » : le chemin d'import de cn(), et la couleur du halo
+ * (bleu à l'origine, orange chez nous).
+ *
+ * Comment ça marche : le champ est entouré d'une boîte avec 2 px de marge.
+ * Quand la souris passe, on dessine dans cette boîte un cercle orange qui
+ * suit le curseur. On voit donc une lueur orange autour du champ.
  */
 "use client";
 import * as React from "react";
@@ -15,12 +20,14 @@ export interface InputProps
 
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
   ({ className, type, ...props }, ref) => {
-    const radius = 100; // change this to increase the rdaius of the hover effect
+    const radius = 100; // taille du halo en pixels
+    // visible = la souris est-elle sur le champ ? Sinon le halo fait 0 px.
     const [visible, setVisible] = React.useState(false);
 
     let mouseX = useMotionValue(0);
     let mouseY = useMotionValue(0);
 
+    // Position de la souris par rapport au coin haut-gauche du cadre.
     function handleMouseMove({ currentTarget, clientX, clientY }: any) {
       let { left, top } = currentTarget.getBoundingClientRect();
 

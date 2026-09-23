@@ -1,8 +1,19 @@
 /*
- * Magic Card — Magic UI (https://magicui.design/docs/components/magic-card)
- * Copié tel quel depuis le registre officiel (magicui.design/r/magic-card.json).
- * Seule modification : le chemin d'import de `cn` (le projet n'a pas l'alias
- * « @/ »). Les couleurs se règlent par les props, depuis les composants.
+ * Magic Card — Magic UI
+ * https://magicui.design/docs/components/magic-card
+ *
+ * Code copié depuis Magic UI, je n'ai changé que le chemin d'import de cn()
+ * (notre projet n'a pas le raccourci « @/ »). Les couleurs, je les passe par
+ * les props depuis lib/brand.ts, sans toucher à ce fichier.
+ *
+ * Comment ça marche, en bref :
+ * 1. On suit la position de la souris sur la carte (mouseX, mouseY).
+ * 2. La bordure est un dégradé circulaire centré sur la souris : elle
+ *    « s'allume » seulement là où est le curseur.
+ * 3. Quand la souris sort, on envoie le dégradé hors de la carte : il
+ *    disparaît.
+ * Le mode « orb » (une boule floue qui suit la souris) existe aussi, mais on
+ * ne l'utilise pas : on reste en mode « gradient ».
  */
 "use client"
 
@@ -89,6 +100,8 @@ export function MagicCard(props: MagicCardProps) {
     return currentTheme === "dark"
   }, [theme, systemTheme, mounted])
 
+  // Position de la souris dans la carte. Au départ, on la place en dehors
+  // (-gradientSize) pour que rien ne soit allumé.
   const mouseX = useMotionValue(-gradientSize)
   const mouseY = useMotionValue(-gradientSize)
 
@@ -112,6 +125,8 @@ export function MagicCard(props: MagicCardProps) {
     gradientSizeRef.current = gradientSize
   }, [gradientSize])
 
+  // Remet l'effet à zéro (souris sortie, fenêtre quittée…) : on renvoie le
+  // dégradé en dehors de la carte.
   const reset = useCallback(
     (reason: ResetReason = "leave") => {
       const currentMode = modeRef.current
@@ -129,6 +144,8 @@ export function MagicCard(props: MagicCardProps) {
     [mouseX, mouseY, orbVisible]
   )
 
+  // À chaque mouvement de souris : on calcule sa position par rapport au coin
+  // haut-gauche de la carte, et Motion met à jour le dégradé.
   const handlePointerMove = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
       const rect = e.currentTarget.getBoundingClientRect()
@@ -142,6 +159,8 @@ export function MagicCard(props: MagicCardProps) {
     reset("init")
   }, [reset])
 
+  // Sécurité : si la souris quitte la fenêtre ou si l'onglet passe en
+  // arrière-plan, on éteint l'effet pour qu'il ne reste pas bloqué allumé.
   useEffect(() => {
     const handleGlobalPointerOut = (e: PointerEvent) => {
       if (!e.relatedTarget) reset("global")
@@ -171,6 +190,9 @@ export function MagicCard(props: MagicCardProps) {
       onPointerMove={handlePointerMove}
       onPointerLeave={() => reset("leave")}
       onPointerEnter={() => reset("enter")}
+      // Astuce de la bordure : deux fonds superposés. Le 1er (couleur unie)
+      // remplit l'intérieur, le 2e (dégradé autour de la souris) ne se voit
+      // que dans la bordure transparente de 1 px.
       style={{
         background: useMotionTemplate`
           linear-gradient(var(--color-background) 0 0) padding-box,
@@ -222,6 +244,7 @@ export function MagicCard(props: MagicCardProps) {
           }}
         />
       )}
+      {/* Notre contenu, posé au-dessus de tous les effets. */}
       <div className="relative z-40">{children}</div>
     </motion.div>
   )

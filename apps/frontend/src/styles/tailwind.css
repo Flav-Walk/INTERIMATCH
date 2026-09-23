@@ -1,19 +1,19 @@
 /*
- * Tailwind CSS, uniquement pour les composants importés (dossier
- * `components/ui`) : Magic UI, Aceternity UI, SmoothUI.
+ * Tailwind, seulement pour les composants copiés depuis Magic UI, Aceternity
+ * et SmoothUI (dossier components/ui). Tout le reste du site garde son CSS.
  *
- * TROIS PRÉCAUTIONS POUR NE RIEN CASSER
+ * Mes 3 précautions pour ne rien casser :
  *
- * 1. Pas de « preflight » (le reset CSS de Tailwind). On n'importe que le
- *    thème et les utilitaires : les styles existants du site restent intacts.
+ * 1. Je n'importe pas le « preflight » de Tailwind (son reset qui remet à
+ *    zéro les titres, marges, boutons…). Seulement le thème et les classes.
  *
- * 2. Tout est rangé dans des couches (@layer). En CSS, une règle hors couche
- *    l'emporte toujours sur une règle en couche : nos feuilles existantes
- *    gardent donc la priorité en cas de conflit.
+ * 2. Tout est rangé dans des @layer. Règle du CSS : un style SANS layer gagne
+ *    toujours contre un style AVEC layer. Donc si Tailwind et notre CSS se
+ *    contredisent, c'est notre CSS qui gagne.
  *
- * 3. `source(none)` : Tailwind ne parcourt PAS tout le projet. Sinon il
- *    générerait des classes pour nos noms existants (`inline`, `hidden`…) et
- *    changerait leur rendu. Il ne lit que le dossier des composants importés.
+ * 3. source(none) + @source : Tailwind ne lit QUE le dossier components/ui.
+ *    Sinon il fouillerait tout le projet, verrait nos classes « inline » ou
+ *    « hidden » et créerait ses propres versions qui changeraient le rendu.
  */
 @layer theme, base, components, utilities;
 @import "tailwindcss/theme.css" layer(theme);
@@ -22,9 +22,9 @@
 @source "../components/ui";
 
 /*
- * Les composants shadcn parlent en « background », « border », « muted »…
- * On relie ces noms à nos couleurs InteriMatch : c'est la seule adaptation
- * de couleur nécessaire.
+ * Les composants shadcn utilisent des noms de couleurs génériques
+ * (bg-background, border-border…). Ici je dis à Tailwind que ces noms
+ * correspondent à nos variables InteriMatch de tokens.css.
  */
 @theme inline {
   --color-background: var(--surface);

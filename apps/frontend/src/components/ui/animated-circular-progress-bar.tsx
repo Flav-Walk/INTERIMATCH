@@ -1,10 +1,15 @@
 /*
  * Animated Circular Progress Bar — Magic UI
- * (https://magicui.design/docs/components/animated-circular-progress-bar)
- * Copié tel quel depuis le registre officiel
- * (magicui.design/r/animated-circular-progress-bar.json).
- * Modifications, signalées « InteriMatch » : le chemin d'import de `cn` et
- * l'import du type `CSSProperties` (le projet n'expose pas `React` en global).
+ * https://magicui.design/docs/components/animated-circular-progress-bar
+ *
+ * Code copié depuis Magic UI. Changements marqués « InteriMatch » : le
+ * chemin de cn() et l'import du type CSSProperties (chez nous, React n'est
+ * pas disponible en global).
+ *
+ * Comment ça marche : deux cercles SVG superposés. Le premier (couleur
+ * principale) montre le pourcentage, le second (couleur secondaire) montre
+ * le reste, avec un petit espace entre les deux. Leur longueur est calculée
+ * en CSS (strokeDasharray) et une transition CSS anime le changement.
  */
 import type { CSSProperties } from "react" // InteriMatch
 import { cn } from "../../lib/utils" // InteriMatch : pas d'alias « @/ »
@@ -26,6 +31,7 @@ export function AnimatedCircularProgressBar({
   gaugeSecondaryColor,
   className,
 }: AnimatedCircularProgressBarProps) {
+  // Périmètre du cercle de rayon 45 (2πr), et longueur de 1 %.
   const circumference = 2 * Math.PI * 45
   const percentPx = circumference / 100
   const currentPercent = Math.round(((value - min) / (max - min)) * 100)

@@ -1,39 +1,41 @@
 /*
- * Finitions des composants animés.
+ * motion.css — mes réglages CSS pour les composants animés.
  *
- * Importé par `main.tsx` juste après `global.css`. Chaque bloc indique s'il
- * accompagne un composant importé (Magic UI, Aceternity UI, SmoothUI) ou s'il
- * s'agit d'un ajustement maison.
+ * Chargé dans main.tsx juste après global.css. Pour chaque bloc, j'indique
+ * s'il accompagne un composant copié (Magic UI, Aceternity, SmoothUI) ou si
+ * c'est un réglage à moi.
  */
 
-/* ======================================================================
- * Navigation : pastille du lien actif
- * Elle est rendue par Motion (indicateur d'« Animated Tabs », SmoothUI) ;
- * ici, seulement sa forme, aux couleurs du bandeau vert.
- * ==================================================================== */
+/* ------------------------------------------------------------------
+ * 1. Menu : la pastille sous le lien actif
+ * La pastille elle-même est créée par Motion dans AppLayout.tsx (idée reprise
+ * de l'« Animated Tabs » de SmoothUI). Ici je règle juste son apparence.
+ * ------------------------------------------------------------------ */
 
 .app-header__nav-link {
   position: relative;
-  /* Nouveau contexte d'empilement : la pastille passe sous l'icône et le
-     texte du lien, mais au-dessus de son fond. */
+  /* isolation: isolate crée une « couche » propre au lien. Grâce à ça, la
+     pastille (z-index -1) passe derrière l'icône et le texte du lien, mais
+     reste visible au-dessus du bandeau vert. */
   isolation: isolate;
 }
 
-/* La pastille remplace l'ancien fond du lien actif. */
+/* Avant, c'est le lien actif qui avait un fond. Maintenant c'est la pastille
+   qui glisse, donc j'enlève le fond du lien pour ne pas l'avoir en double. */
 .app-header__nav-link.is-active {
   background: transparent;
 }
 
 .nav-indicator {
   position: absolute;
-  inset: 0;
+  inset: 0; /* prend toute la taille du lien */
   z-index: -1;
   border-radius: var(--radius);
-  background: oklch(1 0 0 / 0.12);
-  pointer-events: none;
+  background: oklch(1 0 0 / 0.12); /* blanc à 12 % sur le vert */
+  pointer-events: none; /* ne bloque pas le clic sur le lien */
 }
 
-/* Point orange sous le lien actif, comme sur la maquette (image.png). */
+/* Le petit point orange sous le lien actif, comme sur la maquette. */
 .nav-indicator::after {
   content: "";
   position: absolute;
@@ -41,38 +43,40 @@
   bottom: 3px;
   width: 4px;
   height: 4px;
-  margin-left: -2px;
+  margin-left: -2px; /* moitié de la largeur, pour bien centrer le point */
   border-radius: 50%;
   background: var(--orange);
 }
 
-/* ======================================================================
- * Cartes missions et offres : « Magic Card » (Magic UI)
- * La Magic Card dessine elle-même la bordure (dégradé qui suit le curseur) :
- * la carte perd donc sa bordure d'origine pour ne pas la doubler. La carte
- * garde son lien, son arrondi et son ombre.
- * ==================================================================== */
+/* ------------------------------------------------------------------
+ * 2. Cartes missions et offres : Magic Card (Magic UI)
+ * ------------------------------------------------------------------ */
 
+/* La Magic Card dessine sa propre bordure (celle qui s'allume au survol).
+   J'enlève donc la bordure d'origine de la carte, sinon on en aurait deux. */
 :is(.mission-card, .public-offer-card):has(> .card-surface) {
   border: 0;
   padding: 0;
 }
 
-/* La surface occupe toute la carte et empile son contenu en colonne, comme
-   le faisait la carte avant elle (le pied reste collé en bas). */
+/* La Magic Card doit remplir toute la carte, et ranger le contenu en
+   colonne comme avant : image, texte, puis le pied collé en bas. */
 .card-surface {
   flex: 1;
   display: flex;
   flex-direction: column;
 }
 
+/* Le dernier enfant de la Magic Card, c'est la boîte qui contient notre
+   contenu : elle doit elle aussi s'étirer en colonne. */
 .card-surface > :last-child {
   flex: 1;
   display: flex;
   flex-direction: column;
 }
 
-/* Ajustement maison : la carte se soulève et la photo zoome au survol. */
+/* Réglage à moi : au survol, la carte monte de 3 px et la photo zoome un
+   peu. Ça donne l'impression qu'on peut « attraper » la carte. */
 :is(.mission-card, .public-offer-card) {
   transition:
     transform var(--normal) var(--ease-out),
@@ -91,6 +95,8 @@
   transform: scale(1.05);
 }
 
+/* Une mission terminée ou annulée ne bouge pas : il n'y a plus rien à faire
+   dessus, pas la peine d'attirer l'œil. */
 .mission-card.is-closed:hover,
 .mission-card.is-closed:hover .job-visual {
   transform: none;
@@ -103,26 +109,27 @@
   }
 }
 
-/* ======================================================================
- * Champs : « Input » d'Aceternity UI
- * Le composant pose un cadre de 2px autour du champ ; au survol, un halo
- * orange y suit le curseur. Le champ lui-même garde le style du site
- * (bordure, fond, arrondi, police) : nos règles passent avant celles de
- * Tailwind. Seule la hauteur fixe du composant (h-10) est neutralisée, pour
- * garder la hauteur habituelle des champs.
- * ==================================================================== */
+/* ------------------------------------------------------------------
+ * 3. Champs : Input d'Aceternity UI
+ * Le composant met un cadre de 2 px autour du champ, et c'est dans ce cadre
+ * que le halo orange suit la souris. Le champ garde notre style à nous
+ * (bordure, fond, arrondi, police).
+ * ------------------------------------------------------------------ */
 
+/* L'Input d'Aceternity impose une hauteur de 40 px (classe h-10). Je la
+   retire pour garder la hauteur normale de nos champs. */
 .group\/input > input {
   height: auto;
 }
 
-/* Un seul signal de focus : le contour vert du site, pas l'anneau gris. */
+/* Au focus, on garde seulement notre contour vert, pas l'anneau gris
+   d'Aceternity en plus. */
 .group\/input > input:focus-visible {
   box-shadow: none;
 }
 
-/* Le cadre n'a de sens qu'autour d'un vrai champ : quand Field reçoit autre
-   chose (case à cocher, groupe de choix), il s'efface. */
+/* Field peut aussi contenir une case à cocher ou un groupe de choix. Dans ce
+   cas le cadre n'a pas de sens : je le rends invisible. */
 .group\/input:not(:has(> :is(input, select, textarea))) {
   padding: 0;
   background: none !important;
@@ -132,16 +139,14 @@
   display: block;
 }
 
-/* ======================================================================
- * Badges de statut (ajustement maison, animés avec Motion)
- * - Forme commune : coins de 6px au lieu de la pilule à 999px.
- * - Un point de couleur devant le libellé ; il pulse tant que l'état attend
- *   une suite (candidature en attente, signature attendue, mission à
- *   pourvoir ou en cours).
- * Préfixe `html` : certaines feuilles (candidatures, profil) arrivent après
- * celle-ci avec leur page ; il faut quand même l'emporter sur leur arrondi.
- * ==================================================================== */
+/* ------------------------------------------------------------------
+ * 4. Badges de statut (réglage à moi, animés avec Motion)
+ * ------------------------------------------------------------------ */
 
+/* Coins de 6 px au lieu de la « pilule » toute ronde (999px).
+   Le « html » devant sert juste à gagner en priorité : certaines feuilles
+   CSS (profil, candidatures) se chargent APRÈS celle-ci avec leur page et
+   remettraient sinon leur arrondi. */
 html
   :is(
     .mission-status,
@@ -160,6 +165,8 @@ html :is(.mission-status, .profile-slot-status) {
   align-items: center;
 }
 
+/* Le point de couleur devant le texte du badge. currentColor = la couleur
+   du texte du badge : le point est donc toujours assorti. */
 :is(
     .mission-status,
     .mission-context-status,
@@ -178,9 +185,12 @@ html :is(.mission-status, .profile-slot-status) {
 }
 
 .application-status .status-dot {
-  margin-right: 0;
+  margin-right: 0; /* le badge a déjà un espace (gap) entre ses éléments */
 }
 
+/* Le point pulse seulement quand on attend quelque chose : candidature en
+   attente, signature à faire, mission à pourvoir ou en cours. Les états
+   finis (acceptée, terminée…) restent fixes. */
 .application-status.is-pending .status-dot,
 .mission-status.is-open::before,
 .mission-status.is-running::before,
@@ -193,6 +203,7 @@ html :is(.mission-status, .profile-slot-status) {
   animation: status-pulse 1.8s ease-out infinite;
 }
 
+/* L'effet « radar » : un anneau part du point, grandit et s'efface. */
 @keyframes status-pulse {
   0% {
     box-shadow: 0 0 0 0 color-mix(in oklch, currentColor 55%, transparent);
@@ -203,21 +214,21 @@ html :is(.mission-status, .profile-slot-status) {
   }
 }
 
-/* ======================================================================
- * Jauge de complétion : « Animated Circular Progress Bar » (Magic UI)
- * Taille donnée par CircularGauge (--gauge-size), chiffre à la taille
- * habituelle, suivi du signe %.
- * ==================================================================== */
+/* ------------------------------------------------------------------
+ * 5. Jauge de profil : Animated Circular Progress Bar (Magic UI)
+ * ------------------------------------------------------------------ */
 
+/* --gauge-size est donné par CircularGauge.tsx (78 px par défaut). */
 .completion-gauge__magic {
   flex: none;
   width: var(--gauge-size, 78px);
   height: var(--gauge-size, 78px);
   font-size: var(--text-sm);
   font-weight: 700;
-  font-variant-numeric: tabular-nums;
+  font-variant-numeric: tabular-nums; /* chiffres de même largeur */
 }
 
+/* Le composant affiche « 72 » : j'ajoute le « % » derrière en CSS. */
 .completion-gauge__magic [data-current-value]::after {
   content: "%";
 }
@@ -233,18 +244,18 @@ html :is(.mission-status, .profile-slot-status) {
     animation: none;
   }
 
-  /* Les transitions de l'anneau sont écrites en ligne par le composant. */
+  /* Le composant écrit ses transitions directement dans le HTML (style="…"),
+     d'où le !important pour pouvoir les couper. */
   .completion-gauge__magic circle {
     transition: none !important;
   }
 }
 
-/* ======================================================================
- * Boutons : retour au clic (ajustement maison)
- * Les boutons du site sont des classes CSS posées dans toutes les pages, pas
- * un composant : le retour au clic se règle donc ici, sans toucher aux pages.
- * Le bouton s'enfonce légèrement quand on appuie.
- * ==================================================================== */
+/* ------------------------------------------------------------------
+ * 6. Boutons : effet au clic (réglage à moi)
+ * Nos boutons sont des classes CSS utilisées dans toutes les pages. Je règle
+ * donc l'effet ici, une seule fois, sans toucher aux pages.
+ * ------------------------------------------------------------------ */
 
 :is(.button, .secondary-button, .button-ghost, .icon-button) {
   transition:
@@ -255,12 +266,14 @@ html :is(.mission-status, .profile-slot-status) {
     box-shadow 220ms ease-out;
 }
 
+/* Quand on appuie, le bouton rétrécit à 97 % : on « sent » le clic. */
 :is(.button, .secondary-button, .button-ghost, .icon-button):active:not(
     :disabled
   ) {
   transform: scale(0.97);
 }
 
+/* Le bouton orange principal prend une ombre orange au survol. */
 .button:not(:disabled):hover {
   box-shadow: 0 6px 18px oklch(0.75 0.17 43 / 0.28);
 }
@@ -270,3 +283,4 @@ html :is(.mission-status, .profile-slot-status) {
     transform: none;
   }
 }
+

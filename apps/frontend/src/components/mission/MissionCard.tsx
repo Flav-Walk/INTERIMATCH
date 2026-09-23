@@ -13,9 +13,9 @@ import { MAGIC_CARD_COLORS } from "../../lib/brand";
  * Carte mission : bloc média, badge d'état en surimpression, titre, lieu,
  * créneau, puis pied avec l'effectif et la flèche circulaire.
  *
- * Le contenu est posé dans une « Magic Card » de Magic UI : la bordure
- * s'éclaire et un halo suit le curseur, aux couleurs InteriMatch. Le lien, ses
- * données et son contenu ne changent pas.
+ * J'ai mis tout le contenu dans une Magic Card (Magic UI) : quand la souris
+ * passe dessus, la bordure s'allume en orange → vert là où est le curseur.
+ * Le lien, les données et le texte de la carte n'ont pas changé.
  */
 
 const dayMonth = new Intl.DateTimeFormat("fr-FR", {
@@ -113,8 +113,9 @@ export function MissionCard({
               decoding="async"
             />
           )}
-          {/* Badge d'état : recréé quand l'état change (clé), il rejoue alors
-              son entrée avec Motion. */}
+          {/* key = l'état de la mission. Si l'état change (ex. « À pourvoir »
+              → « Pourvue »), React recrée le badge et il refait son petit
+              zoom d'apparition : on remarque le changement. */}
           <motion.span
             key={status.className}
             className={`mission-status ${status.className}`}
