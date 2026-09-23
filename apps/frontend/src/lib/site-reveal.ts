@@ -72,6 +72,7 @@ export function useSiteReveal(
           if (!entry.isIntersecting) continue;
           const el = entry.target as HTMLElement;
           observer.unobserve(el); // une seule fois
+          delete el.dataset.siteReveal; // révélé : plus à restaurer
           animate(
             el,
             {
@@ -101,6 +102,9 @@ export function useSiteReveal(
         // Déjà piloté par un composant Motion : on n'y touche pas.
         if (el.style.opacity !== "") return;
         el.style.opacity = "0";
+        // Marque « caché par nous » : distingue notre opacity 0 de celle
+        // d'un composant Motion (voir le nettoyage plus bas).
+        el.dataset.siteReveal = "pending";
         observer.observe(el);
       });
     };
@@ -115,6 +119,7 @@ export function useSiteReveal(
         const r = el.getBoundingClientRect();
         if (el.style.opacity === "0" && r.top < window.innerHeight) {
           observer.unobserve(el);
+          delete el.dataset.siteReveal;
           el.style.opacity = "1";
         }
       });
@@ -135,6 +140,18 @@ export function useSiteReveal(
       cancelAnimationFrame(frame);
       mutations.disconnect();
       observer.disconnect();
+      // Correctif « page vide » : si l'effet se relance (StrictMode en dev,
+      // changement de route), les blocs cachés ici mais pas encore révélés
+      // gardaient opacity 0. Au scan suivant, ce style inline les faisait
+      // passer pour « pilotés par Motion » : plus jamais observés, donc
+      // invisibles pour toujours. On rend la main proprement : le prochain
+      // scan les recache et les observe à nouveau.
+      container
+        .querySelectorAll<HTMLElement>('[data-site-reveal="pending"]')
+        .forEach((el) => {
+          el.style.removeProperty("opacity");
+          delete el.dataset.siteReveal;
+        });
     };
   }, [root, pageKey, disabled]);
 }
