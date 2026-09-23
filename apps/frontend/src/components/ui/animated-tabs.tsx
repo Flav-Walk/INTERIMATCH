@@ -1,3 +1,16 @@
+/*
+ * Animated Tabs — SmoothUI
+ * https://smoothui.dev/docs/components/animated-tabs
+ *
+ * Des onglets dont l'indicateur (trait, pilule ou segment) GLISSE de l'onglet
+ * actif au suivant : Motion anime le même élément d'un bouton à l'autre grâce
+ * à layoutId. Flèches gauche/droite, Début et Fin changent d'onglet au clavier.
+ *
+ * Retouche InteriMatch : « border-0 bg-transparent » sur les boutons. Le site
+ * n'a pas le reset « preflight » de Tailwind, les boutons gardaient sinon
+ * leur cadre gris natif. Et ariaLabel (« Onglets » par défaut) au lieu du
+ * « Tabs » anglais écrit en dur.
+ */
 "use client";
 
 import { cn } from "../../lib/utils";
@@ -6,6 +19,8 @@ import { type ReactNode, useCallback, useId, useState } from "react";
 
 export interface AnimatedTabsProps {
   activeTab?: string;
+  /** InteriMatch : nom de la liste d'onglets pour les lecteurs d'écran. */
+  ariaLabel?: string;
   className?: string;
   defaultTab?: string;
   layoutId?: string;
@@ -28,6 +43,7 @@ export default function AnimatedTabs({
   variant = "underline",
   layoutId: customLayoutId,
   className,
+  ariaLabel = "Onglets",
 }: AnimatedTabsProps) {
   const shouldReduceMotion = useReducedMotion();
   const generatedId = useId();
@@ -91,7 +107,7 @@ export default function AnimatedTabs({
 
   const getTabStyles = (isActive: boolean) =>
     cn(
-      "relative z-10 flex cursor-pointer items-center justify-center gap-2 px-4 py-2 font-medium text-sm transition-colors",
+      "relative z-10 flex cursor-pointer items-center justify-center gap-2 border-0 bg-transparent px-4 py-2 font-medium text-sm whitespace-nowrap transition-colors",
       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
       variant === "underline" && [
         "rounded-t-md",
@@ -125,7 +141,7 @@ export default function AnimatedTabs({
 
   return (
     <div
-      aria-label="Tabs"
+      aria-label={ariaLabel}
       className={cn(baseContainerStyles, className)}
       role="tablist"
     >
