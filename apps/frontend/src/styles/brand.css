@@ -865,7 +865,9 @@
   letter-spacing: -0.025em;
 }
 
-.home-final-cta__credit {
+/* Double classe : .photo-credit (mission-photo.css, chargé après) imposait
+   un gris foncé illisible sur le vert (contraste 1,67:1, audit axe). */
+.photo-credit.home-final-cta__credit {
   position: absolute;
   right: var(--space-4);
   bottom: var(--space-3);
@@ -874,7 +876,7 @@
   font-size: 0.72rem;
 }
 
-.home-final-cta__credit a {
+.photo-credit.home-final-cta__credit a {
   color: inherit;
 }
 

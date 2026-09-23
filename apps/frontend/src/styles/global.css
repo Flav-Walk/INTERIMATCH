@@ -33,6 +33,12 @@ button:focus-visible {
   outline: 3px solid var(--forest);
   outline-offset: 5px;
 }
+/* Le contenu principal reçoit le focus à chaque changement de page (voir
+   AppLayout) : c'est un conteneur, pas une commande, on n'y dessine pas de
+   contour. Les éléments interactifs gardent leur focus visible. */
+.app-main:focus {
+  outline: none;
+}
 h1,
 h2,
 h3,
@@ -276,7 +282,9 @@ footer > span:last-child {
 }
 @media (max-width: 900px) {
   .workspace {
-    grid-template-columns: 1fr;
+    /* minmax(0, 1fr) et non 1fr : une colonne « 1fr » ne rétrécit pas sous
+       la largeur minimale de son contenu, et débordait à 320 px (RGAA 10.11). */
+    grid-template-columns: minmax(0, 1fr);
   }
   .secondary {
     display: grid;

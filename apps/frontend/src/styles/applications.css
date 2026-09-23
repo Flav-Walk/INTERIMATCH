@@ -451,3 +451,12 @@ html .application-context {
     justify-content: center;
   }
 }
+
+/* Très petits écrans (320 px, RGAA 10.11) : la frise de statut et le lien
+   « Voir » passent l'un sous l'autre au lieu de déborder de l'écran. */
+@media (width < 420px) {
+  .next-mission__side {
+    grid-auto-flow: row;
+    justify-content: start;
+  }
+}

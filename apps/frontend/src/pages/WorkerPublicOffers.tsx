@@ -16,6 +16,7 @@ import {
 import { PublicOfferCard } from "../components/public-offers/PublicOfferCard";
 import { HeroBanner } from "../components/HeroBanner";
 import { EmptyState } from "../components/da/EmptyState";
+import { usePageSeo } from "../hooks/usePageSeo";
 
 function SkeletonGrid() {
   return (
@@ -28,6 +29,12 @@ function SkeletonGrid() {
 }
 
 export function WorkerPublicOffers() {
+  // Titre d'onglet propre à la page (RGAA 8.6) ; espace privé non indexé.
+  usePageSeo({
+    title: "Offres France Travail · InteriMatch",
+    description: "Offres publiques du référentiel France Travail, à titre informatif.",
+    robots: "noindex,nofollow",
+  });
   const { user } = useAuth();
   const [offers, setOffers] = useState<PublicJobOffer[]>([]);
   const [total, setTotal] = useState(0);

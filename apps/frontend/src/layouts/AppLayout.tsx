@@ -20,7 +20,13 @@ import {
   ShieldCheck,
   UserCircle,
 } from "lucide-react";
-import { useRef, useState, type FormEvent, type ReactNode } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+  type ReactNode,
+} from "react";
 import {
   MotionConfig,
   motion,
@@ -186,6 +192,31 @@ export function AppLayout() {
   // pages internes apparaissent au scroll (voir lib/site-reveal.ts).
   const mainRef = useRef<HTMLElement>(null);
   useSiteReveal(mainRef, location.pathname, Boolean(reduceMotion));
+
+  /*
+   * Accessibilité d'une application monopage (RGAA 7.1 / 12.x, WCAG 2.4.3 et
+   * 4.1.3) : quand on change de page, le navigateur ne recharge rien. Sans
+   * aide, le focus reste sur le lien cliqué et un lecteur d'écran n'annonce
+   * rien. À chaque nouvelle route (pas au premier chargement) :
+   * 1. le focus passe sur le contenu principal (<main tabIndex={-1}>) ;
+   * 2. le titre de la nouvelle page est annoncé dans une zone « status ».
+   * Le petit délai laisse la page écrire son titre (usePageSeo).
+   * Les ancres internes (#competences…) ne changent pas le pathname : elles
+   * ne déclenchent rien.
+   */
+  const [routeAnnouncement, setRouteAnnouncement] = useState("");
+  const firstRoute = useRef(true);
+  useEffect(() => {
+    if (firstRoute.current) {
+      firstRoute.current = false;
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      mainRef.current?.focus({ preventScroll: true });
+      setRouteAnnouncement(document.title);
+    }, 150);
+    return () => window.clearTimeout(timer);
+  }, [location.pathname]);
   const runTour =
     Boolean(user) &&
     user!.role !== "admin" &&
@@ -382,6 +413,10 @@ export function AppLayout() {
           {error}
         </p>
       )}
+      {/* Annonce du changement de page pour les lecteurs d'écran. */}
+      <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+        {routeAnnouncement}
+      </p>
       <main id="content" className="app-main" tabIndex={-1} ref={mainRef}>
         {/* La page entrante apparaît en douceur, sans retenir l'ancienne route :
             les redirections et chargements d'authentification restent ainsi

@@ -51,7 +51,9 @@ function zoomFor(radiusKm: number, lat: number, height: number) {
   if (radiusKm <= 0) return 13;
   const metersPerPx = (radiusKm * 1000) / (height * 0.45);
   const z = Math.floor(
-    Math.log2((EARTH_M_PER_PX_Z0 * Math.cos((lat * Math.PI) / 180)) / metersPerPx),
+    Math.log2(
+      (EARTH_M_PER_PX_Z0 * Math.cos((lat * Math.PI) / 180)) / metersPerPx,
+    ),
   );
   return Math.min(Math.max(z, MIN_ZOOM), MAX_ZOOM);
 }
@@ -143,7 +145,11 @@ export function MobilityMap({
 
   if (!coords) {
     return (
-      <div ref={box} className="mobility-map mobility-map--empty" style={{ height }}>
+      <div
+        ref={box}
+        className="mobility-map mobility-map--empty"
+        style={{ height }}
+      >
         <p>Renseignez votre ville pour afficher votre zone de mobilité.</p>
       </div>
     );
@@ -162,51 +168,64 @@ export function MobilityMap({
   const tiles: { x: number; y: number }[] = [];
   if (width > 0) {
     const max = 2 ** z;
-    for (let ty = Math.floor(top / TILE); ty <= Math.floor((top + height) / TILE); ty++)
-      for (let tx = Math.floor(left / TILE); tx <= Math.floor((left + width) / TILE); tx++)
+    for (
+      let ty = Math.floor(top / TILE);
+      ty <= Math.floor((top + height) / TILE);
+      ty++
+    )
+      for (
+        let tx = Math.floor(left / TILE);
+        tx <= Math.floor((left + width) / TILE);
+        tx++
+      )
         if (ty >= 0 && ty < max) tiles.push({ x: tx, y: ty });
   }
 
   return (
-    <div
-      ref={box}
-      className="mobility-map"
-      style={{ height }}
-      role="img"
-      aria-label={
-        km
-          ? `Carte : zone de mobilité de ${km} km autour de ${city || "votre commune"}`
-          : `Carte : ${city || "votre commune"}`
-      }
-    >
-      <div className="mobility-map__tiles" aria-hidden="true">
-        {tiles.map(({ x, y }) => (
-          <img
-            key={`${z}-${x}-${y}`}
-            src={tileUrl(z, ((x % 2 ** z) + 2 ** z) % 2 ** z, y)}
-            alt=""
-            width={TILE}
-            height={TILE}
-            decoding="async"
-            draggable={false}
-            style={{ left: x * TILE - left, top: y * TILE - top }}
-          />
-        ))}
+    <div ref={box} className="mobility-map" style={{ height }}>
+      {/* L'image de la carte (tuiles + cercle) porte seule role="img" : les
+          boutons de zoom restent à côté, sinon un lecteur d'écran ne les
+          atteint pas (règle axe « nested-interactive »). */}
+      <div
+        className="mobility-map__canvas"
+        role="img"
+        aria-label={
+          km
+            ? `Carte : zone de mobilité de ${km} km autour de ${city || "votre commune"}`
+            : `Carte : ${city || "votre commune"}`
+        }
+      >
+        <div className="mobility-map__tiles" aria-hidden="true">
+          {tiles.map(({ x, y }) => (
+            <img
+              key={`${z}-${x}-${y}`}
+              src={tileUrl(z, ((x % 2 ** z) + 2 ** z) % 2 ** z, y)}
+              alt=""
+              width={TILE}
+              height={TILE}
+              decoding="async"
+              draggable={false}
+              style={{ left: x * TILE - left, top: y * TILE - top }}
+            />
+          ))}
+        </div>
+
+        <svg className="mobility-map__overlay" aria-hidden="true">
+          {km > 0 && (
+            <circle
+              cx="50%"
+              cy="50%"
+              r={radiusPx}
+              className="mobility-map__zone"
+            />
+          )}
+          <circle cx="50%" cy="50%" r="6" className="mobility-map__point" />
+        </svg>
       </div>
 
-      <svg className="mobility-map__overlay" aria-hidden="true">
-        {km > 0 && (
-          <circle
-            cx="50%"
-            cy="50%"
-            r={radiusPx}
-            className="mobility-map__zone"
-          />
-        )}
-        <circle cx="50%" cy="50%" r="6" className="mobility-map__point" />
-      </svg>
-
-      {showLabel && label && <span className="mobility-map__label">{label}</span>}
+      {showLabel && label && (
+        <span className="mobility-map__label">{label}</span>
+      )}
 
       {/* Zoom manuel : vrais boutons, texte « + » / « − », pas d'icône. */}
       <div className="mobility-map__zoom">

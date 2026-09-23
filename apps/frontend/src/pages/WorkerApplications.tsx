@@ -16,6 +16,7 @@ import AnimatedTabs from "../components/ui/animated-tabs";
 import { BlurFade } from "../components/ui/blur-fade";
 import { NumberTicker } from "../components/ui/number-ticker";
 import { EmptyState } from "../components/da/EmptyState";
+import { usePageSeo } from "../hooks/usePageSeo";
 
 export function workerApplicationContext(application: WorkerApplication) {
   return workerMissionContext(application).label;
@@ -128,6 +129,12 @@ function matches(filter: Filter, application: WorkerApplication) {
 }
 
 export function WorkerApplications() {
+  // Titre d'onglet propre à la page (RGAA 8.6) ; espace privé non indexé.
+  usePageSeo({
+    title: "Mes candidatures · InteriMatch",
+    description: "Suivi de vos candidatures aux missions.",
+    robots: "noindex,nofollow",
+  });
   const [applications, setApplications] = useState<WorkerApplication[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");

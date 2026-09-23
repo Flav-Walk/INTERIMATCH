@@ -14,6 +14,7 @@ import {
   type MissionTab,
 } from "../services/missions";
 import { EmptyState } from "../components/da/EmptyState";
+import { usePageSeo } from "../hooks/usePageSeo";
 
 function MissionsSkeleton() {
   return (
@@ -30,6 +31,12 @@ function MissionsSkeleton() {
  * La recherche de l'en-tête arrive par `?q=` et filtre les missions chargées.
  */
 export function CompanyMissions() {
+  // Titre d'onglet propre à la page (RGAA 8.6) ; espace privé non indexé.
+  usePageSeo({
+    title: "Mes missions · Espace entreprise · InteriMatch",
+    description: "Missions publiées et brouillons de l’établissement.",
+    robots: "noindex,nofollow",
+  });
   const { revision } = useAuth();
   const [params, setParams] = useSearchParams();
   const query = params.get("q") ?? "";

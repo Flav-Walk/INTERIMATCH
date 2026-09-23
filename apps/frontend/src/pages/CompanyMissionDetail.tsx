@@ -33,6 +33,7 @@ import {
   missionCapacityLabel,
 } from "../components/applications/MissionApplications";
 import { MatchedProfiles } from "../components/mission/MatchedProfiles";
+import { usePageSeo } from "../hooks/usePageSeo";
 
 const payLabels: Record<string, string> = {
   hour: "de l’heure",
@@ -53,6 +54,12 @@ export function CompanyMissionDetail() {
   const [mission, setMission] = useState<Mission | null>(null),
     [loading, setLoading] = useState(true),
     [error, setError] = useState("");
+  // Titre d'onglet propre à la page (RGAA 8.6) ; espace privé non indexé.
+  usePageSeo({
+    title: `${mission?.title ?? "Mission"} · Espace entreprise · InteriMatch`,
+    description: "Détail d’une mission et de ses candidatures.",
+    robots: "noindex,nofollow",
+  });
   // Message porté par la navigation depuis le formulaire, pour que la réussite
   // soit annoncée là où l'on arrive plutôt que sur l'écran qu'on quitte.
   const [flash, setFlash] = useState(

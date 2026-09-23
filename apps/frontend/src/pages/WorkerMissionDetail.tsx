@@ -27,6 +27,7 @@ import { MatchExplanation } from "../components/mission/MatchExplanation";
 import { MatchBadge } from "../components/mission/MatchBadge";
 import { ApplyToMission } from "../components/applications/ApplyToMission";
 import { UnsplashCredit } from "../components/mission/MissionPhotoField";
+import { usePageSeo } from "../hooks/usePageSeo";
 
 const payLabels: Record<string, string> = {
   hour: "de l’heure",
@@ -61,6 +62,12 @@ export function WorkerMissionDetail() {
     [loading, setLoading] = useState(true),
     [error, setError] = useState("");
 
+  // Titre d'onglet propre à la page (RGAA 8.6) ; espace privé non indexé.
+  usePageSeo({
+    title: `${mission?.title ?? "Mission"} · InteriMatch`,
+    description: "Détail d’une mission et candidature.",
+    robots: "noindex,nofollow",
+  });
   useEffect(() => {
     let live = true;
     setLoading(true);

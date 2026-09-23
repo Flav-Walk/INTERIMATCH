@@ -26,6 +26,7 @@ import {
   safeExternalUrl,
   type PublicJobOffer,
 } from "../services/publicOffers";
+import { usePageSeo } from "../hooks/usePageSeo";
 
 function DetailSkeleton() {
   return (
@@ -51,6 +52,12 @@ export function WorkerPublicOfferDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  // Titre d'onglet propre à la page (RGAA 8.6) ; espace privé non indexé.
+  usePageSeo({
+    title: `${offer?.title ?? "Offre"} · Offre France Travail · InteriMatch`,
+    description: "Détail d’une offre publique France Travail.",
+    robots: "noindex,nofollow",
+  });
   useEffect(() => {
     let live = true;
     setLoading(true);

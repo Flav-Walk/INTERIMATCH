@@ -23,7 +23,7 @@ import { cascade, revealOnScroll, rise } from "../lib/motion";
 // au survol (secondaires). Les classes home-cta gardent le style d'origine.
 import { SpotlightLink } from "../components/ui/spotlight-button";
 import { SlideFillLink } from "../components/ui/slide-fill-button";
-import { usePageSeo } from "../hooks/usePageSeo";
+import { SITE_URL, usePageSeo } from "../hooks/usePageSeo";
 
 const WORKER_FEATURES = [
   {
@@ -88,6 +88,31 @@ export function Home() {
     description:
       "Plateforme de mise en relation entre professionnels et établissements de l’hôtellerie-restauration. Missions adaptées, compétences et disponibilités.",
     robots: "index,follow",
+    // Page publique : URL canonique et balises de partage (Open Graph).
+    path: "/",
+    // Données structurées schema.org : qui est InteriMatch, quel site.
+    // Pas de JobPosting : les missions sont privées (réservées aux inscrits).
+    jsonLd: {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Organization",
+          "@id": `${SITE_URL}/#organization`,
+          name: "InteriMatch",
+          url: SITE_URL,
+          description:
+            "Plateforme de mise en relation entre professionnels et établissements de l’hôtellerie-restauration.",
+        },
+        {
+          "@type": "WebSite",
+          "@id": `${SITE_URL}/#website`,
+          name: "InteriMatch",
+          url: SITE_URL,
+          inLanguage: "fr-FR",
+          publisher: { "@id": `${SITE_URL}/#organization` },
+        },
+      ],
+    },
   });
   const reduceMotion = useReducedMotion();
   // Révélation au scroll, sauf si « Réduire les animations » est activé.

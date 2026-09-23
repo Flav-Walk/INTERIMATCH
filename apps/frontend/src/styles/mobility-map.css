@@ -25,6 +25,11 @@
   text-align: center;
 }
 
+.mobility-map__canvas {
+  position: absolute;
+  inset: 0;
+}
+
 .mobility-map__tiles {
   position: absolute;
   inset: 0;

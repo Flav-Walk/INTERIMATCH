@@ -65,6 +65,7 @@ import {
   SegmentedChoice,
   SwitchField,
 } from "../components/da/FormControls";
+import { usePageSeo } from "../hooks/usePageSeo";
 
 type DraftExperience = Omit<Experience, "id">;
 type DraftCertification = Omit<Certification, "id">;
@@ -276,6 +277,12 @@ function toggle(values: string[], value: string, checked: boolean) {
 }
 
 export function WorkerProfile() {
+  // Titre d'onglet propre à la page (RGAA 8.6) ; espace privé non indexé.
+  usePageSeo({
+    title: "Mon profil · InteriMatch",
+    description: "Votre profil professionnel, votre mobilité et vos disponibilités.",
+    robots: "noindex,nofollow",
+  });
   const { user, setUser } = useAuth();
   const { hash } = useLocation();
   const [skills, setSkills] = useState<Skill[]>([]);

@@ -23,6 +23,7 @@ import {
   type MissionTab,
 } from "../services/missions";
 import { EmptyState } from "../components/da/EmptyState";
+import { usePageSeo } from "../hooks/usePageSeo";
 
 function MissionsSkeleton() {
   return (
@@ -43,6 +44,12 @@ function MissionsSkeleton() {
  * aucun bouton factice ne doit figurer dans le produit.
  */
 export function CompanyDashboard() {
+  // Titre d'onglet propre à la page (RGAA 8.6) ; espace privé non indexé.
+  usePageSeo({
+    title: "Tableau de bord · Espace entreprise · InteriMatch",
+    description: "Missions, candidatures et documents de l’établissement.",
+    robots: "noindex,nofollow",
+  });
   const { user, revision } = useAuth();
   // Les candidatures viennent du fournisseur partagé : la même lecture sert le
   // badge de navigation, cette page et l'écran Candidatures.
