@@ -290,27 +290,28 @@
   }
 }
 
-/* ── Bandeau photo (HeroBanner) ──────────────────────────────────────────────
+/* ── Fond photo partagé (composant PhotoBackdrop) ────────────────────────────
+ * Utilisé par le bandeau des pages internes, la connexion et l'accueil.
  * Couches, du fond vers l'avant :
- *   1. .brand-hero__media : la photo (zoom lent + parallaxe en JS).
- *   2. .brand-hero__media::after : teinte verte en « soft-light », pour que
+ *   1. .photo-backdrop : la photo (zoom lent + parallaxe en JS).
+ *   2. .photo-backdrop::after : teinte verte en « soft-light », pour que
  *      toutes les photos aient la même couleur, quelle que soit leur source.
- *   3. .brand-hero__veil : dégradé vert foncé à gauche (sous le texte) qui
- *      s'efface vers la droite (la photo respire), plus un grain léger.
- *   4. Le contenu (texte, jauge, slogan, Matchy).
+ *   3. .photo-backdrop__veil : dégradé vert foncé sous le texte, plus un
+ *      grain léger. Deux sens : --left (bandeaux) et --bottom (connexion).
+ *   4. Le contenu, devant (z-index ≥ 0).
  */
 .brand-hero--photo {
   background: var(--forest);
 }
 
-.brand-hero__media {
+.photo-backdrop {
   position: absolute;
   inset: 0;
   z-index: -2;
   overflow: hidden;
 }
 
-.brand-hero__media img {
+.photo-backdrop img {
   position: absolute;
   top: -10%;
   left: 0;
@@ -322,7 +323,7 @@
   will-change: transform;
 }
 
-.brand-hero__media::after {
+.photo-backdrop::after {
   content: "";
   position: absolute;
   inset: 0;
@@ -331,10 +332,14 @@
   opacity: 0.7;
 }
 
-.brand-hero__veil {
+.photo-backdrop__veil {
   position: absolute;
   inset: 0;
   z-index: -1;
+}
+
+/* Dense à gauche (sous le texte), la photo respire à droite. */
+.photo-backdrop__veil--left {
   background:
     linear-gradient(
       100deg,
@@ -347,7 +352,17 @@
 }
 
 /* Grain photo : un bruit SVG très léger, fusionné en « overlay ». */
-.brand-hero__veil::after {
+.photo-backdrop__veil--bottom {
+  background: linear-gradient(
+    to top,
+    oklch(0.2 0.045 165 / 0.96) 0%,
+    oklch(0.24 0.05 165 / 0.82) 38%,
+    oklch(0.26 0.055 165 / 0.35) 68%,
+    oklch(0.22 0.05 165 / 0.55) 100%
+  );
+}
+
+.photo-backdrop__veil::after {
   content: "";
   position: absolute;
   inset: 0;
@@ -548,4 +563,274 @@
   .brand-hero--photo .brand-hero__link {
     transition: none;
   }
+}
+
+/* ── Connexion / inscription : panneau photo ────────────────────────────────
+ * Plus de Matchy : la photo occupe le panneau, le texte descend en bas sur
+ * le voile sombre, le logo reste en haut.
+ */
+.auth-story {
+  justify-content: space-between;
+  background: var(--forest);
+}
+
+.auth-story .auth-story__copy {
+  margin-top: auto;
+  padding-top: var(--space-12);
+}
+
+/* Même badge en verre que le bandeau des pages internes. */
+.auth-story .auth-story__eyeline {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.8rem;
+  border: 1px solid oklch(1 0 0 / 0.18);
+  border-radius: var(--radius-pill);
+  background: oklch(1 0 0 / 0.08);
+  backdrop-filter: blur(8px);
+  color: oklch(0.93 0.03 160);
+}
+
+.auth-story .auth-story__eyeline::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--orange);
+  animation: brand-hero-pulse 2.4s ease-out infinite;
+}
+
+/* Le texte du panneau arrive en cascade : animé avec Motion dans Login.tsx.
+   L'animation CSS auth-rise ci-dessous reste utilisée par l'accueil. */
+@keyframes auth-rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+    filter: blur(6px);
+  }
+}
+
+@media (width < 900px) {
+  .auth-story {
+    min-height: 260px;
+  }
+
+  .auth-story .auth-story__copy {
+    max-width: none;
+    padding-top: var(--space-8);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-story .auth-story__eyeline::before {
+    animation: none;
+  }
+}
+
+/* ── Accueil : haut de page photo ───────────────────────────────────────────
+ * Le fond vert uni et ses arches sont remplacés par la photo (PhotoBackdrop).
+ * Matchy est remplacé par la carte « parcours » en verre (JourneyCard).
+ */
+.home-hero {
+  isolation: isolate;
+  min-height: min(88vh, 760px);
+  display: flex;
+  align-items: center;
+}
+
+.home-hero .home-hero__inner {
+  width: 100%;
+}
+
+/* Le texte arrive en fondu, ligne par ligne. */
+.home-hero__body > * {
+  animation: auth-rise 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.home-hero__body > :nth-child(2) {
+  animation-delay: 0.1s;
+}
+
+.home-hero__body > :nth-child(3) {
+  animation-delay: 0.2s;
+}
+
+.home-hero__body > :nth-child(4) {
+  animation-delay: 0.3s;
+}
+
+/* Badge en verre, comme sur les pages internes. */
+.home-hero .home-hero__eyeline {
+  align-self: flex-start;
+  padding: 0.4rem 0.85rem;
+  border: 1px solid oklch(1 0 0 / 0.18);
+  border-radius: var(--radius-pill);
+  background: oklch(1 0 0 / 0.08);
+  backdrop-filter: blur(8px);
+  color: oklch(0.93 0.03 160);
+}
+
+.home-hero .home-hero__eyeline::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  margin-right: 0.25rem;
+  border-radius: 50%;
+  background: var(--orange);
+  animation: brand-hero-pulse 2.4s ease-out infinite;
+}
+
+.home-hero .home-hero__lead {
+  color: oklch(0.9 0.02 160);
+}
+
+.home-hero .home-hero__visual {
+  justify-content: flex-end;
+}
+
+/* Carte « parcours » en verre dépoli. */
+.journey-card {
+  width: min(100%, 360px);
+  padding: var(--space-5);
+  border: 1px solid oklch(1 0 0 / 0.16);
+  border-radius: var(--radius-lg);
+  background: oklch(0.2 0.03 165 / 0.4);
+  backdrop-filter: blur(16px) saturate(1.2);
+  box-shadow:
+    0 20px 50px oklch(0 0 0 / 0.3),
+    inset 0 1px 0 oklch(1 0 0 / 0.12);
+  color: var(--surface);
+}
+
+.journey-card__head {
+  display: grid;
+  gap: 2px;
+  margin: 0 0 var(--space-5);
+}
+
+.journey-card__head strong {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.journey-card__head span {
+  color: oklch(0.85 0.02 160);
+  font-size: var(--text-sm);
+}
+
+.journey-card__steps {
+  position: relative;
+  display: grid;
+  gap: var(--space-5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Trait vertical qui relie les icônes, rempli de haut en bas (scaleY). */
+.journey-card__rail {
+  position: absolute;
+  top: 20px;
+  bottom: 20px;
+  left: 19px;
+  width: 2px;
+  border-radius: 2px;
+  background: linear-gradient(var(--orange), oklch(0.75 0.12 160));
+  transform-origin: top;
+}
+
+.journey-card__step {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.journey-card__step strong {
+  display: block;
+  font-size: var(--text-base);
+}
+
+.journey-card__step small {
+  color: oklch(0.82 0.02 160);
+  font-size: var(--text-sm);
+}
+
+.journey-card__icon {
+  position: relative;
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid oklch(1 0 0 / 0.2);
+  border-radius: 12px;
+  background: oklch(0.28 0.05 165);
+  color: oklch(0.9 0.05 160);
+}
+
+/* shell.css agrandit tous les SVG du visuel de l'accueil à 160 px (ancien
+   décor) : on remet les icônes de la carte à leur taille. */
+.home-hero__visual .journey-card svg {
+  width: 18px;
+  height: 18px;
+  stroke-width: 2;
+}
+
+.home-hero__visual .journey-card__check svg {
+  width: 11px;
+  height: 11px;
+  stroke-width: 3;
+}
+
+/* Petite coche orange en haut à droite de l'icône. */
+.journey-card__check {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border: 2px solid oklch(0.22 0.04 165);
+  border-radius: 50%;
+  background: var(--orange);
+  color: var(--surface);
+}
+
+@media (width < 900px) {
+  .home-hero {
+    min-height: 0;
+  }
+
+  .home-hero .home-hero__visual {
+    justify-content: flex-start;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-hero__body > *,
+  .home-hero .home-hero__eyeline::before {
+    animation: none;
+  }
+}
+
+/* ── Bouton d'envoi animé (ui/submit-button) ─────────────────────────────── */
+.submit-button__content {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+}
+
+/* Validé : le bouton passe au vert, le temps de voir la coche. */
+.button.submit-button--success,
+.button.submit-button--success:disabled {
+  background: var(--forest);
+  color: var(--surface);
+  opacity: 1;
+  transition: background 0.25s ease, color 0.25s ease;
 }
