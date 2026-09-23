@@ -37,6 +37,8 @@ const SELECTOR = [
   ".application-card",
   ".application-row",
   ".document-list > li",
+  ".doc-card",
+  ".doc-summary__card",
   ".document-sheet",
   ".matched-profile-list > li",
   ".agenda-item",
