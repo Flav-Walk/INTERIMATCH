@@ -21,6 +21,7 @@ import {
   type Mission,
   type MissionTab,
 } from "../services/missions";
+import { EmptyState } from "../components/da/EmptyState";
 
 function MissionsSkeleton() {
   return (
@@ -159,8 +160,7 @@ export function CompanyDashboard() {
                     ))}
                   </div>
                 ) : (
-                  <div className="empty">
-                    <BriefcaseBusiness aria-hidden="true" />
+                  <EmptyState icon={BriefcaseBusiness}>
                     <h3>Aucune mission dans cet onglet</h3>
                     <p>
                       Créez une mission pour commencer à recevoir des candidats
@@ -169,7 +169,7 @@ export function CompanyDashboard() {
                     <Link className="button" to="/company/missions/new">
                       Créer une mission
                     </Link>
-                  </div>
+                  </EmptyState>
                 ))}
             </section>
 

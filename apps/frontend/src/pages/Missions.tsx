@@ -19,6 +19,7 @@ import {
   type Exclusions,
   type OpenMission,
 } from "../services/missions";
+import { EmptyState } from "../components/da/EmptyState";
 
 /** Rappel de ce qui se passera ensuite, pour l'écran resté vide. */
 const steps = [
@@ -183,8 +184,7 @@ export function Missions() {
                   </div>
                 </section>
               ) : (
-                <div className="empty">
-                  <BriefcaseBusiness aria-hidden="true" />
+                <EmptyState icon={BriefcaseBusiness}>
                   <h2>Aucune mission à {filterCity}</h2>
                   <p>
                     Essayez une autre ville ou revenez à l’ensemble des
@@ -197,13 +197,12 @@ export function Missions() {
                   >
                     Voir toutes les missions
                   </button>
-                </div>
+                </EmptyState>
               )}
             </>
           ) : (
             <>
-              <div className="empty">
-                <BriefcaseBusiness aria-hidden="true" />
+              <EmptyState icon={BriefcaseBusiness}>
                 <h2>
                   {reason
                     ? reason.title
@@ -226,7 +225,7 @@ export function Missions() {
                     </Link>
                   )
                 )}
-              </div>
+              </EmptyState>
 
               <section className="how-it-works" aria-labelledby="how-title">
                 <h2 id="how-title">Comment cela fonctionnera</h2>

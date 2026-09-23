@@ -13,6 +13,7 @@ import {
   type Mission,
   type MissionTab,
 } from "../services/missions";
+import { EmptyState } from "../components/da/EmptyState";
 
 function MissionsSkeleton() {
   return (
@@ -154,8 +155,7 @@ export function CompanyMissions() {
               </div>
             </section>
           ) : query ? (
-            <div className="empty">
-              <SearchX aria-hidden="true" />
+            <EmptyState icon={SearchX}>
               <h2>Aucune mission ne correspond</h2>
               <p>
                 Essayez un autre intitulé, une autre ville ou un autre métier.
@@ -167,10 +167,9 @@ export function CompanyMissions() {
               >
                 Effacer la recherche
               </button>
-            </div>
+            </EmptyState>
           ) : (
-            <div className="empty">
-              <BriefcaseBusiness aria-hidden="true" />
+            <EmptyState icon={BriefcaseBusiness}>
               <h2>
                 {tab === "all"
                   ? "Votre première mission commence ici"
@@ -184,7 +183,7 @@ export function CompanyMissions() {
                 Créer une mission
                 <ArrowRight size={16} aria-hidden="true" />
               </Link>
-            </div>
+            </EmptyState>
           ))}
       </div>
     </div>

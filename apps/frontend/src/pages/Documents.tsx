@@ -14,6 +14,7 @@ import {
   type ContractListItem,
 } from "../services/documents";
 import { errorMessage } from "../services/session";
+import { EmptyState } from "../components/da/EmptyState";
 
 const date = new Intl.DateTimeFormat("fr-FR", {
   day: "numeric",
@@ -101,14 +102,13 @@ export function DocumentsPage({ role }: { role: "worker" | "company" }) {
           <span />
         </div>
       ) : documents.length === 0 ? (
-        <div className="empty documents-empty">
-          <FileText aria-hidden="true" />
+        <EmptyState icon={FileText} className="documents-empty">
           <h2>Aucun document pour le moment</h2>
           <p>
             Un document apparaît automatiquement lorsqu’une candidature est
             acceptée pour une mission.
           </p>
-        </div>
+        </EmptyState>
       ) : (
         <ul className="document-list">
           {documents.map((document) => (

@@ -8,6 +8,8 @@
  * Retouches InteriMatch :
  * 1. Textes en français (« +2 autres », « Aucun créneau aujourd'hui »).
  * 2. Le jour s'écrit en français et en orange de marque (au lieu du rose).
+ * 3. Liste sans puces ni retrait : le site n'a pas le reset « preflight »
+ *    de Tailwind, donc on l'écrit sur la liste (list-none p-0 m-0).
  */
 import { cn } from "../../lib/utils";
 
@@ -119,7 +121,7 @@ export default function CalendarEvent({
       </div>
 
       {visible.length > 0 ? (
-        <ul className="mt-2 flex shrink-0 flex-col gap-1">
+        <ul className="m-0 mt-2 flex shrink-0 list-none flex-col gap-1 p-0">
           {visible.map((event, index) => (
             <EventRow key={`${event.title}-${index}`} event={event} />
           ))}

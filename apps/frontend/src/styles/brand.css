@@ -476,18 +476,23 @@
 }
 
 /* Badge en verre avec pastille orange. */
+/* Étiquette du bandeau : plus de pilule en verre ni de pastille qui
+   pulse (retour de revue). Un trait orange, puis le texte en capitales. */
 .brand-hero--photo .brand-hero__eyeline {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.6rem;
   margin-bottom: var(--space-4);
-  padding: 0.35rem 0.8rem;
-  border: 1px solid oklch(1 0 0 / 0.18);
-  border-radius: var(--radius-pill);
-  background: oklch(1 0 0 / 0.08);
-  backdrop-filter: blur(8px);
   color: oklch(0.93 0.03 160);
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
+}
+
+.brand-hero--photo .brand-hero__eyeline::before {
+  content: "";
+  width: 22px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--orange);
 }
 
 .brand-hero__dot {

@@ -15,6 +15,7 @@ import {
 } from "../services/publicOffers";
 import { PublicOfferCard } from "../components/public-offers/PublicOfferCard";
 import { HeroBanner } from "../components/HeroBanner";
+import { EmptyState } from "../components/da/EmptyState";
 
 function SkeletonGrid() {
   return (
@@ -215,8 +216,7 @@ export function WorkerPublicOffers() {
               )}
             </>
           ) : (
-            <div className="empty">
-              <BriefcaseBusiness aria-hidden="true" />
+            <EmptyState icon={BriefcaseBusiness}>
               {/* Sans critère saisi, parler de « critères » ferait porter le
                   vide à une recherche qui n'a pas eu lieu : le catalogue est
                   simplement vide, et l'écran doit le dire tel quel. */}
@@ -235,7 +235,7 @@ export function WorkerPublicOffers() {
                   Voir toutes les offres France Travail
                 </button>
               )}
-            </div>
+            </EmptyState>
           ))}
       </div>
     </div>

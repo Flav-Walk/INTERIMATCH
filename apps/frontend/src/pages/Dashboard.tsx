@@ -1,17 +1,13 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
-  CalendarDays,
-  MapPin,
   Check,
   BriefcaseBusiness,
-  Users,
   ArrowRight,
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { usePageSeo } from "../hooks/usePageSeo";
 import {
-  formatSlot,
   requirementLabels,
   upcomingAvailabilities,
 } from "../services/profile";
@@ -33,7 +29,13 @@ import {
 import { ConfirmedMissions } from "../components/applications/ConfirmedMissions";
 import { HeroBanner } from "../components/HeroBanner";
 import { CircularGauge } from "../components/CircularGauge";
+import {
+  AvailabilityWidget,
+  LeadNumber,
+  MobilityRadar,
+} from "../components/da/DashboardWidgets";
 import { workerRequirementProgress } from "../services/completion";
+import { EmptyState } from "../components/da/EmptyState";
 
 /**
  * Rappel de complétion. Il n'apparaît que tant qu'il reste quelque chose à
@@ -281,8 +283,7 @@ export function Dashboard() {
                   ))}
                 </div>
               ) : (
-                <div className="empty">
-                  <BriefcaseBusiness aria-hidden="true" />
+                <EmptyState icon={BriefcaseBusiness}>
                   <h3>
                     {worker
                       ? (reason?.title ??
@@ -295,7 +296,7 @@ export function Dashboard() {
                         "Dès qu’un établissement publie une mission qui vous correspond, elle apparaît ici.")
                       : "La création et la gestion des missions seront disponibles au prochain lot."}
                   </p>
-                </div>
+                </EmptyState>
               ))}
           </section>
         </section>
@@ -307,7 +308,8 @@ export function Dashboard() {
                 <section className="side-panel">
                   <h2>Candidatures en attente</h2>
                   <p className="lead-figure">
-                    {waiting.length} candidature{waiting.length > 1 ? "s" : ""}
+                    <LeadNumber value={waiting.length} /> candidature
+                    {waiting.length > 1 ? "s" : ""}
                   </p>
                   <p className="quiet">
                     {waiting.length > 1
@@ -320,19 +322,16 @@ export function Dashboard() {
                 </section>
               )}
               <section className="side-panel" data-tour="availability">
-                <CalendarDays aria-hidden="true" />
                 <h2>Vos disponibilités</h2>
                 {upcoming.length ? (
                   <>
                     <p className="lead-figure">
-                      {upcoming.length} créneau{upcoming.length > 1 ? "x" : ""}{" "}
-                      à venir
+                      <LeadNumber value={upcoming.length} /> créneau
+                      {upcoming.length > 1 ? "x" : ""} à venir
                     </p>
-                    <ul className="slot-list plain">
-                      {upcoming.slice(0, 3).map((slot) => (
-                        <li key={slot.id}>{formatSlot(slot)}</li>
-                      ))}
-                    </ul>
+                    {/* Widget agenda (Calendar Event, Animata) avec les vrais
+                        créneaux, à la place de la liste et de l'icône. */}
+                    <AvailabilityWidget slots={upcoming} />
                     {/* Un profil complet n'exige qu'un créneau à venir ;
                         une mission, elle, doit tenir entièrement dans l'un
                         d'eux. Le dire ici évite de lire « profil complété »
@@ -360,10 +359,11 @@ export function Dashboard() {
                 )}
               </section>
               <section className="side-panel pale">
-                <MapPin aria-hidden="true" />
                 <h2>{p.city ?? "Votre mobilité"}</h2>
                 {p.city && p.mobility_radius_km != null ? (
                   <>
+                    {/* Ripple (Magic UI) : le rayon de mobilité, dessiné. */}
+                    <MobilityRadar city={p.city} radius={p.mobility_radius_km} />
                     <p>
                       {p.postal_code} · jusqu’à {p.mobility_radius_km} km autour
                       de chez vous
@@ -387,7 +387,6 @@ export function Dashboard() {
           ) : (
             <>
               <section className="side-panel" data-tour="candidates">
-                <Users aria-hidden="true" />
                 <h2>Candidats compatibles</h2>
                 <p>
                   Les profils seront classés par score de compatibilité, avec le
@@ -399,8 +398,8 @@ export function Dashboard() {
                 </Link>
               </section>
               <section className="side-panel pale">
-                <MapPin aria-hidden="true" />
                 <h2>{p.city ?? "Votre établissement"}</h2>
+                {p.city && <MobilityRadar city={p.city} />}
                 <p>
                   {p.address
                     ? `${p.address}, ${p.postal_code} ${p.city}`

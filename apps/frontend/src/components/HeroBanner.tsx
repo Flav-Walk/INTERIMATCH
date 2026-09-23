@@ -100,10 +100,10 @@ export function HeroBanner({
       <PhotoBackdrop key={image.src} src={image.src} position={image.position} />
 
       <div className="brand-hero__copy">
-        {/* Badge avec une pastille orange qui « respire » (voir brand.css). */}
+        {/* Étiquette : un trait orange puis le texte (voir brand.css). Plus de
+            pilule ni de pastille qui pulse : retour de revue « trop IA ». */}
         {eyeline && (
           <motion.span className="brand-hero__eyeline" {...fadeIn(0)}>
-            <span className="brand-hero__dot" aria-hidden="true" />
             {eyeline}
           </motion.span>
         )}

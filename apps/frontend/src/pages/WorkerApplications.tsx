@@ -14,6 +14,7 @@ import {
 } from "../services/applications";
 import { ApplicationStatus } from "../components/applications/ApplicationStatus";
 import { workerApplicationSchedule } from "../components/applications/ConfirmedMissions";
+import { EmptyState } from "../components/da/EmptyState";
 
 export function workerApplicationContext(application: WorkerApplication) {
   return workerMissionContext(application).label;
@@ -26,8 +27,7 @@ export function WorkerApplicationList({
 }) {
   if (!applications.length)
     return (
-      <div className="empty application-page-empty">
-        <BriefcaseBusiness aria-hidden="true" />
+      <EmptyState icon={BriefcaseBusiness} className="application-page-empty">
         <h2>Vous n’avez pas encore postulé</h2>
         <p>
           Consultez les missions disponibles et ouvrez celle qui vous intéresse.
@@ -35,7 +35,7 @@ export function WorkerApplicationList({
         <Link className="button" to="/worker/missions">
           Voir les missions
         </Link>
-      </div>
+      </EmptyState>
     );
 
   return (

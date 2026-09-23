@@ -192,20 +192,11 @@
   font-size: 1.5rem;
 }
 
-/* Icône posée dans un carré arrondi teinté. */
+/* Plus d'icône dans un carré teinté (retour de revue) : les cartes ont
+   maintenant un visuel (components/da/DashboardWidgets.tsx). Si une icône
+   reste en tête de carte, elle est simplement retirée de l'affichage. */
 .secondary .side-panel > svg {
-  box-sizing: content-box;
-  width: 20px;
-  height: 20px;
-  margin-bottom: 14px;
-  padding: 10px;
-  border-radius: 12px;
-  background: var(--tint);
-  color: var(--forest);
-}
-
-.secondary .side-panel.pale > svg {
-  background: var(--surface);
+  display: none;
 }
 
 /* Lien d'action : vert, gras, avec une flèche qui avance au survol. */
@@ -737,4 +728,66 @@
   .public-offer-card:hover .public-offer-card__photo {
     transform: none;
   }
+}
+
+/* ═══ Badges, nouvelle DA (retour de revue : « badges UI générée ») ═══════════
+ * Les pastilles arrondies avec un point de couleur disparaissent :
+ * - compatibilité (MatchBadge) : anneau Magic UI + texte, sans fond ;
+ * - candidatures et missions confirmées : frise StatusTrack (da/StatusTrack) ;
+ * - état d'une mission sur sa photo : étiquette rectangulaire sombre, en
+ *   capitales, sans point ni flou.
+ * Le « html » devant gagne en priorité sur motion.css et global.css.
+ */
+html .match-badge {
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  font-size: var(--text-sm);
+}
+html .match-badge.is-high {
+  color: var(--forest);
+}
+html .match-badge.is-mid {
+  color: var(--forest-mid);
+}
+html .match-badge.is-low {
+  color: var(--muted);
+}
+.match-badge__ring {
+  display: inline-flex;
+  width: 26px;
+  height: 26px;
+  flex: none;
+}
+.match-badge.is-large .match-badge__ring {
+  width: 34px;
+  height: 34px;
+}
+.match-badge__ring > div {
+  width: 100%;
+  height: 100%;
+  font-size: 0;
+}
+/* Le chiffre dans l'anneau est illisible à cette taille : le texte à côté
+   le dit déjà. */
+.match-badge__ring [data-current-value] {
+  display: none;
+}
+
+html .mission-card .mission-status {
+  padding: 5px 9px;
+  border-radius: 4px;
+  background: oklch(0.2 0.03 165 / 0.82);
+  backdrop-filter: none;
+  box-shadow: none;
+  color: var(--surface);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+html .mission-card .mission-status::before {
+  content: none;
 }

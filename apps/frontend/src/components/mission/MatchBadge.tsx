@@ -1,3 +1,5 @@
+import { AnimatedCircularProgressBar } from "../ui/animated-circular-progress-bar";
+
 /**
  * Pastille de compatibilité — purement présentationnelle.
  *
@@ -10,7 +12,17 @@
  * « 70 % » : il était donc peint comme « très compatible » alors que le serveur
  * l'avait rangé dans la tranche 60–69, et le même écran annonçait les deux à la
  * fois. Le palier vient désormais du backend, qui le calcule sur le score réel.
+ *
+ * NOUVELLE DA : plus de pastille colorée (retour de revue sur les badges).
+ * Un petit anneau de progression (Animated Circular Progress Bar, Magic UI)
+ * se remplit jusqu'au score, suivi du texte. La couleur de l'anneau suit le
+ * palier du serveur (vert foncé, vert moyen, gris), jamais le score arrondi.
  */
+const RING = {
+  "is-high": "var(--forest)",
+  "is-mid": "var(--forest-mid)",
+  "is-low": "var(--muted)",
+} as const;
 export function MatchBadge({
   score,
   band,
@@ -29,6 +41,14 @@ export function MatchBadge({
     <span
       className={`match-badge ${level}${size === "large" ? " is-large" : ""}`}
     >
+      {/* Anneau décoratif : le texte à côté dit déjà le score. */}
+      <span className="match-badge__ring" aria-hidden="true">
+        <AnimatedCircularProgressBar
+          value={score}
+          gaugePrimaryColor={RING[level]}
+          gaugeSecondaryColor="oklch(0.32 0.065 165 / 0.12)"
+        />
+      </span>
       Compatible à {score}&nbsp;%
       {/* Le palier ne peut pas tenir à la seule couleur. Deux profils affichés
           « 70 % » — l'un à 70,2 %, l'autre à 69,6 % — portent le même nombre et
