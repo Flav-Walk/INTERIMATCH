@@ -1,4 +1,5 @@
 import { useEffect, useRef, type ReactNode } from "react";
+import { InputGlow } from "../ui/input-glow";
 
 /**
  * Primitives de formulaire partagées.
@@ -59,11 +60,17 @@ export function Field({
           {hint}
         </p>
       )}
-      {children({
-        id: name,
-        ...(error ? { "aria-invalid": true as const } : {}),
-        ...(described ? { "aria-describedby": described } : {}),
-      })}
+      {/* Le champ vient de la page (un <input> normal). Plutôt que de
+          toucher aux pages, je l'entoure ici avec le cadre de l'Input
+          d'Aceternity : au survol, un halo orange suit la souris. Le champ
+          garde exactement les mêmes props (id, aria-invalid…). */}
+      <InputGlow>
+        {children({
+          id: name,
+          ...(error ? { "aria-invalid": true as const } : {}),
+          ...(described ? { "aria-describedby": described } : {}),
+        })}
+      </InputGlow>
       {error && (
         <p className="field-error" id={`${name}-error`}>
           {error}

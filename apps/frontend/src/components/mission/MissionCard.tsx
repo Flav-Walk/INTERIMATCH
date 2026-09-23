@@ -1,14 +1,32 @@
 import { Link } from "react-router-dom";
-import { ArrowRight, CalendarDays, Check, Coins, MapPin } from "lucide-react";
+import { motion } from "motion/react";
+import {
+  ArrowRight,
+  CalendarDays,
+  Check,
+  Coins,
+  MapPin,
+  ChefHat,
+  ConciergeBell,
+  UtensilsCrossed,
+  Wine,
+} from "lucide-react";
 import {
   missionStatePresentation,
   type Mission,
 } from "../../services/missions";
 import { MatchBadge } from "./MatchBadge";
+import { MagicCard } from "../ui/magic-card";
+import { MAGIC_CARD_COLORS } from "../../lib/brand";
+import { illustrationFor, jobFamily } from "../../lib/job-photos";
 
 /**
  * Carte mission : bloc média, badge d'état en surimpression, titre, lieu,
  * créneau, puis pied avec l'effectif et la flèche circulaire.
+ *
+ * J'ai mis tout le contenu dans une Magic Card (Magic UI) : quand la souris
+ * passe dessus, la bordure s'allume en orange → vert là où est le curseur.
+ * Le lien, les données et le texte de la carte n'ont pas changé.
  */
 
 const dayMonth = new Intl.DateTimeFormat("fr-FR", {
@@ -51,6 +69,27 @@ export function missionPay(amount: string | null, unit: string | null) {
  * pas le même détail. Dupliquer le composant pour cette seule différence
  * ferait diverger deux fois la maquette.
  */
+/*
+ * Sans photo, la fiche affiche un visuel de marque plutôt qu'un cadre vide :
+ * dégradé vert, trame de points et une icône choisie d'après l'intitulé du
+ * poste. Ce n'est pas une image « d'illustration » : elle ne prétend montrer
+ * aucun établissement.
+ */
+export function jobIcon(title: string) {
+  const props = { size: 30, strokeWidth: 1.6 };
+  // Même détection du métier que les photos d'illustration (lib/job-photos).
+  switch (jobFamily(title)) {
+    case "reception":
+      return <ConciergeBell {...props} />;
+    case "bar":
+      return <Wine {...props} />;
+    case "cuisine":
+      return <ChefHat {...props} />;
+    default:
+      return <UtensilsCrossed {...props} />;
+  }
+}
+
 export function MissionCard({
   mission,
   basePath = "/company/missions",
@@ -91,79 +130,95 @@ export function MissionCard({
       className={`mission-card${closed ? " is-closed" : ""}`}
       to={`${basePath}/${mission.id}`}
     >
-      <div className="mission-media">
-        {/* La photo de la mission, et rien d'autre. Les missions créées avant
-            que la photo ne devienne obligatoire n'en ont pas : le cadre reste
-            alors vide plutôt que de recevoir une image générique, qui
-            prétendrait montrer un établissement qu'elle ne connaît pas. */}
-        {mission.media && (
+      <MagicCard className="card-surface" {...MAGIC_CARD_COLORS}>
+        <div className="mission-media">
+          {/* La photo choisie par l'établissement. Sans photo (missions
+              créées avant qu'elle soit obligatoire), une photo en rapport avec
+              le métier, signalée « Illustration » : elle ne prétend pas
+              montrer l'établissement. Le visuel vert reste dessous pendant le
+              chargement. */}
+          <span className="mission-media__placeholder" aria-hidden="true">
+            {jobIcon(mission.title)}
+          </span>
           <img
             className="job-visual"
-            src={mission.media.url}
+            src={(mission.media ?? illustrationFor(mission.title, mission.id)).url}
             alt=""
             loading="lazy"
             decoding="async"
           />
-        )}
-        <span className={`mission-status ${status.className}`}>
-          {status.label}
-        </span>
-        {pendingApplications > 0 && (
-          <span className="mission-pending">
-            {pendingApplications}
-            <span className="sr-only">
-              {" "}
-              candidature{pendingApplications > 1 ? "s" : ""} en attente
+          {!mission.media && (
+            <span className="photo-illustration-tag">Illustration</span>
+          )}
+          {/* key = l'état de la mission. Si l'état change (ex. « À pourvoir »
+              → « Pourvue »), React recrée le badge et il refait son petit
+              zoom d'apparition : on remarque le changement. */}
+          <motion.span
+            key={status.className}
+            className={`mission-status ${status.className}`}
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ type: "spring", bounce: 0.3, duration: 0.4 }}
+          >
+            {status.label}
+          </motion.span>
+          {pendingApplications > 0 && (
+            <span className="mission-pending">
+              {pendingApplications}
+              <span className="sr-only">
+                {" "}
+                candidature{pendingApplications > 1 ? "s" : ""} en attente
+              </span>
             </span>
-          </span>
-        )}
-      </div>
-      <div className="mission-body">
-        <div className="mission-title-line">
-          <h3 className="mission-title">{mission.title}</h3>
-          {status.temporal === "upcoming" && mission.status !== "draft" && (
-            <span className="mission-timing">À venir</span>
           )}
         </div>
-        <p className="mission-meta">
-          <MapPin size={14} aria-hidden="true" />
-          {mission.city}
-        </p>
-        <p className="mission-meta">
-          <CalendarDays size={14} aria-hidden="true" />
-          {missionSchedule(mission)}
-        </p>
-        {pay && (
-          <p className="mission-meta mission-meta--pay">
-            <Coins size={14} aria-hidden="true" />
-            {pay}
+        <div className="mission-body">
+          <div className="mission-title-line">
+            <h3 className="mission-title">{mission.title}</h3>
+            {status.temporal === "upcoming" && mission.status !== "draft" && (
+              <span className="mission-timing">À venir</span>
+            )}
+          </div>
+          <p className="mission-meta">
+            <MapPin size={14} aria-hidden="true" />
+            {mission.city}
           </p>
-        )}
-      </div>
-      <div className="mission-foot">
-        {score === undefined ? (
-          mission.capacity ? (
-            mission.capacity.full ? (
-              "Tous les postes sont pourvus"
-            ) : (
-              `${mission.capacity.filled}/${mission.capacity.headcount} poste${mission.capacity.headcount > 1 ? "s" : ""} pourvu${mission.capacity.filled > 1 ? "s" : ""}`
-            )
-          ) : mission.headcount > 1 ? (
-            `${mission.headcount} postes`
-          ) : (
-            "1 poste"
-          )
-        ) : (
-          <MatchBadge score={score} band={band} bandLabel={bandLabel} />
-        )}
-        <span className="circle-button" aria-hidden="true">
-          {closed ? (
-            <Check size={14} strokeWidth={2.5} />
-          ) : (
-            <ArrowRight size={15} />
+          <p className="mission-meta">
+            <CalendarDays size={14} aria-hidden="true" />
+            {missionSchedule(mission)}
+          </p>
+          {pay && (
+            <p className="mission-meta mission-meta--pay">
+              <Coins size={14} aria-hidden="true" />
+              {pay}
+            </p>
           )}
-        </span>
-      </div>
+        </div>
+        <div className="mission-foot">
+          {score === undefined ? (
+            mission.capacity ? (
+              mission.capacity.full ? (
+                "Tous les postes sont pourvus"
+              ) : (
+                `${mission.capacity.filled}/${mission.capacity.headcount} poste${mission.capacity.headcount > 1 ? "s" : ""} pourvu${mission.capacity.filled > 1 ? "s" : ""}`
+              )
+            ) : mission.headcount > 1 ? (
+              `${mission.headcount} postes`
+            ) : (
+              "1 poste"
+            )
+          ) : (
+            <MatchBadge score={score} band={band} bandLabel={bandLabel} />
+          )}
+          <span className="circle-button" aria-hidden="true">
+            {closed ? (
+              <Check size={14} strokeWidth={2.5} />
+            ) : (
+              <ArrowRight size={15} />
+            )}
+          </span>
+        </div>
+      </MagicCard>
     </Link>
   );
 }

@@ -26,7 +26,11 @@ export function ProtectedRoute({ role }: { role?: Role }) {
 }
 
 export function PublicRoute() {
-  const { user, loading } = useAuth();
+  const { loading } = useAuth();
+  // Connexion et inscription s'affichent toujours, même pour une personne
+  // déjà connectée : les boutons « Créer mon profil » et « Me connecter » de
+  // l'accueil doivent ouvrir ces pages, pas renvoyer vers l'espace. Se
+  // connecter avec un autre compte remplace simplement la session en cours.
   if (loading) return <p role="status">Chargement…</p>;
-  return user ? <Navigate to={destination(user)} replace /> : <Outlet />;
+  return <Outlet />;
 }

@@ -12,9 +12,10 @@ body {
   margin: 0;
   background: var(--background);
   color: var(--ink);
-  font:
-    1rem/1.6 system-ui,
-    sans-serif;
+  font: 1rem/1.6 var(--font-body);
+  /* Lissage des polices sur macOS : texte plus net sur fond clair. */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 a {
   color: inherit;
@@ -40,7 +41,11 @@ p {
 }
 h1,
 h2 {
-  font-family: Georgia, serif;
+  font-family: var(--font-display);
+  font-weight: 600;
+  /* Fraunces adapte le dessin des lettres à la taille (axe « opsz »). */
+  font-optical-sizing: auto;
+  letter-spacing: -0.02em;
   text-wrap: balance;
 }
 h1 {
@@ -52,8 +57,12 @@ h2 {
   font-size: 1.45rem;
   line-height: 1.3;
 }
+/* Petits titres dans la police du texte : c'est plus net qu'un serif en
+   petite taille. */
 h3 {
   font-size: 1.1rem;
+  font-weight: 650;
+  letter-spacing: -0.01em;
 }
 p {
   max-width: 65ch;
@@ -525,7 +534,7 @@ fieldset {
   min-width: 0;
 }
 legend {
-  font-family: Georgia, serif;
+  font-family: var(--font-display);
   font-size: 1.25rem;
   padding: 0 8px;
 }

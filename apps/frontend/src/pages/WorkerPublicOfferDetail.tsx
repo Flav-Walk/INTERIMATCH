@@ -1,5 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { motion, useReducedMotion } from "motion/react";
+import { cascade, revealOnScroll, rise } from "../lib/motion";
+import { illustrationFor } from "../lib/job-photos";
+import { UnsplashCredit } from "../components/mission/MissionPhotoField";
 import {
   ArrowLeft,
   Briefcase,
@@ -7,6 +11,7 @@ import {
   Clock,
   Coins,
   ExternalLink,
+  FileText,
   GraduationCap,
   Info,
   MapPin,
@@ -40,6 +45,8 @@ function DetailSkeleton() {
 export function WorkerPublicOfferDetail() {
   const { id = "" } = useParams();
   const { user } = useAuth();
+  // Avant les « return » anticipés : un hook est toujours appelé.
+  const reduceMotion = useReducedMotion();
   const [offer, setOffer] = useState<PublicJobOffer | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -98,17 +105,47 @@ export function WorkerPublicOfferDetail() {
   const requiredSkills = offer.skills.filter((s) => s.required);
   const desiredSkills = offer.skills.filter((s) => !s.required);
   const sourceUrl = safeExternalUrl(offer.source_url);
+  // Une offre France Travail n'a pas de photo : on affiche celle du métier,
+  // toujours signalée « Photo d'illustration ».
+  const media = illustrationFor(offer.title, offer.id);
+  // « Réduire les animations » : tout s'affiche directement.
+  const reveal = reduceMotion ? {} : revealOnScroll;
 
   return (
     <div className="detail-page">
-      <div className="detail-hero">
-        <div className="detail-hero__inner">
-          <Link className="detail-back" to="/worker/public-offers">
-            <ArrowLeft size={15} aria-hidden="true" />
-            Offres France Travail
-          </Link>
+      <div className="detail-hero detail-hero--offer">
+        {/* Photo du métier en fond, avec un zoom lent à l'arrivée. */}
+        <figure className="detail-hero__photo">
+          <motion.img
+            src={media.url}
+            alt=""
+            decoding="async"
+            initial={reduceMotion ? false : { scale: 1.1 }}
+            animate={{ scale: 1 }}
+            transition={{ duration: 14, ease: "easeOut" }}
+          />
+          <figcaption>
+            <span className="photo-illustration-tag is-inline">
+              Photo d’illustration
+            </span>
+            <UnsplashCredit media={media} />
+          </figcaption>
+        </figure>
+        {/* Le contenu arrive en cascade : retour, titre, infos. */}
+        <motion.div
+          className="detail-hero__inner"
+          variants={cascade}
+          initial={reduceMotion ? false : "hidden"}
+          animate="visible"
+        >
+          <motion.div variants={rise}>
+            <Link className="detail-back" to="/worker/public-offers">
+              <ArrowLeft size={15} aria-hidden="true" />
+              Offres France Travail
+            </Link>
+          </motion.div>
 
-          <div className="detail-hero__head">
+          <motion.div className="detail-hero__head" variants={rise}>
             <div className="detail-hero__title-wrap">
               <div className="public-offer-external-banner">
                 <ExternalLink size={14} aria-hidden="true" />
@@ -126,9 +163,12 @@ export function WorkerPublicOfferDetail() {
                 </span>
               </p>
             </div>
-          </div>
+          </motion.div>
 
-          <div className="detail-hero__meta detail-grid">
+          <motion.div
+            className="detail-hero__meta detail-grid"
+            variants={rise}
+          >
             <span className="detail-meta-chip">
               <MapPin size={13} aria-hidden="true" />
               {offer.postal_code ? `${offer.postal_code} ` : ""}
@@ -162,22 +202,28 @@ export function WorkerPublicOfferDetail() {
                 {offer.positions} postes à pourvoir
               </span>
             )}
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       </div>
 
       <div className="detail-body">
         <div className="detail-layout">
           <div className="detail-main">
             {offer.description && (
-              <section className="detail-card" aria-labelledby="desc-title">
+              <motion.section
+                className="detail-card"
+                aria-labelledby="desc-title"
+                variants={rise}
+                {...reveal}
+              >
                 <h2 id="desc-title" className="detail-card__title">
+                  <FileText size={16} aria-hidden="true" />
                   Description du poste
                 </h2>
                 <div className="public-offer-description-text">
                   {offer.description}
                 </div>
-              </section>
+              </motion.section>
             )}
 
             <section className="detail-card" aria-labelledby="skills-title">
