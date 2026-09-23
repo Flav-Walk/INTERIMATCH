@@ -40,6 +40,7 @@ import {
 } from "../services/session";
 import { GuidedTour } from "../components/GuidedTour";
 import { Logo } from "../components/Logo";
+import { useSiteReveal } from "../lib/site-reveal";
 import {
   CURRENT_TOUR_VERSION,
   shouldRunTour,
@@ -184,6 +185,13 @@ export function AppLayout() {
   // La visite pointe des zones du tableau de bord : elle ne démarre que là,
   // pour ne jamais mettre en évidence un élément absent de la page courante.
   const onDashboard = Boolean(user) && location.pathname === destination(user!);
+  // L'accueil est la vitrine du site : même connecté, on y garde l'en-tête
+  // public (Connexion / Créer un compte), qui ouvrent toujours leurs pages.
+  const onPublicHome = location.pathname === "/";
+  // Motion de l'accueil étendu à tout le site : les cartes et panneaux des
+  // pages internes apparaissent au scroll (voir lib/site-reveal.ts).
+  const mainRef = useRef<HTMLElement>(null);
+  useSiteReveal(mainRef, location.pathname, Boolean(reduceMotion));
   const runTour =
     Boolean(user) &&
     user!.role !== "admin" &&
@@ -240,7 +248,7 @@ export function AppLayout() {
             <Logo variant="light" />
           </NavLink>
 
-          {user ? (
+          {user && !onPublicHome ? (
             <>
               <nav
                 aria-label="Navigation principale"
@@ -367,7 +375,9 @@ export function AppLayout() {
           ) : (
             <nav className="account-link" aria-label="Compte">
               <NavLink to="/login">Connexion</NavLink>
-              <NavLink to="/register">Créer un compte</NavLink>
+              <NavLink className="account-link__cta" to="/register">
+                Créer un compte
+              </NavLink>
             </nav>
           )}
         </div>
@@ -378,7 +388,7 @@ export function AppLayout() {
           {error}
         </p>
       )}
-      <main id="content" className="app-main" tabIndex={-1}>
+      <main id="content" className="app-main" tabIndex={-1} ref={mainRef}>
         {/* Transition entre les pages.
             - key = le chemin de la page : quand il change, AnimatePresence
               fait sortir l'ancienne page et entrer la nouvelle. Une recherche

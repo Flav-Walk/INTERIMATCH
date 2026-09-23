@@ -23,9 +23,7 @@ import { cascade, revealOnScroll, rise } from "../lib/motion";
 // au survol (secondaires). Les classes home-cta gardent le style d'origine.
 import { SpotlightLink } from "../components/ui/spotlight-button";
 import { SlideFillLink } from "../components/ui/slide-fill-button";
-import { useAuth } from "../hooks/useAuth";
 import { usePageSeo } from "../hooks/usePageSeo";
-import { destination } from "../services/session";
 
 const WORKER_FEATURES = [
   {
@@ -97,7 +95,6 @@ export function Home() {
       "Plateforme de mise en relation entre professionnels et établissements de l’hôtellerie-restauration. Missions adaptées, compétences et disponibilités.",
     robots: "index,follow",
   });
-  const { user } = useAuth();
   const reduceMotion = useReducedMotion();
   // Révélation au scroll, sauf si « Réduire les animations » est activé.
   const reveal = reduceMotion ? {} : revealOnScroll;
@@ -120,29 +117,21 @@ export function Home() {
               profils disponibles, avec des critères visibles et un suivi
               simple de chaque candidature.
             </p>
-            {user ? (
-              <SpotlightLink
-                className="home-cta home-cta--primary"
-                to={destination(user)}
-              >
-                Retrouver mon espace
+            {/* Toujours la version publique : l'accueil est la vitrine du
+                site, il s'affiche pareil pour tout le monde. */}
+            <div className="home-hero__ctas">
+              <SpotlightLink className="home-cta home-cta--primary" to="/register">
+                Créer mon profil
                 <ArrowRight size={18} aria-hidden="true" />
               </SpotlightLink>
-            ) : (
-              <div className="home-hero__ctas">
-                <SpotlightLink className="home-cta home-cta--primary" to="/register">
-                  Créer mon profil
-                  <ArrowRight size={18} aria-hidden="true" />
-                </SpotlightLink>
-                <SlideFillLink
-                  className="home-cta home-cta--ghost"
-                  to="/login"
-                  color="var(--surface)"
-                >
-                  Me connecter
-                </SlideFillLink>
-              </div>
-            )}
+              <SlideFillLink
+                className="home-cta home-cta--ghost"
+                to="/login"
+                color="var(--surface)"
+              >
+                Me connecter
+              </SlideFillLink>
+            </div>
           </div>
           <div className="home-hero__visual">
             <JourneyCard />
@@ -160,15 +149,13 @@ export function Home() {
               faciles à comprendre et à choisir.
             </p>
             <FeatureList features={WORKER_FEATURES} />
-            {!user && (
-              <SlideFillLink
-                className="home-cta home-cta--outline"
-                to="/register"
-              >
-                <Briefcase size={16} aria-hidden="true" />
-                Créer mon profil intérimaire
-              </SlideFillLink>
-            )}
+            <SlideFillLink
+              className="home-cta home-cta--outline"
+              to="/register"
+            >
+              <Briefcase size={16} aria-hidden="true" />
+              Créer mon profil intérimaire
+            </SlideFillLink>
           </div>
           <PathPhoto
             photo={WORKER_PHOTO}
@@ -201,18 +188,16 @@ export function Home() {
               postes depuis le même espace.
             </p>
             <FeatureList features={COMPANY_FEATURES} tone="orange" />
-            {!user && (
-              <div className="home-company-access">
-                <span>Vous disposez déjà d’un accès établissement ?</span>
-                <SlideFillLink
-                  className="home-cta home-cta--outline"
-                  to="/login"
-                  >
-                  <Users size={16} aria-hidden="true" />
-                  Accéder à l’espace entreprise
-                </SlideFillLink>
-              </div>
-            )}
+            <div className="home-company-access">
+              <span>Vous disposez déjà d’un accès établissement ?</span>
+              <SlideFillLink
+                className="home-cta home-cta--outline"
+                to="/login"
+                >
+                <Users size={16} aria-hidden="true" />
+                Accéder à l’espace entreprise
+              </SlideFillLink>
+            </div>
           </div>
           <PathPhoto
             photo={COMPANY_PHOTO}
@@ -260,30 +245,28 @@ export function Home() {
         </div>
       </section>
 
-      {!user && (
-        <section className="home-final-cta" aria-labelledby="final-cta-title">
-          {/* Photo de fond (illustration), voile vert, crédit en bas. */}
-          <PhotoBackdrop src={FINAL_PHOTO.url} />
-          <motion.div
-            className="home-final-cta__inner"
-            variants={rise}
-            {...reveal}
-          >
-            <div>
-              <h2 id="final-cta-title">Prêt à construire votre profil ?</h2>
-              <p>
-                Commencez par vos informations professionnelles, puis complétez
-                vos disponibilités à votre rythme.
-              </p>
-            </div>
-            <SpotlightLink className="home-cta home-cta--primary" to="/register">
-              Créer mon compte intérimaire
-              <ArrowRight size={18} aria-hidden="true" />
-            </SpotlightLink>
-          </motion.div>
-          <UnsplashCredit media={FINAL_PHOTO} className="photo-credit home-final-cta__credit" />
-        </section>
-      )}
+      <section className="home-final-cta" aria-labelledby="final-cta-title">
+        {/* Photo de fond (illustration), voile vert, crédit en bas. */}
+        <PhotoBackdrop src={FINAL_PHOTO.url} />
+        <motion.div
+          className="home-final-cta__inner"
+          variants={rise}
+          {...reveal}
+        >
+          <div>
+            <h2 id="final-cta-title">Prêt à construire votre profil ?</h2>
+            <p>
+              Commencez par vos informations professionnelles, puis complétez
+              vos disponibilités à votre rythme.
+            </p>
+          </div>
+          <SpotlightLink className="home-cta home-cta--primary" to="/register">
+            Créer mon compte intérimaire
+            <ArrowRight size={18} aria-hidden="true" />
+          </SpotlightLink>
+        </motion.div>
+        <UnsplashCredit media={FINAL_PHOTO} className="photo-credit home-final-cta__credit" />
+      </section>
     </div>
   );
 }

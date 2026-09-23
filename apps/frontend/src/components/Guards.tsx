@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { usePageSeo } from "../hooks/usePageSeo";
@@ -27,20 +26,11 @@ export function ProtectedRoute({ role }: { role?: Role }) {
 }
 
 export function PublicRoute() {
-  const { user, loading } = useAuth();
-  // On retient si la personne est arrivée DÉCONNECTÉE sur la page publique.
-  // - Déjà connectée en arrivant : on la renvoie vers son espace, comme avant.
-  // - Connectée À L'INSTANT depuis la page de connexion : on ne redirige pas
-  //   ici. C'est la page qui navigue, après avoir joué son animation
-  //   (coche validée puis fondu). Sinon la redirection couperait l'animation.
-  const [arrivedLoggedOut, setArrivedLoggedOut] = useState<boolean | null>(
-    null,
-  );
-  if (!loading && arrivedLoggedOut === null) setArrivedLoggedOut(!user);
+  const { loading } = useAuth();
+  // Connexion et inscription s'affichent toujours, même pour une personne
+  // déjà connectée : les boutons « Créer mon profil » et « Me connecter » de
+  // l'accueil doivent ouvrir ces pages, pas renvoyer vers l'espace. Se
+  // connecter avec un autre compte remplace simplement la session en cours.
   if (loading) return <p role="status">Chargement…</p>;
-  return user && !arrivedLoggedOut ? (
-    <Navigate to={destination(user)} replace />
-  ) : (
-    <Outlet />
-  );
+  return <Outlet />;
 }

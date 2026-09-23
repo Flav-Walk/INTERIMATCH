@@ -1118,3 +1118,31 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ── En-tête public : « Créer un compte » en pilule orange ──────────────── */
+.app-header .account-link {
+  align-items: center;
+}
+
+.app-header .account-link .account-link__cta {
+  padding: 0.5rem 1.05rem;
+  border-radius: var(--radius-pill);
+  background: var(--orange);
+  color: var(--ink);
+  font-weight: 650;
+  text-decoration: none;
+  transition: filter 0.2s ease, transform 0.2s ease;
+}
+
+.app-header .account-link .account-link__cta:hover {
+  filter: brightness(1.06);
+  color: var(--ink);
+  text-decoration: none;
+  transform: translateY(-1px);
+}
+
+/* ── Accueil : un bouton seul dans le hero ne s'étire jamais sur toute la
+ * largeur (la colonne flex étire ses enfants par défaut). */
+.home-hero__body > .home-cta {
+  align-self: flex-start;
+}
