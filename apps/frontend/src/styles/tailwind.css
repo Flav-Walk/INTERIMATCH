@@ -20,6 +20,9 @@
 @import "tailwindcss/utilities.css" layer(utilities) source(none);
 
 @source "../components/ui";
+/* components/da : les blocs de la nouvelle DA, montés à partir des
+   composants ci-dessus (accueil, tableau de bord, candidatures, profil). */
+@source "../components/da";
 
 /*
  * Les composants shadcn utilisent des noms de couleurs génériques
@@ -34,4 +37,53 @@
   --color-muted-foreground: var(--muted);
   --color-brand: var(--orange);
   --color-ring: var(--forest);
+}
+
+/*
+ * Animations des composants Magic UI (Marquee, Ripple).
+ * Copiées depuis la feuille de style de Magic UI : sans elles, les classes
+ * animate-marquee et animate-ripple n'existent pas et rien ne bouge.
+ * --foreground sert au Ripple : c'est la couleur de ses cercles.
+ */
+@theme inline {
+  --color-forest: var(--forest);
+  --color-forest-mid: var(--forest-mid);
+  --color-orange-ink: var(--orange-ink);
+  --color-surface: var(--surface);
+  --color-tint: var(--tint);
+  --font-brand: var(--font-display);
+  --animate-marquee: marquee var(--duration) infinite linear;
+  --animate-ripple: ripple var(--duration, 2s) ease calc(var(--i, 0) * 0.2s)
+    infinite;
+
+  @keyframes marquee {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(calc(-100% - var(--gap)));
+    }
+  }
+  @keyframes ripple {
+    0%,
+    100% {
+      transform: translate(-50%, -50%) scale(1);
+    }
+    50% {
+      transform: translate(-50%, -50%) scale(0.9);
+    }
+  }
+}
+
+:root {
+  --foreground: var(--forest);
+}
+
+/* « Réduire les animations » : le bandeau et les cercles restent fixes. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-marquee,
+  .animate-ripple,
+  .animate-ping {
+    animation: none;
+  }
 }
