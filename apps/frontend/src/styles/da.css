@@ -791,3 +791,21 @@ html .mission-card .mission-status {
 html .mission-card .mission-status::before {
   content: none;
 }
+
+/* Derniers badges « pilule + point » (profil, documents) : texte coloré en
+   gras, sans fond ni point. Le sens est porté par le mot, la couleur le
+   redit. */
+html :is(.profile-search-status, .profile-slot-status, .document-status) {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  font-weight: 700;
+}
+html :is(.profile-search-status, .profile-slot-status, .document-status)::before {
+  content: none;
+}
+html .profile-search-status.is-active,
+html .profile-slot-status.is-available {
+  color: var(--forest);
+}

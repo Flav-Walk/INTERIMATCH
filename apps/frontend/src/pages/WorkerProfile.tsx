@@ -51,6 +51,19 @@ import { CircularGauge } from "../components/CircularGauge";
 import { useUnsavedChanges } from "../components/form/Field";
 import { workerRequirementProgress } from "../services/completion";
 import "../styles/profile.css";
+// Nouvelle DA du formulaire (retour de revue : « pas refait ») :
+// - champs texte : Animated Input (SmoothUI), le libellé remonte en orange ;
+// - métiers et compétences : Animated Tags (SmoothUI), les étiquettes
+//   glissent entre « sélection » et « disponibles » ;
+// - permis : segment d'Animated Tabs (SmoothUI) ;
+// - véhicule et recherche : Animated Toggle (SmoothUI).
+// Les vrais <input> sont gardés dessous : formulaire et tests inchangés.
+import AnimatedInput from "../components/ui/animated-input";
+import {
+  ChoiceTags,
+  SegmentedChoice,
+  SwitchField,
+} from "../components/da/FormControls";
 
 type DraftExperience = Omit<Experience, "id">;
 type DraftCertification = Omit<Certification, "id">;
@@ -204,7 +217,6 @@ function workerPayload(draft: WorkerProfileDraft) {
 function ProfileSection({
   id,
   title,
-  icon,
   hint,
   missing = [],
   className = "",
@@ -212,7 +224,8 @@ function ProfileSection({
 }: {
   id?: string;
   title: string;
-  icon: ReactNode;
+  /** Plus affichée (nouvelle DA), gardée pour ne pas toucher aux appels. */
+  icon?: ReactNode;
   hint?: string;
   missing?: (keyof typeof requirementLabels)[];
   className?: string;
@@ -223,10 +236,9 @@ function ProfileSection({
       id={id}
       className={`profile-section ${className}`.trim()}
     >
+      {/* Plus d'icône dans un rond teinté : un numéro de rubrique en
+          Fraunces (compteur CSS, voir profile.css). */}
       <legend>
-        <span className="profile-section__icon" aria-hidden="true">
-          {icon}
-        </span>
         <span>{title}</span>
         {missing.length > 0 && (
           <span className="section-todo">À compléter</span>
@@ -510,35 +522,32 @@ export function WorkerProfile() {
             className="profile-section--identity"
             missing={missingIn(user.missing_requirements, "Votre identité")}
           >
-            <div className="form-grid">
-              <label>
-                Prénom
-                <input
-                  name="first_name"
-                  maxLength={120}
-                  value={draft.first_name}
-                  onChange={(event) => update("first_name", event.target.value)}
-                />
-              </label>
-              <label>
-                Nom
-                <input
-                  name="last_name"
-                  maxLength={120}
-                  value={draft.last_name}
-                  onChange={(event) => update("last_name", event.target.value)}
-                />
-              </label>
-            </div>
-            <label>
-              Téléphone <span className="field-optional">(facultatif)</span>
-              <input
-                name="phone"
-                type="tel"
-                value={draft.phone}
-                onChange={(event) => update("phone", event.target.value)}
+            <div className="form-grid profile-float-fields">
+              <AnimatedInput
+                className="da-scope"
+                inputClassName="profile-float-input"
+                label="Prénom"
+                value={draft.first_name}
+                onChange={(value) => update("first_name", value)}
+                inputProps={{ name: "first_name", maxLength: 120 }}
               />
-            </label>
+              <AnimatedInput
+                className="da-scope"
+                inputClassName="profile-float-input"
+                label="Nom"
+                value={draft.last_name}
+                onChange={(value) => update("last_name", value)}
+                inputProps={{ name: "last_name", maxLength: 120 }}
+              />
+            </div>
+            <AnimatedInput
+              className="da-scope profile-float-fields"
+              inputClassName="profile-float-input"
+              label="Téléphone (facultatif)"
+              value={draft.phone}
+              onChange={(value) => update("phone", value)}
+              inputProps={{ name: "phone", type: "tel" }}
+            />
             <p className="quiet profile-account-email">
               Email du compte · {user.email}
             </p>
@@ -587,33 +596,19 @@ export function WorkerProfile() {
               Autres métiers exercés{" "}
               <span className="field-optional">(facultatif)</span>
             </span>
-            <div
-              className="profile-chip-options"
-              role="group"
-              aria-labelledby="secondary-label"
-            >
-              {jobs.map((job) => (
-                <label key={job.value}>
-                  <input
-                    type="checkbox"
-                    name="secondary_jobs"
-                    value={job.value}
-                    checked={draft.secondary_jobs.includes(job.value)}
-                    onChange={(event) =>
-                      update(
-                        "secondary_jobs",
-                        toggle(
-                          draft.secondary_jobs,
-                          job.value,
-                          event.target.checked,
-                        ),
-                      )
-                    }
-                  />
-                  <span>{job.label}</span>
-                </label>
-              ))}
-            </div>
+            <ChoiceTags
+              name="secondary_jobs"
+              groupLabel="Autres métiers exercés"
+              emptyText="Aucun autre métier sélectionné."
+              options={jobs}
+              selected={draft.secondary_jobs}
+              onToggle={(value, checked) =>
+                update(
+                  "secondary_jobs",
+                  toggle(draft.secondary_jobs, value, checked),
+                )
+              }
+            />
           </ProfileSection>
 
           <ProfileSection
@@ -624,33 +619,19 @@ export function WorkerProfile() {
             missing={missingIn(user.missing_requirements, "Vos compétences")}
             hint="Au moins une compétence est nécessaire : c’est le critère principal du rapprochement."
           >
-            <div
-              className="profile-chip-options"
-              role="group"
-              aria-label="Compétences"
-            >
-              {skills.map((skill) => (
-                <label key={skill.id}>
-                  <input
-                    type="checkbox"
-                    name="skill_ids"
-                    value={skill.id}
-                    checked={draft.skill_ids.includes(skill.id)}
-                    onChange={(event) =>
-                      update(
-                        "skill_ids",
-                        toggle(
-                          draft.skill_ids,
-                          skill.id,
-                          event.target.checked,
-                        ),
-                      )
-                    }
-                  />
-                  <span>{skill.name}</span>
-                </label>
-              ))}
-            </div>
+            <ChoiceTags
+              name="skill_ids"
+              groupLabel="Compétences"
+              emptyText="Ajoutez au moins une compétence ci-dessous."
+              options={skills.map((skill) => ({
+                value: skill.id,
+                label: skill.name,
+              }))}
+              selected={draft.skill_ids}
+              onToggle={(value, checked) =>
+                update("skill_ids", toggle(draft.skill_ids, value, checked))
+              }
+            />
           </ProfileSection>
 
           <ProfileSection
@@ -855,86 +836,72 @@ export function WorkerProfile() {
             missing={missingIn(user.missing_requirements, "Votre mobilité")}
             hint="Votre ville et votre rayon servent à proposer des missions accessibles."
           >
-            <div className="profile-mobility-fields">
-              <label>
-                Ville
-                <input
-                  name="city"
-                  value={draft.city}
-                  onChange={(event) => update("city", event.target.value)}
-                />
-              </label>
-              <label>
-                Code postal
-                <input
-                  name="postal_code"
-                  inputMode="numeric"
-                  pattern="[0-9]{5}"
-                  maxLength={5}
-                  value={draft.postal_code}
-                  onChange={(event) =>
-                    update("postal_code", event.target.value)
-                  }
-                />
-              </label>
-              <label>
-                Rayon de mobilité (km)
-                <input
-                  name="mobility_radius_km"
-                  type="number"
-                  min={0}
-                  max={250}
-                  value={draft.mobility_radius_km}
-                  onChange={(event) =>
-                    update("mobility_radius_km", event.target.value)
-                  }
-                />
-              </label>
+            <div className="profile-mobility-fields profile-float-fields">
+              <AnimatedInput
+                className="da-scope"
+                inputClassName="profile-float-input"
+                label="Ville"
+                value={draft.city}
+                onChange={(value) => update("city", value)}
+                inputProps={{ name: "city" }}
+              />
+              <AnimatedInput
+                className="da-scope"
+                inputClassName="profile-float-input"
+                label="Code postal"
+                value={draft.postal_code}
+                onChange={(value) => update("postal_code", value)}
+                inputProps={{
+                  name: "postal_code",
+                  inputMode: "numeric",
+                  pattern: "[0-9]{5}",
+                  maxLength: 5,
+                }}
+              />
+              <AnimatedInput
+                className="da-scope"
+                inputClassName="profile-float-input"
+                label="Rayon de mobilité (km)"
+                value={draft.mobility_radius_km}
+                onChange={(value) => update("mobility_radius_km", value)}
+                inputProps={{
+                  name: "mobility_radius_km",
+                  type: "number",
+                  min: 0,
+                  max: 250,
+                }}
+              />
             </div>
-            <div
-              className="choice-group"
-              role="radiogroup"
-              aria-labelledby="licence-label"
-            >
-              <span id="licence-label" className="choice-label">
-                Permis de conduire
-              </span>
-              <label>
-                <input
-                  type="radio"
-                  name="licence"
-                  checked={draft.has_driving_licence}
-                  onChange={() => update("has_driving_licence", true)}
-                />
-                J’ai le permis
-              </label>
-              <label>
-                <input
-                  type="radio"
-                  name="licence"
-                  checked={!draft.has_driving_licence}
-                  onChange={() =>
-                    setDraft((current) => ({
+            <SegmentedChoice
+              name="licence"
+              legend="Permis de conduire"
+              legendId="licence-label"
+              value={draft.has_driving_licence ? "yes" : "no"}
+              options={[
+                { value: "yes", label: "J’ai le permis" },
+                { value: "no", label: "Je n’ai pas le permis" },
+              ]}
+              onChange={(value) =>
+                value === "yes"
+                  ? update("has_driving_licence", true)
+                  : setDraft((current) => ({
                       ...current,
                       has_driving_licence: false,
                       has_vehicle: false,
                     }))
-                  }
-                />
-                Je n’ai pas le permis
-              </label>
-            </div>
-            <label className="choice-single">
-              <input
-                type="checkbox"
-                checked={draft.has_driving_licence && draft.has_vehicle}
-                disabled={!draft.has_driving_licence}
-                onChange={(event) =>
-                  update("has_vehicle", event.target.checked)
-                }
-              />
-              J’ai un véhicule
-            </label>
+              }
+            />
+            <SwitchField
+              label="J’ai un véhicule"
+              description={
+                draft.has_driving_licence
+                  ? undefined
+                  : "Disponible une fois le permis indiqué."
+              }
+              checked={draft.has_driving_licence && draft.has_vehicle}
+              disabled={!draft.has_driving_licence}
+              onChange={(checked) => update("has_vehicle", checked)}
+            />
           </ProfileSection>
 
           <ProfileSection
@@ -944,32 +911,25 @@ export function WorkerProfile() {
             className="profile-section--wide profile-section--search"
             hint="Mettez votre recherche en pause sans perdre votre profil."
           >
-            <label className="profile-search-toggle">
-              <input
-                type="checkbox"
-                name="open_to_missions"
-                checked={draft.open_to_missions}
-                onChange={(event) =>
-                  update("open_to_missions", event.target.checked)
-                }
-              />
-              <span>
-                <strong>Je recherche des missions</strong>
-                <small>
-                  Votre profil peut être rapproché des besoins publiés.
-                </small>
-              </span>
-              <span
-                className={
-                  draft.open_to_missions
-                    ? "profile-search-status is-active"
-                    : "profile-search-status"
-                }
-                aria-hidden="true"
-              >
-                {draft.open_to_missions ? "Recherche active" : "En pause"}
-              </span>
-            </label>
+            <SwitchField
+              name="open_to_missions"
+              label="Je recherche des missions"
+              description="Votre profil peut être rapproché des besoins publiés."
+              checked={draft.open_to_missions}
+              onChange={(checked) => update("open_to_missions", checked)}
+              aside={
+                <span
+                  className={
+                    draft.open_to_missions
+                      ? "profile-search-status is-active"
+                      : "profile-search-status"
+                  }
+                  aria-hidden="true"
+                >
+                  {draft.open_to_missions ? "Recherche active" : "En pause"}
+                </span>
+              }
+            />
           </ProfileSection>
         </div>
 

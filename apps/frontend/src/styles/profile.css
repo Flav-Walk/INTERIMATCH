@@ -111,29 +111,42 @@
   grid-column: 1 / -1;
 }
 
+/* Titres de rubrique : numéro orange en Fraunces (01, 02…) puis le titre
+   en Fraunces, à la place de l'icône dans un rond teinté (revue). Le
+   numéro vient d'un compteur CSS : rien à écrire dans le JSX. */
+.worker-profile {
+  counter-reset: profile-section;
+}
+
+.worker-profile .profile-section {
+  counter-increment: profile-section;
+}
+
 .worker-profile .profile-section legend {
   display: flex;
-  align-items: center;
-  gap: var(--space-2);
+  align-items: baseline;
+  gap: var(--space-3);
   max-width: 100%;
   padding-inline: var(--space-1) var(--space-2);
-  color: var(--forest);
-  font-family: inherit;
-  font-size: var(--text-lg);
-  font-weight: 750;
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  font-weight: 600;
+  letter-spacing: -0.01em;
   line-height: 1.2;
 }
 
+.worker-profile .profile-section legend::before {
+  content: counter(profile-section, decimal-leading-zero);
+  color: var(--orange-ink);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+/* Ancienne icône de rubrique : plus affichée (nouvelle DA). */
 .profile-section__icon {
-  display: inline-flex;
-  flex: none;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  color: var(--forest);
-  background: var(--tint);
+  display: none;
 }
 
 .profile-section__hint,
@@ -658,4 +671,11 @@
   .profile-savebar {
     transition: none;
   }
+}
+
+/* Champs Animated Input (SmoothUI) : un peu d'air entre eux, et le libellé
+   flottant a besoin de place au-dessus du champ. */
+.worker-profile .profile-float-fields {
+  row-gap: var(--space-5);
+  padding-top: var(--space-2);
 }

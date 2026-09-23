@@ -1,3 +1,18 @@
+/*
+ * Animated Toggle — SmoothUI
+ * https://smoothui.dev/docs/components/animated-toggle
+ *
+ * Un interrupteur dont la pastille glisse avec un petit ressort (Motion). En
+ * variante « morph », la pastille est carrée quand c'est éteint et devient
+ * ronde quand c'est allumé.
+ *
+ * Retouches InteriMatch :
+ * 1. decorative : le composant se dessine en <span aria-hidden> au lieu d'un
+ *    <button>. On le pose au-dessus d'une VRAIE case à cocher (invisible) :
+ *    le formulaire, le clavier et les tests e2e continuent de voir une case
+ *    à cocher (voir components/da/SwitchField.tsx).
+ * 2. border-0 : le site n'a pas le reset « preflight » de Tailwind.
+ */
 "use client";
 
 import { cn } from "../../lib/utils";
@@ -28,6 +43,8 @@ export interface AnimatedToggleProps {
   size?: "sm" | "md" | "lg";
   /** Visual variant of the toggle */
   variant?: "default" | "morph" | "icon";
+  /** InteriMatch : dessin seul, sans bouton (la vraie case est à côté). */
+  decorative?: boolean;
 }
 
 const SPRING = {
@@ -67,6 +84,7 @@ const AnimatedToggle = ({
   disabled = false,
   label,
   className,
+  decorative = false,
 }: AnimatedToggleProps) => {
   const shouldReduceMotion = useReducedMotion();
 
@@ -111,23 +129,31 @@ const AnimatedToggle = ({
     return translateX;
   };
 
+  // InteriMatch : en mode décoratif, un <span> sans rôle ni clic.
+  const Root = decorative ? "span" : "button";
+  const rootProps = decorative
+    ? { "aria-hidden": true as const }
+    : {
+        "aria-checked": checked,
+        "aria-label": label,
+        disabled,
+        onClick: handleToggle,
+        onKeyDown: handleKeyDown,
+        role: "switch" as const,
+        type: "button" as const,
+      };
+
   return (
-    <button
-      aria-checked={checked}
-      aria-label={label}
+    <Root
+      {...rootProps}
       className={cn(
-        "relative inline-flex shrink-0 cursor-pointer items-center rounded-full p-0.5 transition-colors",
+        "relative inline-flex shrink-0 cursor-pointer items-center rounded-full border-0 p-0.5 transition-colors",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
         checked ? "bg-brand" : "bg-muted-foreground/30",
         disabled && "cursor-not-allowed opacity-50",
         sizeConfig.track,
         className
       )}
-      disabled={disabled}
-      onClick={handleToggle}
-      onKeyDown={handleKeyDown}
-      role="switch"
-      type="button"
     >
       <motion.span
         animate={
@@ -180,7 +206,7 @@ const AnimatedToggle = ({
           </AnimatePresence>
         )}
       </motion.span>
-    </button>
+    </Root>
   );
 };
 

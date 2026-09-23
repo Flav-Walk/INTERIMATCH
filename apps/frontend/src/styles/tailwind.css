@@ -87,3 +87,34 @@
     animation: none;
   }
 }
+
+/*
+ * « da-scope » : zone où les classes Tailwind doivent gagner.
+ *
+ * Problème : les styles du site (global.css, profile.css…) ne sont dans
+ * aucun @layer, donc ils battent TOUJOURS Tailwind (voir précaution n° 2 en
+ * haut du fichier). Sur les formulaires, « label { display: grid } » ou
+ * « input { width: 100% } » cassaient les composants SmoothUI.
+ *
+ * Solution : revert-layer. Dans la zone .da-scope, ces propriétés « annulent »
+ * le style du site et reprennent la valeur du layer précédent, c'est-à-dire
+ * la classe Tailwind du composant. Le « html » devant donne assez de priorité
+ * pour passer devant profile.css.
+ */
+html :is(.da-scope, .da-scope *):is(label, input, select, button, textarea) {
+  display: revert-layer;
+  gap: revert-layer;
+  width: revert-layer;
+  height: revert-layer;
+  min-width: revert-layer;
+  min-height: revert-layer;
+  margin: revert-layer;
+  padding: revert-layer;
+  border: revert-layer;
+  border-radius: revert-layer;
+  background: revert-layer;
+  box-shadow: revert-layer;
+  color: revert-layer;
+  font-size: revert-layer;
+  font-weight: revert-layer;
+}
