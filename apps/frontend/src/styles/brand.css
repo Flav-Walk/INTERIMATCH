@@ -289,3 +289,263 @@
     transition: none;
   }
 }
+
+/* ── Bandeau photo (HeroBanner) ──────────────────────────────────────────────
+ * Couches, du fond vers l'avant :
+ *   1. .brand-hero__media : la photo (zoom lent + parallaxe en JS).
+ *   2. .brand-hero__media::after : teinte verte en « soft-light », pour que
+ *      toutes les photos aient la même couleur, quelle que soit leur source.
+ *   3. .brand-hero__veil : dégradé vert foncé à gauche (sous le texte) qui
+ *      s'efface vers la droite (la photo respire), plus un grain léger.
+ *   4. Le contenu (texte, jauge, slogan, Matchy).
+ */
+.brand-hero--photo {
+  background: var(--forest);
+}
+
+.brand-hero__media {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  overflow: hidden;
+}
+
+.brand-hero__media img {
+  position: absolute;
+  top: -10%;
+  left: 0;
+  width: 100%;
+  height: 120%;
+  object-fit: cover;
+  object-position: center 40%;
+  filter: saturate(0.85) contrast(1.05);
+  will-change: transform;
+}
+
+.brand-hero__media::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: oklch(0.4 0.08 165);
+  mix-blend-mode: soft-light;
+  opacity: 0.7;
+}
+
+.brand-hero__veil {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(
+      100deg,
+      oklch(0.24 0.05 165 / 0.95) 0%,
+      oklch(0.26 0.055 165 / 0.86) 40%,
+      oklch(0.28 0.06 165 / 0.45) 72%,
+      oklch(0.28 0.06 165 / 0.2) 100%
+    ),
+    linear-gradient(to top, oklch(0.18 0.04 165 / 0.55), transparent 55%);
+}
+
+/* Grain photo : un bruit SVG très léger, fusionné en « overlay ». */
+.brand-hero__veil::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E");
+  mix-blend-mode: overlay;
+  opacity: 0.18;
+}
+
+/* Les mots du titre restent sur la même ligne tant qu'il y a la place. */
+.brand-hero__word {
+  display: inline-block;
+  white-space: pre;
+}
+
+.brand-hero--photo .brand-hero__eyeline {
+  display: block;
+}
+
+/* Slogan manuscrit, en haut à droite, comme sur la maquette. Polices
+   manuscrites présentes sur macOS / Windows, sans téléchargement. */
+.brand-hero__slogan {
+  position: absolute;
+  /* Coin haut droit, au-dessus de Matchy : c'est la seule zone libre quand
+     le bandeau affiche aussi la jauge. */
+  top: var(--space-4);
+  right: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  color: oklch(0.97 0.02 90);
+  font-family: "Bradley Hand", "Snell Roundhand", "Segoe Print", "Segoe Script", cursive;
+  font-size: clamp(1rem, 1.35vw, 1.3rem);
+  line-height: 1.15;
+  text-align: right;
+  text-shadow: 0 2px 10px oklch(0 0 0 / 0.35);
+  transform: rotate(-6deg);
+  pointer-events: none;
+}
+
+.brand-hero__slogan > span {
+  display: block;
+}
+
+.brand-hero__swoosh {
+  width: 7.5rem;
+  margin-top: 0.15rem;
+  color: var(--orange);
+}
+
+.brand-hero__mascot-wrap {
+  align-self: end;
+}
+
+@media (width < 900px) {
+  .brand-hero__mascot-wrap {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+  }
+
+  .brand-hero__slogan {
+    display: none;
+  }
+}
+
+@media (width < 620px) {
+  .brand-hero__mascot-wrap {
+    display: none;
+  }
+}
+
+/* ── Bandeau photo, version moderne ──────────────────────────────────────────
+ * Sans Matchy : texte à gauche, jauge dans une carte en verre dépoli en bas
+ * à droite, slogan en haut à droite. Halo qui suit la souris.
+ */
+.brand-hero--photo {
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: var(--space-8);
+  min-height: 260px;
+}
+
+.brand-hero--photo.brand-hero--compact {
+  min-height: 200px;
+}
+
+/* Le texte et la jauge passent devant le halo. */
+.brand-hero--photo .brand-hero__copy,
+.brand-hero--photo .brand-hero__gauge {
+  position: relative;
+  z-index: 1;
+}
+
+/* Halo : dégradé circulaire centré sur la souris (--mx / --my écrites en JS).
+   Invisible au repos, il apparaît au survol. */
+.brand-hero--photo::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    480px circle at var(--mx, 75%) var(--my, 30%),
+    oklch(0.88 0.08 160 / 0.13),
+    transparent 60%
+  );
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+
+.brand-hero--photo:hover::before {
+  opacity: 1;
+}
+
+/* Badge en verre avec pastille orange. */
+.brand-hero--photo .brand-hero__eyeline {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: var(--space-4);
+  padding: 0.35rem 0.8rem;
+  border: 1px solid oklch(1 0 0 / 0.18);
+  border-radius: var(--radius-pill);
+  background: oklch(1 0 0 / 0.08);
+  backdrop-filter: blur(8px);
+  color: oklch(0.93 0.03 160);
+  letter-spacing: 0.08em;
+}
+
+.brand-hero__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--orange);
+  animation: brand-hero-pulse 2.4s ease-out infinite;
+}
+
+/* La pastille émet une onde qui s'élargit puis disparaît. */
+@keyframes brand-hero-pulse {
+  0% {
+    box-shadow: 0 0 0 0 oklch(0.7 0.17 50 / 0.6);
+  }
+  70%,
+  100% {
+    box-shadow: 0 0 0 8px oklch(0.7 0.17 50 / 0);
+  }
+}
+
+.brand-hero--photo h1 {
+  font-size: clamp(2rem, 3.4vw, 2.9rem);
+  letter-spacing: -0.035em;
+}
+
+.brand-hero--photo p {
+  color: oklch(0.92 0.02 160);
+}
+
+/* Bouton d'action en verre. */
+.brand-hero--photo .brand-hero__link {
+  border-color: oklch(1 0 0 / 0.22);
+  background: oklch(1 0 0 / 0.1);
+  backdrop-filter: blur(10px);
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease;
+}
+
+.brand-hero--photo .brand-hero__link:hover {
+  background: oklch(1 0 0 / 0.18);
+  transform: translateY(-1px);
+}
+
+/* Jauge dans une carte en verre dépoli, calée en bas à droite. */
+.brand-hero--photo .brand-hero__gauge {
+  align-self: end;
+  min-width: 0;
+  padding: var(--space-3) var(--space-5) var(--space-3) var(--space-3);
+  border: 1px solid oklch(1 0 0 / 0.16);
+  border-radius: var(--radius-lg);
+  background: oklch(0.2 0.03 165 / 0.35);
+  backdrop-filter: blur(14px) saturate(1.2);
+  box-shadow:
+    0 10px 30px oklch(0 0 0 / 0.25),
+    inset 0 1px 0 oklch(1 0 0 / 0.12);
+}
+
+@media (width < 900px) {
+  .brand-hero--photo .brand-hero__gauge {
+    justify-self: start;
+    margin-top: var(--space-4);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brand-hero__dot {
+    animation: none;
+  }
+
+  .brand-hero--photo::before,
+  .brand-hero--photo .brand-hero__link {
+    transition: none;
+  }
+}
