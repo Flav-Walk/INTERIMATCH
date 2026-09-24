@@ -23,7 +23,8 @@ interface PublicOfferCardProps {
  * d'OBJETS du métier (couverts, couteau et planche, ustensiles de bar,
  * cloche et clés), jamais un lieu ni une personne : elle ne peut pas être
  * prise pour une photo de l'établissement (voir lib/job-photos,
- * offerIllustrationFor). Toujours signalée « Illustration ». Le fond vert
+ * offerIllustrationFor). Pas de mention « Illustration » sur la carte, pour
+ * garder la couverture légère. Le fond vert
  * de la couverture reste visible pendant le chargement de l'image.
  */
 
@@ -52,8 +53,8 @@ export function PublicOfferCard({
       {/* Même Magic Card que les cartes mission, pour que toutes les cartes
           du site réagissent pareil au survol. */}
       <MagicCard className="card-surface" {...MAGIC_CARD_COLORS}>
-        {/* Couverture : photo d'objets du métier, badges en verre par-dessus
-            et mention « Illustration ». Image décorative (alt vide). */}
+        {/* Couverture : photo d'objets du métier et badges en verre par-dessus.
+            Image décorative (alt vide). */}
         <div className="public-offer-card__cover">
           <img
             className="public-offer-card__photo"
@@ -62,7 +63,6 @@ export function PublicOfferCard({
             loading="lazy"
             decoding="async"
           />
-          <span className="photo-illustration-tag">Illustration</span>
           <div className="public-offer-card__badges">
             <span className="badge badge--france-travail">
               <ExternalLink size={12} aria-hidden="true" />

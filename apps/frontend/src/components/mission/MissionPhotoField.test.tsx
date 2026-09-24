@@ -166,15 +166,15 @@ describe("carte France Travail", () => {
   // Règle initiale (commit 0bf62c3) : aucune image, car une photo générique
   // pouvait passer pour celle de l'établissement. Règle actuelle : une seule
   // image, une photo d'OBJETS du métier (bibliothèque des offres), jamais une
-  // photo de lieu ou de personne des missions, décorative et toujours
-  // signalée « Illustration ».
-  it("n'affiche qu'une photo d'objets du métier, signalée « Illustration »", () => {
+  // photo de lieu ou de personne des missions, décorative, sans mention
+  // « Illustration » sur la carte.
+  it("n'affiche qu'une photo d'objets du métier, sans mention « Illustration »", () => {
     const html = render(<PublicOfferCard offer={offer} />);
     const expected = offerIllustrationFor(offer.title, offer.id);
     expect(html.match(/<img/g)).toHaveLength(1);
     expect(html).toContain(`photo-${expected.external_id}`);
     expect(html).toContain('alt=""');
-    expect(html).toContain("Illustration");
+    expect(html).not.toContain("photo-illustration-tag");
     // Jamais une image locale (qui pourrait être celle d'un établissement).
     expect(html).not.toContain("/images/");
   });
