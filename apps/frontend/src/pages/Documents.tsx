@@ -21,6 +21,10 @@ const date = new Intl.DateTimeFormat("fr-FR", {
   year: "numeric",
 });
 
+/** Pastille de date de la liste : jour en grand, mois abrégé dessous. */
+const tileDay = new Intl.DateTimeFormat("fr-FR", { day: "numeric" });
+const tileMonth = new Intl.DateTimeFormat("fr-FR", { month: "short" });
+
 function counterpart(document: ContractListItem, role: "worker" | "company") {
   if (role === "worker")
     return (
@@ -113,8 +117,16 @@ export function DocumentsPage({ role }: { role: "worker" | "company" }) {
         <ul className="document-list">
           {documents.map((document) => (
             <li key={document.id}>
-              <div className="document-list__icon" aria-hidden="true">
-                <FileText size={20} />
+              {/* Repère visuel : la date de la mission, lisible d'un coup
+                  d'œil. Masquée aux lecteurs d'écran, qui lisent déjà la date
+                  complète juste à côté. */}
+              <div className="document-list__date" aria-hidden="true">
+                <strong>
+                  {tileDay.format(new Date(document.mission.starts_at))}
+                </strong>
+                <span>
+                  {tileMonth.format(new Date(document.mission.starts_at))}
+                </span>
               </div>
               <div className="document-list__main">
                 <span className="quiet">{counterpart(document, role)}</span>

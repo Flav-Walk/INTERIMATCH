@@ -26,17 +26,6 @@
   border-top: 0;
 }
 
-.document-list__icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 42px;
-  height: 42px;
-  border-radius: var(--radius-sm);
-  color: var(--forest);
-  background: var(--tint);
-}
-
 .document-list__main {
   display: grid;
   gap: 3px;
@@ -90,10 +79,13 @@
   background: var(--background);
 }
 
+/* Pas de bleu (écarté par la charte) : un état intermédiaire se dit en
+   vert contouré, entre l'ambre « à faire » et le vert plein « finalisé ». */
 .document-status.is-draft,
 .document-status.is-awaiting_finalization {
-  color: oklch(0.36 0.09 245);
-  background: oklch(0.93 0.035 235);
+  color: var(--forest);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px oklch(0.32 0.065 165 / 0.35);
 }
 
 .document-list .link-more {

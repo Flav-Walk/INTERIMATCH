@@ -1,0 +1,257 @@
+/*
+ * Pages de liste sans bandeau (candidatures, documents, pages entreprise).
+ *
+ * En-tête typographique : grand titre Fraunces, sous-titre discret, filet
+ * orange court au-dessus. Il se distingue du bandeau vert, réservé aux
+ * pages d'entrée de chaque espace.
+ */
+
+/* ---------- En-tête de page ---------- */
+.page-wide {
+  max-width: none;
+}
+.page-wide > .section-head {
+  position: relative;
+  align-items: flex-end;
+  margin-bottom: var(--space-8);
+  padding: var(--space-6) 0 var(--space-5);
+  border-bottom: 1px solid var(--border);
+}
+.page-wide > .section-head::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 28px;
+  height: 3px;
+  border-radius: 3px;
+  background: var(--orange);
+}
+.page-wide > .section-head h1 {
+  margin: 0 0 var(--space-2);
+  font-size: clamp(2rem, 3.2vw, 2.6rem);
+  line-height: 1.05;
+}
+.page-wide > .section-head p {
+  margin: 0;
+  font-size: var(--text-base);
+}
+
+/* ---------- Pastilles d'état des candidatures ----------
+   Ambre (attente), vert (acceptée), rouge doux (non retenue). */
+.application-status {
+  padding: 4px 10px;
+  font-size: var(--text-xs);
+  font-weight: 650;
+}
+.application-status.is-pending {
+  background: var(--warn-tint);
+  color: var(--warn-ink);
+}
+.application-status.is-rejected {
+  background: var(--danger-tint);
+  color: oklch(0.45 0.15 27);
+}
+
+/* ---------- Candidatures de l'intérimaire ----------
+   Une carte par candidature, un filet vertical coloré selon l'état. */
+.worker-application-list {
+  display: grid;
+  gap: var(--space-3);
+  padding: 0;
+  border: 0;
+  background: none;
+}
+.worker-application-list > li,
+.worker-application-list > li:first-child,
+.worker-application-list > li:last-child {
+  position: relative;
+  margin: 0;
+  padding: var(--space-5) var(--space-6) var(--space-5) var(--space-8);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
+  transition:
+    border-color var(--fast) var(--ease-out),
+    box-shadow var(--normal) var(--ease-out);
+}
+.worker-application-list > li::before {
+  content: "";
+  position: absolute;
+  top: var(--space-5);
+  bottom: var(--space-5);
+  left: var(--space-4);
+  width: 3px;
+  border-radius: 3px;
+  background: var(--orange);
+}
+.worker-application-list > li:hover {
+  border-color: oklch(0.42 0.085 165 / 0.3);
+  box-shadow: var(--shadow-2);
+}
+.worker-application-list > li.is-confirmed {
+  margin: 0;
+  padding-inline: var(--space-8) var(--space-6);
+  border-color: oklch(0.32 0.065 165 / 0.25);
+  background: linear-gradient(90deg, var(--tint), var(--surface) 55%);
+}
+.worker-application-list > li.is-confirmed::before {
+  background: var(--forest);
+}
+.worker-application-list > li.is-inactive {
+  background: oklch(0.985 0.002 160);
+  box-shadow: none;
+}
+.worker-application-list > li.is-inactive::before {
+  background: var(--border);
+}
+
+.worker-application-main {
+  gap: var(--space-1);
+}
+.worker-application-main > .quiet {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.worker-application-main h2 {
+  font-size: 1.3rem;
+}
+.application-context {
+  font-size: var(--text-sm);
+}
+.application-meta {
+  margin-top: var(--space-1);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}
+.worker-application-side .link-more {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--forest);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  text-decoration: none;
+}
+.worker-application-side .link-more:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+@media (width < 640px) {
+  .worker-application-list > li,
+  .worker-application-list > li:first-child,
+  .worker-application-list > li:last-child,
+  .worker-application-list > li.is-confirmed {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: var(--space-5) var(--space-5) var(--space-5) var(--space-6);
+  }
+  .worker-application-list > li::before {
+    left: var(--space-3);
+  }
+  .worker-application-side {
+    justify-items: start;
+  }
+}
+
+/* ---------- Documents ----------
+   Même langage que les candidatures : une carte par document, avec une
+   pastille de date à gauche (jour en Fraunces, mois en orange lisible). */
+.document-list {
+  display: grid;
+  gap: var(--space-3);
+  padding: 0;
+  border: 0;
+  background: none;
+}
+.document-list > li,
+.document-list > li:first-child {
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  gap: var(--space-5);
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
+  transition:
+    border-color var(--fast) var(--ease-out),
+    box-shadow var(--normal) var(--ease-out);
+}
+.document-list > li:hover {
+  border-color: oklch(0.42 0.085 165 / 0.3);
+  box-shadow: var(--shadow-2);
+}
+.document-list__date {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  width: 58px;
+  height: 62px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--background);
+  line-height: 1;
+}
+.document-list__date strong {
+  font-family: var(--font-display);
+  font-size: 1.55rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.document-list__date span {
+  margin-top: 3px;
+  color: var(--orange-ink);
+  font-size: var(--text-xs);
+  font-weight: 650;
+  text-transform: lowercase;
+}
+.document-list__main > .quiet {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.document-list__main h2 {
+  font-size: 1.25rem;
+}
+.document-status {
+  font-size: var(--text-xs);
+}
+.document-list .link-more {
+  color: var(--forest);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  text-decoration: none;
+}
+.document-list .link-more:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+@media (width < 640px) {
+  .document-list > li,
+  .document-list > li:first-child {
+    grid-template-columns: auto minmax(0, 1fr);
+    row-gap: var(--space-2);
+  }
+  .document-status {
+    grid-column: 2;
+  }
+  .document-list .link-more {
+    grid-column: 2;
+    min-height: 32px;
+  }
+}
+
+/* ---------- Fiche document ---------- */
+.document-detail__head h1 {
+  font-size: clamp(2rem, 3.2vw, 2.6rem);
+  line-height: 1.05;
+}
+.document-sheet {
+  box-shadow: var(--shadow-2);
+}
