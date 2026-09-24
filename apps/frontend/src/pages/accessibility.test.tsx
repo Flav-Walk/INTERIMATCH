@@ -9,6 +9,7 @@ import { PolitiqueConfidentialite } from "./PolitiqueConfidentialite";
 import { GuidedTour } from "../components/GuidedTour";
 import { MissionCard } from "../components/mission/MissionCard";
 import { PublicOfferCard } from "../components/public-offers/PublicOfferCard";
+import { MobilityMap } from "../components/da/MobilityMap";
 
 // Mock useAuth pour isoler les composants de test
 vi.mock("../hooks/useAuth", () => ({
@@ -217,6 +218,40 @@ describe("Accessibilité RGAA / WCAG (Sous-lot 8C)", () => {
       );
       expect(html).toContain("<h2");
       expect(html).toContain("Chef de rang");
+    });
+  });
+
+  describe("7. Application monopage : changement de page (RGAA 7.1, WCAG 4.1.3)", () => {
+    it("prévoit une zone qui annonce le titre de la nouvelle page", () => {
+      const html = renderToStaticMarkup(
+        <MemoryRouter initialEntries={["/worker"]}>
+          <AppLayout />
+        </MemoryRouter>,
+      );
+      // La zone existe dès le rendu ; AppLayout y écrit document.title et
+      // place le focus sur <main> à chaque nouvelle route.
+      expect(html).toMatch(/<p class="sr-only" role="status" aria-live="polite" aria-atomic="true">/);
+    });
+  });
+
+  describe("8. Carte de mobilité : image et commandes séparées (RGAA 1.1, 7.1)", () => {
+    it("ne place aucun bouton à l'intérieur de l'image de la carte", () => {
+      const html = renderToStaticMarkup(
+        <MobilityMap
+          city="Lyon"
+          postalCode="69002"
+          radiusKm={30}
+          saved={{ lat: 45.76, lon: 4.84 }}
+        />,
+      );
+      const start = html.indexOf('role="img"');
+      expect(start).toBeGreaterThan(-1);
+      // L'image se termine avec le SVG (tuiles + cercle) ; les boutons de
+      // zoom viennent après, hors de role="img" (règle axe nested-interactive).
+      const end = html.indexOf("</svg></div>", start);
+      expect(html.slice(start, end)).not.toContain("<button");
+      expect(html.slice(end)).toContain('aria-label="Zoomer sur la carte"');
+      expect(html).toContain("zone de mobilité de 30 km autour de Lyon");
     });
   });
 });

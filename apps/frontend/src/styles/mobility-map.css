@@ -1,0 +1,139 @@
+/*
+ * Styles de la carte de mobilité (components/da/MobilityMap.tsx).
+ *
+ * Importés PAR LE COMPOSANT, pas par une page : la carte sert sur le
+ * Profil ET sur le tableau de bord. Quand ils vivaient dans profile.css,
+ * le tableau de bord (qui ne charge pas profile.css) affichait les tuiles
+ * hors du cadre et un disque noir (cercle SVG sans style).
+ */
+/* ---------- Carte de mobilité (Plan IGN + cercle du rayon) ---------- */
+.mobility-map {
+  position: relative;
+  height: 340px;
+  overflow: hidden;
+  border: 1px solid color-mix(in oklch, var(--forest) 16%, var(--border));
+  border-radius: var(--radius);
+  background: var(--tint);
+}
+
+.mobility-map--empty {
+  display: grid;
+  place-items: center;
+  padding: var(--space-4);
+  color: var(--muted);
+  font-size: var(--text-sm);
+  text-align: center;
+}
+
+.mobility-map__canvas {
+  position: absolute;
+  inset: 0;
+}
+
+.mobility-map__tiles {
+  position: absolute;
+  inset: 0;
+  /* Plan IGN un peu désaturé, pour laisser la vedette au cercle vert. */
+  filter: saturate(0.55) contrast(0.95);
+}
+
+.mobility-map__tiles img {
+  position: absolute;
+  max-width: none;
+  user-select: none;
+}
+
+.mobility-map__overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.mobility-map__zone {
+  fill: color-mix(in oklch, var(--forest) 14%, transparent);
+  stroke: var(--forest);
+  stroke-width: 2;
+  transition: r var(--normal) var(--ease-out);
+}
+
+.mobility-map__point {
+  fill: var(--orange-ink);
+  stroke: var(--surface);
+  stroke-width: 3;
+}
+
+.mobility-map__label {
+  position: absolute;
+  top: var(--space-3);
+  left: var(--space-3);
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  color: var(--ink);
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
+  font-size: var(--text-sm);
+  font-weight: 650;
+}
+
+.mobility-map__zoom {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  display: grid;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
+}
+
+.mobility-map__zoom button {
+  width: 36px;
+  height: 36px;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  color: var(--forest);
+  background: var(--surface);
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.mobility-map__zoom button + button {
+  border-top: 1px solid var(--border);
+}
+
+.mobility-map__zoom button:hover:not(:disabled) {
+  background: var(--tint);
+}
+
+.mobility-map__zoom button:focus-visible {
+  outline: 3px solid color-mix(in oklch, var(--orange) 55%, transparent);
+  outline-offset: -3px;
+}
+
+.mobility-map__zoom button:disabled {
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+.mobility-map__credit {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  padding: 2px 6px;
+  color: var(--muted);
+  background: color-mix(in oklch, var(--surface) 80%, transparent);
+  font-size: 11px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mobility-map__zone {
+    transition: none;
+  }
+}

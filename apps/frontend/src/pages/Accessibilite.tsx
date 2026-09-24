@@ -6,6 +6,8 @@ export function Accessibilite() {
     description:
       "Déclaration d’accessibilité et conformité numérique de la plateforme InteriMatch.",
     robots: "index,follow",
+    // Page publique : URL canonique et balises de partage (Open Graph).
+    path: "/accessibilite",
   });
   return (
     <article className="legal-page">

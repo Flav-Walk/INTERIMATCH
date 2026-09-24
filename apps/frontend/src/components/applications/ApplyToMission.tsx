@@ -1,13 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import {
-  Ban,
-  CalendarDays,
-  CheckCircle2,
-  Clock,
-  MapPin,
-  Send,
-} from "lucide-react";
+import { Send } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
 import { ApiError } from "../../services/api";
 import { errorMessage } from "../../services/session";
@@ -134,16 +127,6 @@ export function ApplicationAction({
     application?.status === "pending" && mission?.recruiting_blocked === "full";
   const isInactive =
     heading === "Mission annulée" || heading === "Mission terminée";
-  const Icon =
-    heading === "Mission annulée"
-      ? Ban
-      : heading === "Mission terminée"
-        ? Clock
-        : accepted ||
-            heading === "Mission confirmée" ||
-            heading === "Mission en cours"
-          ? CheckCircle2
-          : Send;
   const location = mission
     ? [mission.postal_code, mission.city].filter(Boolean).join(" ")
     : "";
@@ -153,7 +136,6 @@ export function ApplicationAction({
       aria-labelledby="apply-title"
     >
       <div className="rail-head">
-        <Icon size={18} aria-hidden="true" />
         <h2 id="apply-title">{heading}</h2>
       </div>
       {loading ? (
@@ -182,14 +164,10 @@ export function ApplicationAction({
               <strong>{mission.title}</strong>
               <span>{mission.establishment_name ?? "Établissement"}</span>
               <span>
-                <CalendarDays size={14} aria-hidden="true" />
                 {schedule.format(new Date(mission.starts_at))} –{" "}
                 {schedule.format(new Date(mission.ends_at))}
               </span>
-              <span>
-                <MapPin size={14} aria-hidden="true" />
-                {location || "Lieu à confirmer"}
-              </span>
+              <span>{location || "Lieu à confirmer"}</span>
             </div>
           )}
           <Link className="link-more" to="/worker/applications">

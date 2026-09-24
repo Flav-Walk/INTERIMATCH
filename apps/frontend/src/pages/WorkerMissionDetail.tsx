@@ -23,6 +23,7 @@ import { MatchExplanation } from "../components/mission/MatchExplanation";
 import { MatchBadge } from "../components/mission/MatchBadge";
 import { ApplyToMission } from "../components/applications/ApplyToMission";
 import { UnsplashCredit } from "../components/mission/MissionPhotoField";
+import { usePageSeo } from "../hooks/usePageSeo";
 
 const payLabels: Record<string, string> = {
   hour: "de l’heure",
@@ -47,6 +48,11 @@ function DetailSkeleton() {
 
 /** Détail d'une mission offerte et point de départ de la candidature. */
 export function WorkerMissionDetail() {
+  usePageSeo({
+    title: "Détail de la mission · InteriMatch",
+    description: "Détail d’une mission proposée sur InteriMatch.",
+    robots: "noindex,nofollow",
+  });
   const { id = "" } = useParams();
   const { revision } = useAuth();
   const [mission, setMission] = useState<OpenMission | null>(null),

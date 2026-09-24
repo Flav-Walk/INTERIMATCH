@@ -6,6 +6,7 @@ import {
   type CompanyApplication,
 } from "../../services/applications";
 import { ApplicationStatus } from "./ApplicationStatus";
+import { EmptyState } from "../da/EmptyState";
 
 const day = new Intl.DateTimeFormat("fr-FR", {
   weekday: "short",
@@ -114,14 +115,13 @@ export function RecentApplications({ limit = 4 }: { limit?: number }) {
           ))}
         </ul>
       ) : (
-        <div className="empty">
-          <Users aria-hidden="true" />
+        <EmptyState icon={Users}>
           <h3>Aucune candidature reçue</h3>
           <p>
             Dès qu’un intérimaire postule à l’une de vos missions, sa
             candidature apparaît ici, avant même que vous ouvriez la mission.
           </p>
-        </div>
+        </EmptyState>
       )}
     </section>
   );
