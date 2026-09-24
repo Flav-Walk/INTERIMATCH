@@ -5,6 +5,9 @@ import { errorMessage } from "../services/session";
 import { useAuth } from "../hooks/useAuth";
 import { MissionCard } from "../components/mission/MissionCard";
 import { HeroBanner } from "../components/HeroBanner";
+import { EmptyState, PageBody } from "../components/ui/PageHeader";
+import { Segmented } from "../components/ui/Segmented";
+import { Reveal } from "../components/ui/Reveal";
 import {
   listMissions,
   missionTabs,
@@ -14,11 +17,22 @@ import {
   type MissionTab,
 } from "../services/missions";
 
+/** Ossature de chargement : la forme de la carte, pas un rectangle gris. */
 function MissionsSkeleton() {
   return (
-    <div className="mission-grid is-wide" aria-hidden="true">
+    <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3" aria-hidden="true">
       {Array.from({ length: 6 }).map((_, index) => (
-        <div key={index} className="skeleton-card" />
+        <div
+          key={index}
+          className="overflow-hidden rounded-panel border border-rule bg-surface"
+        >
+          <div className="aspect-[16/9] animate-pulse bg-paper-deep" />
+          <div className="space-y-3 p-5">
+            <div className="h-4 w-3/4 animate-pulse rounded bg-paper-deep" />
+            <div className="h-3 w-1/2 animate-pulse rounded bg-paper-deep" />
+            <div className="h-3 w-2/3 animate-pulse rounded bg-paper-deep" />
+          </div>
+        </div>
       ))}
     </div>
   );
@@ -63,63 +77,57 @@ export function CompanyMissions() {
   );
 
   return (
-    <div className="missions-list-page">
-      <div className="company-brand-hero">
-        <HeroBanner
-          compact
-          eyeline="Espace entreprise"
-          title="Vos missions"
-          subtitle="Préparez, publiez et suivez chaque besoin de renfort depuis un seul espace."
-          mascotPose="missions"
-          action={
-            <Link className="brand-hero__link" to="/company/missions/new">
-              <Plus size={16} aria-hidden="true" />
-              Créer une mission
-            </Link>
-          }
-        />
-      </div>
+    <>
+      <HeroBanner
+        compact
+        eyeline="Espace entreprise"
+        title="Vos missions"
+        subtitle="Préparez, publiez et suivez chaque besoin de renfort depuis un seul espace."
+        mascotPose="missions"
+        action={
+          <Link className="im-btn im-btn--primary" to="/company/missions/new">
+            <Plus size={16} aria-hidden="true" />
+            Créer une mission
+          </Link>
+        }
+      />
 
-      <div className="missions-list-body">
-        <div className="missions-list-toolbar">
-          <div className="dashboard-tabs" aria-label="Filtrer par statut">
-            <button
-              type="button"
-              className={"dashboard-tab" + (tab === "all" ? " is-active" : "")}
-              aria-pressed={tab === "all"}
-              onClick={() => setTab("all")}
-            >
-              Toutes
-              <span className="dashboard-tab__count">{data.length}</span>
-            </button>
-            {missionTabs.map((entry) => (
-              <button
-                key={entry.key}
-                type="button"
-                className={
-                  "dashboard-tab" + (tab === entry.key ? " is-active" : "")
-                }
-                aria-pressed={tab === entry.key}
-                onClick={() => setTab(entry.key)}
-              >
-                {entry.label}
-                <span className="dashboard-tab__count">
-                  {counts[entry.key] ?? 0}
-                </span>
-              </button>
-            ))}
-          </div>
-        </div>
+      <PageBody className="space-y-6">
+        {/*
+         * CE SONT DES FILTRES, PAS DES ONGLETS. On ne change pas de panneau :
+         * on restreint la même liste. Le groupe est donc rendu en boutons à
+         * deux états, et non en `tablist` — voir `Segmented`.
+         */}
+        <Segmented
+          mode="filters"
+          variant="switch"
+          label="Filtrer par statut"
+          value={tab}
+          onChange={(id) => setTab(id as MissionTab | "all")}
+          items={[
+            { id: "all", label: "Toutes", count: data.length },
+            ...missionTabs.map((entry) => ({
+              id: entry.key,
+              label: entry.label,
+              count: counts[entry.key] ?? 0,
+            })),
+          ]}
+        />
 
         {query && (
-          <div className="search-result-bar" role="status">
-            <span>
-              <strong>{filtered.length}</strong> résultat
-              {filtered.length > 1 ? "s" : ""} pour «&nbsp;{query}&nbsp;»
+          <div
+            className="flex flex-wrap items-center justify-between gap-3 rounded-panel border border-rule bg-surface px-4 py-3"
+            role="status"
+          >
+            <span className="text-[0.875rem] text-ink-soft">
+              <strong className="font-semibold text-ink">
+                {filtered.length}
+              </strong>{" "}
+              résultat{filtered.length > 1 ? "s" : ""} pour «&nbsp;{query}&nbsp;»
             </span>
             <button
               type="button"
-              className="search-clear-btn"
+              className="im-btn im-btn--quiet im-btn--sm"
               onClick={() => setParams({})}
             >
               <X size={13} aria-hidden="true" />
@@ -147,46 +155,54 @@ export function CompanyMissions() {
               <h2 id="company-missions-list-title" className="sr-only">
                 Liste de vos missions
               </h2>
-              <div className="mission-grid is-wide">
-                {filtered.map((mission) => (
-                  <MissionCard key={mission.id} mission={mission} />
+              <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+                {filtered.map((mission, index) => (
+                  <Reveal
+                    key={mission.id}
+                    delay={Math.min(index, 5) * 0.04}
+                    className="h-full"
+                  >
+                    <MissionCard mission={mission} />
+                  </Reveal>
                 ))}
               </div>
             </section>
           ) : query ? (
-            <div className="empty">
-              <SearchX aria-hidden="true" />
-              <h2>Aucune mission ne correspond</h2>
-              <p>
-                Essayez un autre intitulé, une autre ville ou un autre métier.
-              </p>
-              <button
-                type="button"
-                className="button"
-                onClick={() => setParams({})}
-              >
-                Effacer la recherche
-              </button>
-            </div>
+            <EmptyState
+              icon={<SearchX size={20} />}
+              title="Aucune mission ne correspond"
+              action={
+                <button
+                  type="button"
+                  className="im-btn im-btn--outline"
+                  onClick={() => setParams({})}
+                >
+                  Effacer la recherche
+                </button>
+              }
+            >
+              Essayez un autre intitulé, une autre ville ou un autre métier.
+            </EmptyState>
           ) : (
-            <div className="empty">
-              <BriefcaseBusiness aria-hidden="true" />
-              <h2>
-                {tab === "all"
+            <EmptyState
+              icon={<BriefcaseBusiness size={20} />}
+              title={
+                tab === "all"
                   ? "Votre première mission commence ici"
-                  : "Aucune mission dans cet onglet"}
-              </h2>
-              <p>
-                Décrivez le poste, les horaires et les compétences attendues :
-                les candidats compatibles vous seront ensuite proposés.
-              </p>
-              <Link className="button" to="/company/missions/new">
-                Créer une mission
-                <ArrowRight size={16} aria-hidden="true" />
-              </Link>
-            </div>
+                  : "Aucune mission dans cet onglet"
+              }
+              action={
+                <Link className="im-btn im-btn--primary" to="/company/missions/new">
+                  Créer une mission
+                  <ArrowRight size={16} aria-hidden="true" />
+                </Link>
+              }
+            >
+              Décrivez le poste, les horaires et les compétences attendues : les
+              candidats compatibles vous seront ensuite proposés.
+            </EmptyState>
           ))}
-      </div>
-    </div>
+      </PageBody>
+    </>
   );
 }

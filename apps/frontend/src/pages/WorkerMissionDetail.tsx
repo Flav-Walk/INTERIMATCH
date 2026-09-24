@@ -165,6 +165,7 @@ export function WorkerMissionDetail() {
                   band={mission.match.band}
                   bandLabel={mission.match.band_label}
                   size="large"
+                  on="dark"
                 />
               </div>
             )}

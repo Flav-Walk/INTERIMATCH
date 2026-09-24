@@ -3,10 +3,30 @@ import { defineConfig, devices } from "@playwright/test";
 export default defineConfig({
   testDir: "./e2e",
   timeout: 30000,
-  // Vite et le backend PGlite sont partagés par tous les projets. Au-delà de
-  // deux navigateurs concurrents, leurs démarrages à froid peuvent saturer le
-  // serveur de développement et bloquer page.goto avant même les assertions.
-  workers: 2,
+  /*
+   * UN SEUL OUVRIER.
+   *
+   * Vite et le backend PGlite sont partagés par tous les projets. La suite
+   * tournait à deux navigateurs concurrents ; elle en supporte mal un
+   * troisième type de charge — la recette visuelle, qui traverse vingt écrans
+   * et en tire autant de captures pleine page, sur chacun des deux projets.
+   *
+   * Le symptôme n'était jamais une assertion fausse : c'étaient des `page.goto`
+   * et des `locator.fill` qui expiraient au bout de trente à quatre-vingt-dix
+   * secondes, sur des écrans qui s'affichent en cent millisecondes une fois
+   * seuls. Trois tests différents sont tombés ainsi d'une exécution à l'autre,
+   * tous verts en isolation.
+   *
+   * Deux corrections ont été tentées avant celle-ci : le préchauffage des
+   * modules côté Vite (conservé, il a supprimé la majorité des blocages) et
+   * l'allongement des délais — écarté, parce qu'il déplace le seuil au lieu de
+   * retirer la cause, et parce qu'un test qui met quatre-vingt-dix secondes ne
+   * dit plus rien de juste.
+   *
+   * La suite passe de quatre à environ huit minutes. C'est le prix d'un
+   * résultat auquel on peut se fier : un échec redevient un vrai défaut.
+   */
+  workers: 1,
   use: { baseURL: "http://127.0.0.1:5174" },
   webServer: [
     {

@@ -78,6 +78,7 @@ async function makeEmployable(
   }: { job: string; from: string; to: string; skills?: string[] },
 ) {
   await page.goto("/worker/profile");
+  await uploadProfilePhoto(page);
   const metier = section(page, "Votre métier");
   await metier.getByLabel("Métier principal").selectOption(job);
   await save(page, "Votre métier");
@@ -98,6 +99,25 @@ async function makeEmployable(
   await dispos.getByLabel("Fin").fill(to);
   await dispos.getByRole("button", { name: /Ajouter ce créneau/ }).click();
   await dispos.getByText("Créneau ajouté.").waitFor();
+}
+
+/**
+ * Dépose la photo de profil, devenue obligatoire.
+ *
+ * Depuis la migration 012, un profil sans photo n'est pas complet et ne peut
+ * pas postuler. Le harnais doit donc en poser une — c'est le parcours réel, et
+ * la contourner ferait tester un état que le produit n'accepte plus.
+ *
+ * Les octets commencent par la signature JPEG, parce que le serveur décide du
+ * type sur les OCTETS et non sur l'en-tête déclaré.
+ */
+async function uploadProfilePhoto(page: Page) {
+  await page.locator('.avatar-field input[type="file"]').setInputFiles({
+    name: "portrait.jpg",
+    mimeType: "image/jpeg",
+    buffer: Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46]),
+  });
+  await expect(page.locator(".avatar-field").getByText("Photo enregistrée.")).toBeVisible();
 }
 
 /** Un fieldset est exposé comme un groupe nommé par sa légende. */
@@ -294,6 +314,8 @@ test("a new account becomes an intérimaire, is toured once, and cannot reach th
     .fill("Démonstration");
   await save(page, "Votre identité");
 
+  await uploadProfilePhoto(page);
+
   // Sauvegarde partielle : on quitte, on revient, la donnée est toujours là.
   await page.reload();
   await expect(
@@ -458,6 +480,7 @@ test("profile lists persist, reject incomplete rows, and allow slot editing", as
   await register(page, `acceptance.${crypto.randomUUID()}@example.test`);
   await completeTour(page);
   await page.getByRole("link", { name: "Mon profil", exact: true }).click();
+  await uploadProfilePhoto(page);
   const jobs = section(page, "Votre métier");
   await jobs.getByLabel("Métier principal").selectOption("barman");
   await jobs
@@ -1533,6 +1556,7 @@ test("matching connects a published mission to a compatible intérimaire", async
 
   // ---- Il complète ce que le rapprochement exige ----
   await page.goto("/worker/profile");
+  await uploadProfilePhoto(page);
   const identite = section(page, "Votre identité");
   await identite.getByLabel("Prénom", { exact: true }).fill(retenue);
   await identite.getByLabel("Nom", { exact: true }).fill("Nguyen");

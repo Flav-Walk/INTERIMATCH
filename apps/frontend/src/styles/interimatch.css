@@ -1,0 +1,1250 @@
+/*
+ * Design system InteriMatch — base et primitives.
+ *
+ * Ce fichier ne contient QUE ce qui vaut pour tout le produit. Un style qui ne
+ * sert qu'à un écran n'a rien à y faire : il vit dans le composant, en
+ * utilitaires. La règle évite le retour du fichier de 2 600 lignes où plus
+ * personne ne sait qui utilise quoi.
+ *
+ * Deux couches seulement :
+ *   `base`       — les éléments HTML nus. Polices, encre, focus, sélection.
+ *   `components` — les primitives réutilisées partout, et elles seules.
+ *
+ * Les deux passent SOUS `utilities` : une classe Tailwind posée sur un élément
+ * l'emporte toujours, sans avoir à batailler.
+ */
+
+@layer base {
+  /*
+   * Polices.
+   *
+   * Le produit affichait jusqu'ici `system-ui` pour l'interface et `Georgia`
+   * pour les titres — c'est-à-dire les polices par défaut du navigateur. Rien
+   * n'identifie plus sûrement une maquette non terminée.
+   *
+   * Playfair Display et Inter sont chargées depuis `index.html`, avec
+   * `display=swap` : le texte s'affiche immédiatement dans la police de repli,
+   * puis bascule. Les replis sont déclarés dans `--font-display` et
+   * `--font-sans` pour que l'écran reste juste si le chargement échoue.
+   */
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    margin: 0;
+    background: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    line-height: 1.6;
+    font-feature-settings: "cv05" 1, "ss03" 1;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /*
+   * Échelle typographique.
+   *
+   * Le contraste entre les niveaux est volontairement FORT. Une hiérarchie où
+   * le titre fait 1,2 fois le corps oblige le lecteur à relire pour savoir ce
+   * qui compte ; c'est le défaut le plus courant des interfaces assemblées
+   * rapidement. Ici, un h1 fait plus de trois fois le corps de texte.
+   *
+   * `text-wrap: balance` sur les titres, `pretty` sur les paragraphes : les
+   * lignes veuves sont ce qui distingue le plus vite un écran composé d'un
+   * écran produit.
+   */
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    text-wrap: balance;
+    letter-spacing: -0.02em;
+  }
+
+  /*
+   * AUCUNE COULEUR N'EST IMPOSÉE AUX TITRES, et c'est délibéré.
+   *
+   * Une première version déclarait ici `color: var(--color-ink)`. Elle a rendu
+   * illisibles, d'un coup, tous les titres posés sur un fond sombre : le
+   * bandeau de l'accueil et son appel à l'action affichaient un titre vert
+   * profond sur un aplat vert profond. Un titre hérite donc de la couleur de
+   * son conteneur, qui est le seul à savoir sur quoi il est posé.
+   */
+
+  h1 {
+    font-size: clamp(2rem, 1.4rem + 2.6vw, 3.25rem);
+    line-height: 1.08;
+    letter-spacing: -0.03em;
+  }
+
+  /*
+   * `h2` EST UN TITRE DE SECTION, pas un titre de page.
+   *
+   * L'échelle avait été calée sur la page d'accueil, où un h2 annonce un
+   * chapitre entier et peut monter à 2,1 rem. Dans l'application, le même
+   * niveau nomme « Vos missions » ou « Candidatures récentes » au-dessus d'une
+   * grille : à cette taille, il écrase ce qu'il annonce et deux sections
+   * successives se disputent le regard.
+   *
+   * Le défaut est donc la taille APPLICATIVE. Les rares titres de chapitre de
+   * la page d'accueil déclarent la leur en utilitaire, parce qu'ils sont
+   * l'exception.
+   */
+  h2 {
+    font-size: clamp(1.1875rem, 1.1rem + 0.45vw, 1.4375rem);
+    line-height: 1.22;
+  }
+
+  h3 {
+    font-size: 1.125rem;
+    line-height: 1.3;
+    letter-spacing: -0.012em;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  /*
+   * Focus.
+   *
+   * Un seul anneau, partout, toujours visible — y compris sur fond sombre,
+   * d'où le double liseré : le blanc extérieur détache l'anneau vert du vert
+   * du bandeau. `:focus-visible` et non `:focus` : le clic à la souris ne doit
+   * pas dessiner d'anneau, seule la navigation au clavier le mérite.
+   */
+  :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+    outline: 2px solid var(--color-forest);
+    outline-offset: 2px;
+    border-radius: 3px;
+  }
+
+  ::selection {
+    background: var(--color-sage-tint);
+    color: var(--color-forest-deep);
+  }
+
+  /* Le champ de saisie hérite de la police : sans cela, les navigateurs
+     imposent leur propre grotesque et les formulaires jurent avec le reste. */
+  input,
+  button,
+  textarea,
+  select {
+    font: inherit;
+    color: inherit;
+  }
+
+  img {
+    max-width: 100%;
+  }
+}
+
+@layer components {
+  /*
+   * ================================================================
+   *  Gabarit de page
+   * ================================================================
+   *
+   * Une seule gouttière, partagée par l'en-tête, le contenu et le pied. Sans
+   * elle, chaque écran choisit sa marge et les colonnes ne s'alignent plus
+   * d'une page à l'autre — un défaut qu'on ne sait pas nommer mais qu'on voit.
+   */
+  .im-shell {
+    width: 100%;
+    max-width: 1280px;
+    margin-inline: auto;
+    padding-inline: clamp(1rem, 0.5rem + 2.5vw, 2.5rem);
+  }
+
+  .im-shell--wide {
+    max-width: 1440px;
+  }
+
+  /*
+   * Zone de contenu du gabarit applicatif.
+   *
+   * Elle est stylée ici plutôt qu'en utilitaires parce que le test
+   * d'accessibilité vérifie `class="app-main"` À L'IDENTIQUE : c'est la cible
+   * du lien d'évitement, et le repère `main` de chaque page. Lui ajouter des
+   * classes utilitaires ferait tomber cette garantie pour un gain nul — la
+   * règle tient en trois lignes.
+   */
+  /*
+   * Zone de contenu du gabarit applicatif.
+   *
+   * Elle est stylée ici, et non en utilitaires, parce que le test
+   * d'accessibilité vérifie `class="app-main"` À L'IDENTIQUE : c'est la cible
+   * du lien d'évitement et le repère `main` de chaque page.
+   *
+   * ELLE NE MET PLUS EN PAGE. La règle `main` de la couche `legacy` lui donnait
+   * `max-width: 1440px`, `margin: auto` et une gouttière — c'est-à-dire qu'elle
+   * était à la fois le conteneur du gabarit ET l'enveloppe du contenu. Deux
+   * conséquences :
+   *
+   *  1. Aucune section ne pouvait aller d'un bord à l'autre. Un en-tête d'écran
+   *     avec son propre fond s'arrêtait à 28 px des bords, ce qui se voit.
+   *  2. `margin: auto` sur un élément flexible ANNULE l'étirement : la boîte
+   *     est alors dimensionnée sur son contenu. Un bandeau interne trop large
+   *     élargissait donc `main`, puis le document — la page défilait de travers
+   *     sur mobile, et c'est ce que la recette a attrapé.
+   *
+   * `main` est désormais une simple bande pleine largeur. La mise en page
+   * appartient aux écrans, via `im-shell`.
+   */
+  .app-main {
+    flex: 1;
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    background: var(--color-paper);
+    outline: none;
+  }
+
+  /*
+   * Compatibilité des écrans non encore repris.
+   *
+   * Tant qu'un écran n'a pas reçu `PageHeader` / `PageBody`, il compte sur la
+   * gouttière que `main` lui donnait. Cette règle la lui rend, et ELLE SEULE :
+   * un écran repris se marque `im-page` et sort du dispositif.
+   *
+   * Cette règle est temporaire. Elle disparaît quand le dernier écran est
+   * repris — et la marque `im-page` sur chaque écran dit lesquels le sont.
+   */
+  .app-main > *:not(.im-page) {
+    max-width: var(--page-max, 1440px);
+    margin-inline: auto;
+    padding-inline: var(--page-gutter, 28px);
+    padding-block: 24px 56px;
+  }
+
+  /*
+   * Titre d'une carte mission.
+   *
+   * Stylé ici, et non en utilitaires, pour la même raison que `.app-main` : le
+   * test d'accessibilité vérifie `<h3 class="mission-title">` à l'identique,
+   * parce que c'est le titre accessible de la carte et le point d'entrée des
+   * lecteurs d'écran dans une grille de missions.
+   */
+  .mission-title {
+    margin: 0.25rem 0 0;
+    font-family: var(--font-display);
+    font-size: 1.125rem;
+    font-weight: 600;
+    line-height: 1.25;
+    color: var(--color-ink);
+  }
+
+  /*
+   * ================================================================
+   *  Neutralisation ciblée de la couche héritée
+   * ================================================================
+   *
+   * Certaines classes doivent SURVIVRE à la refonte parce que les suites de
+   * recette les interrogent : `.app-header__nav-link`, `.is-active`,
+   * `.mission-status`. Les conserver, c'est aussi conserver les règles que
+   * `shell.css` leur applique — et celles-là ne se laissent pas surcharger par
+   * un simple utilitaire, parce qu'elles déclarent des propriétés que le
+   * composant ne redéclare pas.
+   *
+   * Ce bloc coupe précisément ces héritages-là, et rien d'autre. Chaque règle
+   * répare un défaut observé en recette, pas un défaut supposé.
+   */
+
+  /* Le bandeau passait en « icônes seules » sous 900 px en rendant invisibles
+     TOUS les `span` d'un lien. Le rail défilant affiche désormais des libellés
+     courts : la règle vidait donc la navigation de son texte sur mobile. Les
+     libellés réservés aux lecteurs d'écran gardent leur `sr-only`, qui est un
+     utilitaire et passe donc au-dessus de cette réparation. */
+  .app-header__nav-link > span:not(.nav-badge) {
+    position: static;
+    width: auto;
+    height: auto;
+    padding: 0;
+    overflow: visible;
+    clip-path: none;
+    white-space: nowrap;
+  }
+
+  /* L'état actif portait un aplat fixe. Il doublait l'indicateur animé, qui
+     semblait alors ne jamais se déplacer : le repère était déjà peint à
+     l'arrivée. L'aplat appartient désormais au seul indicateur. */
+  .app-header__nav-link,
+  .app-header__nav-link.is-active {
+    background: none;
+  }
+
+  /*
+   * `.mission-status` était une gélule positionnée en absolu, en capitales
+   * espacées, avec un fond par variante. Le système de statuts place et peint
+   * lui-même sa marque : sans cette coupure, les deux se superposaient — et la
+   * recette mobile montrait « À venir » écrit par-dessus « À POURVOIR ».
+   */
+  .mission-status {
+    position: static;
+    inset: auto;
+    padding: 0;
+    border-radius: 0;
+    background: none;
+    color: inherit;
+    font-size: inherit;
+    font-weight: inherit;
+    letter-spacing: normal;
+    text-transform: none;
+    backdrop-filter: none;
+  }
+
+  /*
+   * ================================================================
+   *  Signature de marque
+   * ================================================================
+   *
+   * Le mot-symbole était composé en Georgia — la police par défaut du
+   * navigateur. Le produit affichait donc son propre nom dans un caractère
+   * qu'il n'avait pas choisi, à côté de titres composés en Playfair Display.
+   * C'est la première chose qu'on lit sur chaque écran, et elle jurait avec le
+   * reste depuis le début.
+   *
+   * Il reprend la police d'affichage de la marque, et rétrécit sur mobile : sur
+   * un bandeau de 390 px, un mot-symbole de 1,3 rem mangeait un tiers de la
+   * largeur et laissait le rail de navigation sans place.
+   */
+  .brand-wordmark {
+    font-family: var(--font-display);
+    font-size: 1.0625rem;
+    font-weight: 600;
+    letter-spacing: -0.025em;
+    text-decoration: none;
+  }
+
+  @media (min-width: 1024px) {
+    .brand-wordmark {
+      font-size: 1.25rem;
+    }
+  }
+
+  /* Le lien du logo héritait du soulignement des liens : le nom du produit
+     apparaissait souligné en haut de chaque écran. */
+  a:has(> .brand-wordmark),
+  a > .brand-wordmark {
+    text-decoration: none;
+  }
+
+  /*
+   * Neutralisation de l'ancien bandeau d'espace.
+   *
+   * `HeroBanner` a été recomposé pour reprendre la mise en page de
+   * `PageHeader`, mais il conserve ses classes : la recette navigateur
+   * interroge `.brand-hero`, `.brand-hero__eyeline` et `.brand-hero__mascot`.
+   * Les règles héritées — grille à trois colonnes, aplat vert, rayon de 18 px,
+   * titre blanc, hauteur minimale de 218 px — s'appliqueraient donc au nouveau
+   * balisage et le déformeraient entièrement.
+   */
+  .brand-hero,
+  .brand-hero--compact {
+    display: block;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    overflow: visible;
+    border-radius: 0;
+    background: var(--color-surface);
+    color: var(--color-ink);
+  }
+
+  .brand-hero__copy {
+    max-width: none;
+  }
+
+  .brand-hero h1,
+  .brand-hero p {
+    max-width: none;
+    color: inherit;
+  }
+
+  .brand-hero__eyeline {
+    /* `im-eyebrow` porte désormais l'apparence ; on ne garde que la ligne. */
+    display: inline-flex;
+    margin: 0;
+    color: var(--color-ink-faint);
+  }
+
+  .brand-hero__mascot {
+    position: static;
+    inset: auto;
+    margin: 0;
+  }
+
+  .brand-hero__gauge {
+    margin: 0;
+  }
+
+  /*
+   * Neutralisation de l'ancien écran d'authentification.
+   *
+   * `.auth-grid`, `.auth-story` et `.form-panel` restent des accroches de
+   * recette — la marque et la mascotte y sont vérifiées. Mais l'ancienne
+   * feuille en faisait une CARTE : largeur bornée à 1 120 px, marge extérieure,
+   * hauteur minimale de 680 px, coins arrondis, ombre portée, et surtout une
+   * grille à deux colonnes dont la seconde réclame 420 px — appliquée à TOUTES
+   * les largeurs. Sur un téléphone de 390 px, cette seule règle suffit à faire
+   * déborder la page.
+   *
+   * L'écran est désormais pleine page, et sa grille est déclarée en utilitaires
+   * avec ses points de rupture.
+   */
+  .auth-grid {
+    display: block;
+    width: auto;
+    max-width: none;
+    min-height: 0;
+    margin: 0;
+    border: 0;
+    border-radius: 0;
+    overflow: visible;
+    box-shadow: none;
+    background: var(--color-surface);
+  }
+
+  .auth-story {
+    padding: 0;
+    background: none;
+  }
+
+  .auth-story__copy {
+    max-width: none;
+    margin: 0;
+  }
+
+  .auth-story__logo {
+    align-self: auto;
+    font-size: inherit;
+  }
+
+  /* Les deux surtitres portaient l'orange de l'ancienne palette. Ils prennent
+     désormais l'apparence de `im-eyebrow`, posée à côté sur le même élément. */
+  .auth-story__eyeline,
+  .form-panel__eyeline {
+    color: inherit;
+    font-size: inherit;
+    font-weight: inherit;
+    letter-spacing: inherit;
+    text-transform: inherit;
+  }
+
+  .form-panel {
+    padding: 0;
+  }
+
+  /*
+   * ================================================================
+   *  Surtitre
+   * ================================================================
+   *
+   * Le petit intitulé en capitales espacées au-dessus d'un titre. Il situe la
+   * section sans consommer un niveau de titre, et donne le registre éditorial.
+   */
+  .im-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--color-ink-faint);
+  }
+
+  .im-eyebrow::before {
+    content: "";
+    width: 1.5rem;
+    height: 1px;
+    background: currentColor;
+    opacity: 0.55;
+  }
+
+  .im-eyebrow--clay {
+    color: var(--color-clay-ink);
+  }
+
+  .im-eyebrow--light {
+    color: color-mix(in oklch, var(--color-sage) 85%, white);
+  }
+
+  /*
+   * ================================================================
+   *  Boutons
+   * ================================================================
+   *
+   * Trois intentions, pas davantage : l'action principale d'un écran, une
+   * action secondaire, et une action discrète. Une quatrième variante signifie
+   * presque toujours qu'un écran demande deux choses à la fois.
+   *
+   * Le déplacement au survol est de 1 px. C'est assez pour que le bouton
+   * réponde, trop peu pour qu'on le remarque — ce qui est exactement le but.
+   */
+  .im-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.625rem 1.125rem;
+    border: 1px solid transparent;
+    border-radius: var(--radius-field);
+    font-size: 0.875rem;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+    line-height: 1.2;
+    text-decoration: none;
+    cursor: pointer;
+    white-space: nowrap;
+    transition:
+      background-color 160ms var(--ease-exit),
+      border-color 160ms var(--ease-exit),
+      color 160ms var(--ease-exit),
+      transform 160ms var(--ease-exit),
+      box-shadow 160ms var(--ease-exit);
+  }
+
+  .im-btn:disabled,
+  .im-btn[aria-disabled="true"] {
+    cursor: not-allowed;
+    opacity: 0.55;
+    transform: none !important;
+    box-shadow: none !important;
+  }
+
+  .im-btn--primary {
+    background: var(--color-forest);
+    color: white;
+    box-shadow: var(--shadow-lift);
+  }
+
+  .im-btn--primary:hover:not(:disabled) {
+    background: var(--color-forest-mid);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-raise);
+  }
+
+  .im-btn--primary:active:not(:disabled) {
+    transform: translateY(0);
+  }
+
+  /* Le bouton d'accent porte du texte blanc : il prend donc la terracotta
+     ASSOMBRIE, seule à franchir 4,5:1. Le survol éclaircit — un bouton survolé
+     est un bouton qu'on regarde, et le contraste y reste largement suffisant. */
+  .im-btn--clay {
+    background: var(--color-clay-ink);
+    color: white;
+    box-shadow: var(--shadow-lift);
+  }
+
+  .im-btn--clay:hover:not(:disabled) {
+    background: var(--color-clay);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-raise);
+  }
+
+  .im-btn--outline {
+    background: var(--color-surface);
+    border-color: var(--color-rule-strong);
+    color: var(--color-ink);
+  }
+
+  .im-btn--outline:hover:not(:disabled) {
+    border-color: var(--color-forest);
+    color: var(--color-forest);
+    background: var(--color-sage-tint);
+  }
+
+  .im-btn--quiet {
+    background: transparent;
+    color: var(--color-ink-soft);
+    padding-inline: 0.625rem;
+  }
+
+  .im-btn--quiet:hover:not(:disabled) {
+    background: var(--color-paper-deep);
+    color: var(--color-ink);
+  }
+
+  .im-btn--danger {
+    background: transparent;
+    border-color: color-mix(in oklch, var(--color-alert) 35%, transparent);
+    color: var(--color-alert);
+  }
+
+  .im-btn--danger:hover:not(:disabled) {
+    background: var(--color-alert-tint);
+    border-color: var(--color-alert);
+  }
+
+  .im-btn--sm {
+    padding: 0.4375rem 0.8125rem;
+    font-size: 0.8125rem;
+  }
+
+  .im-btn--lg {
+    padding: 0.8125rem 1.5rem;
+    font-size: 0.9375rem;
+  }
+
+  /* Surface tactile. 44 px est le minimum qui rend une cible atteignable au
+     pouce ; en dessous, un bouton correct au clavier reste raté au doigt. */
+  @media (pointer: coarse) {
+    .im-btn {
+      min-height: 44px;
+    }
+  }
+
+  /*
+   * ================================================================
+   *  Panneaux
+   * ================================================================
+   *
+   * Le filet fait l'essentiel, l'ombre n'intervient qu'au survol d'un panneau
+   * cliquable. Une pile de rectangles blancs qui flottent tous est le motif le
+   * plus reconnaissable d'un tableau de bord assemblé sans intention.
+   */
+  .im-panel {
+    background: var(--color-surface);
+    border: 1px solid var(--color-rule);
+    border-radius: var(--radius-panel);
+  }
+
+  .im-panel--flush {
+    border-radius: 0;
+    border-inline: 0;
+  }
+
+  .im-panel--raised {
+    box-shadow: var(--shadow-lift);
+  }
+
+  /*
+   * ================================================================
+   *  Champs de formulaire
+   * ================================================================
+   *
+   * Une bordure d'1 px, un fond papier, et au focus un anneau vert doublé d'un
+   * halo. Pas de fond gris : c'est la marque des formulaires à peine stylés.
+   */
+  .im-field {
+    display: block;
+    width: 100%;
+    padding: 0.625rem 0.75rem;
+    background: var(--color-surface);
+    border: 1px solid var(--color-rule-strong);
+    border-radius: var(--radius-field);
+    font-size: 0.9375rem;
+    color: var(--color-ink);
+    transition:
+      border-color 140ms var(--ease-exit),
+      box-shadow 140ms var(--ease-exit),
+      background-color 140ms var(--ease-exit);
+  }
+
+  .im-field::placeholder {
+    color: var(--color-ink-faint);
+  }
+
+  .im-field:hover:not(:disabled):not([aria-invalid="true"]) {
+    border-color: var(--color-sage);
+  }
+
+  .im-field:focus {
+    outline: none;
+    border-color: var(--color-forest);
+    box-shadow: 0 0 0 3px color-mix(in oklch, var(--color-forest) 14%, transparent);
+  }
+
+  .im-field:disabled {
+    background: var(--color-paper-deep);
+    color: var(--color-ink-faint);
+    cursor: not-allowed;
+  }
+
+  .im-field[aria-invalid="true"] {
+    border-color: var(--color-alert);
+  }
+
+  .im-field[aria-invalid="true"]:focus {
+    box-shadow: 0 0 0 3px color-mix(in oklch, var(--color-alert) 14%, transparent);
+  }
+
+  /* Un `select` natif conserve la flèche du système, qui ne ressemble à rien
+     d'autre sur la page. On la remplace, et on réserve la place à droite. */
+  select.im-field {
+    appearance: none;
+    padding-right: 2.25rem;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'%3E%3Cpath d='M1 1.5 6 6.5l5-5' stroke='%235c6b63' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.8125rem center;
+  }
+
+  .im-label {
+    display: block;
+    margin-bottom: 0.375rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--color-ink);
+    letter-spacing: -0.003em;
+  }
+
+  .im-hint {
+    margin: 0.375rem 0 0;
+    font-size: 0.8125rem;
+    color: var(--color-ink-faint);
+    line-height: 1.45;
+  }
+
+  .im-error {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.375rem;
+    margin: 0.375rem 0 0;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--color-alert);
+  }
+
+  /*
+   * ================================================================
+   *  Pont vers les écrans non encore repris
+   * ================================================================
+   *
+   * POURQUOI CE BLOC EXISTE. La refonte reprend les écrans un par un, en
+   * remplaçant leur balisage. Mais tous les écrans, repris ou non, partagent
+   * les mêmes CONTRÔLES : des champs, des boutons, des cartes. Les laisser à la
+   * feuille héritée, c'est laisser une moitié du produit avec des champs de
+   * 8 px de rayon et une bordure grise, et l'autre avec les nouveaux — un écart
+   * que l'on voit en naviguant, jamais en regardant une seule page.
+   *
+   * Ce bloc aligne donc les contrôles HÉRITÉS sur les jetons de la refonte,
+   * sans toucher au balisage. Il agit par la position dans la cascade, pas par
+   * la spécificité : `components` passe au-dessus de `legacy` quelle que soit
+   * la spécificité des sélecteurs, donc aucune surenchère n'est nécessaire et
+   * aucun `!important` n'apparaît ici.
+   *
+   * IL EST TEMPORAIRE. Chaque écran repris cesse d'en dépendre. Il disparaîtra
+   * avec le dernier.
+   */
+
+  /* Champs de saisie. Mêmes réglages que `.im-field`, sur les balises nues. */
+  /*
+   * SEUL LE RETRAIT VERTICAL EST REDÉFINI, et c'est une correction, pas un
+   * détail. Une première version imposait aussi le retrait horizontal : elle a
+   * ramené à 12 px des champs qui réservaient 38 px à gauche pour une icône —
+   * la loupe de la recherche France Travail s'est retrouvée par-dessus le texte
+   * du placeholder. Le retrait horizontal appartient au champ, qui sait seul ce
+   * qu'il doit loger.
+   */
+  input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="submit"]),
+  select,
+  textarea {
+    padding-block: 0.625rem;
+    border: 1px solid var(--color-rule-strong);
+    border-radius: var(--radius-field);
+    background: var(--color-surface);
+    color: var(--color-ink);
+    font-size: 0.9375rem;
+    transition:
+      border-color 140ms var(--ease-exit),
+      box-shadow 140ms var(--ease-exit);
+  }
+
+  input:not([type="checkbox"]):not([type="radio"]):not([type="file"])::placeholder,
+  textarea::placeholder {
+    color: var(--color-ink-faint);
+  }
+
+  /*
+   * Le focus passe de l'`outline` détaché à un anneau collé au champ.
+   * `:focus` et non `:focus-visible` : sur un champ de saisie, le curseur est
+   * DANS le champ, et ne pas le montrer à la souris laisse l'utilisateur sans
+   * repère de l'endroit où il écrit.
+   */
+  input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):focus,
+  select:focus,
+  textarea:focus {
+    outline: none;
+    border-color: var(--color-forest);
+    box-shadow: 0 0 0 3px color-mix(in oklch, var(--color-forest) 14%, transparent);
+  }
+
+  input:disabled,
+  select:disabled,
+  textarea:disabled {
+    background: var(--color-paper-deep);
+    color: var(--color-ink-faint);
+    cursor: not-allowed;
+  }
+
+  input[type="checkbox"],
+  input[type="radio"] {
+    accent-color: var(--color-forest);
+  }
+
+  textarea {
+    min-height: 110px;
+    line-height: 1.55;
+  }
+
+  /* Intitulé d'un champ. La feuille héritée met les `label` en grille : c'est
+     ce qui empile l'intitulé au-dessus du champ, et cela reste juste. Seules la
+     taille et la couleur changent. */
+  label {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--color-ink);
+  }
+
+  /* Boutons hérités. `.button` porte l'action principale, `.secondary-button`
+     l'action secondaire : ils reprennent l'apparence de `.im-btn--primary` et
+     `.im-btn--outline`, pour qu'un même geste ait partout la même forme. */
+  .button {
+    gap: 0.5rem;
+    min-height: 0;
+    padding: 0.625rem 1.125rem;
+    border-radius: var(--radius-field);
+    background: var(--color-forest);
+    color: white;
+    font-size: 0.875rem;
+    font-weight: 600;
+    box-shadow: var(--shadow-lift);
+    transition:
+      background-color 160ms var(--ease-exit),
+      transform 160ms var(--ease-exit),
+      box-shadow 160ms var(--ease-exit);
+  }
+
+  .button:hover:not(:disabled) {
+    background: var(--color-forest-mid);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-raise);
+  }
+
+  .button:disabled {
+    background: var(--color-rule-strong);
+    color: var(--color-ink-faint);
+    box-shadow: none;
+    transform: none;
+  }
+
+  .button.is-danger {
+    background: var(--color-alert);
+  }
+
+  .button.is-danger:hover:not(:disabled) {
+    background: var(--color-alert);
+    filter: brightness(1.08);
+  }
+
+  .secondary-button,
+  .compact-button {
+    min-height: 0;
+    padding: 0.5625rem 1rem;
+    border-radius: var(--radius-field);
+    border: 1px solid var(--color-rule-strong);
+    background: var(--color-surface);
+    color: var(--color-ink);
+    font-size: 0.875rem;
+    font-weight: 600;
+    transition:
+      border-color 160ms var(--ease-exit),
+      background-color 160ms var(--ease-exit),
+      color 160ms var(--ease-exit);
+  }
+
+  .secondary-button:hover:not(:disabled),
+  .compact-button:hover:not(:disabled) {
+    border-color: var(--color-forest);
+    background: var(--color-sage-tint);
+    color: var(--color-forest);
+  }
+
+  /* Cartes et panneaux hérités : filet chaud, rayon de la refonte, et l'ombre
+     seulement là où elle sépare vraiment deux plans. */
+  .side-panel,
+  .profile-section,
+  .empty,
+  .form-panel,
+  .detail-card,
+  .rail-card {
+    border-color: var(--color-rule);
+    border-radius: var(--radius-panel);
+    background: var(--color-surface);
+  }
+
+  /* Messages. Les trois tons du produit, au même endroit. */
+  .form-error,
+  .field-error {
+    color: var(--color-alert);
+    font-size: 0.8125rem;
+    font-weight: 500;
+  }
+
+  .form-success {
+    color: var(--color-forest);
+    font-size: 0.8125rem;
+    font-weight: 500;
+  }
+
+  .quiet {
+    color: var(--color-ink-faint);
+    font-size: 0.8125rem;
+  }
+
+  .eyeline {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--color-ink-faint);
+  }
+
+  /*
+   * Liste dépouillée.
+   *
+   * Preflight est volontairement désactivé — il remettrait à zéro les 7 200
+   * lignes de la couche héritée. Conséquence : un `<ul>` écrit par la refonte
+   * garde la puce et le retrait de 40 px du navigateur, ce qui décale ses
+   * lignes par rapport au titre juste au-dessus. C'est visible sur toutes les
+   * cartes, et invisible dans le code.
+   *
+   * La remise à zéro est donc EXPLICITE et locale. Un reset global sur `ul`
+   * dépouillerait aussi les listes de texte des pages légales, où la puce
+   * porte du sens.
+   */
+  .im-bare {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  /*
+   * Onglets hérités du tableau de bord.
+   *
+   * Même apparence que `Segmented` en variante `switch` : un cadre unique qui
+   * contient les entrées, plutôt que des gélules indépendantes. L'entrée
+   * active portait un décompte sombre sur un aplat vert foncé — lisible en
+   * théorie, illisible à l'écran.
+   */
+  .dashboard-tabs {
+    display: inline-flex;
+    gap: 0.125rem;
+    padding: 0.25rem;
+    border: 1px solid var(--color-rule);
+    border-radius: 10px;
+    background: var(--color-paper-deep);
+  }
+
+  .dashboard-tab {
+    padding: 0.375rem 0.75rem;
+    border: 1px solid transparent;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--color-ink-soft);
+    font-size: 0.8125rem;
+    font-weight: 600;
+  }
+
+  .dashboard-tab:hover:not(.is-active) {
+    border-color: transparent;
+    background: color-mix(in oklch, var(--color-surface) 70%, transparent);
+    color: var(--color-ink);
+  }
+
+  .dashboard-tab.is-active {
+    border-color: var(--color-rule);
+    background: var(--color-surface);
+    color: var(--color-forest);
+    box-shadow: var(--shadow-lift);
+  }
+
+  .dashboard-tab__count {
+    min-width: 0;
+    height: auto;
+    padding: 0.0625rem 0.375rem;
+    border-radius: 999px;
+    background: var(--color-paper-deep);
+    color: var(--color-ink-faint);
+    font-size: 0.6875rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .dashboard-tab.is-active .dashboard-tab__count {
+    background: var(--color-sage-tint);
+    color: var(--color-forest);
+  }
+
+  /*
+   * Bandeau de source externe (France Travail).
+   *
+   * Il était bleu : la seule teinte absente de la palette InteriMatch, et donc
+   * la seule qui fasse « encart d'alerte rapporté d'un autre produit ».
+   *
+   * La distinction qu'il porte est réelle et doit rester lisible — ces offres
+   * ne sont pas des missions InteriMatch, on n'y postule pas ici. Elle passe
+   * désormais par la FORME : un filet épais à gauche et un aplat papier, qui
+   * disent « information rapportée » sans emprunter une couleur d'état. C'est
+   * le même raisonnement que pour les statuts, où la forme précède la teinte.
+   */
+  .public-offers-disclaimer,
+  .public-offer-external-banner {
+    border: 1px solid var(--color-rule);
+    border-left: 3px solid var(--color-ink-faint);
+    border-radius: var(--radius-panel);
+    background: var(--color-paper-deep);
+    color: var(--color-ink-soft);
+  }
+
+  .public-offers-disclaimer svg,
+  .public-offer-external-banner svg {
+    color: var(--color-ink-faint);
+  }
+
+  .public-offers-disclaimer strong,
+  .public-offer-external-banner strong {
+    color: var(--color-ink);
+  }
+
+  /*
+   * Neutralisation de l'ancienne pastille de compatibilité.
+   *
+   * `.match-badge` et ses trois paliers restent des accroches de recette. La
+   * nouvelle pastille dessine un ARC — une géométrie qu'aucun autre élément du
+   * produit n'emploie — et n'a plus besoin d'un fond ni d'un contour : les
+   * conserver la remettait dans une gélule, exactement la forme dont on
+   * voulait la sortir pour la distinguer des statuts.
+   */
+  .match-badge,
+  .match-badge.is-high,
+  .match-badge.is-mid,
+  .match-badge.is-low,
+  .match-badge.is-large {
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: none;
+    font-size: inherit;
+    font-weight: inherit;
+    white-space: normal;
+  }
+
+  /*
+   * ================================================================
+   *  Formulaires hérités : groupes, légendes, grilles
+   * ================================================================
+   *
+   * Tous les grands formulaires du produit — profil intérimaire, profil
+   * établissement, création et modification d'une mission — sont bâtis sur des
+   * `fieldset` et des `legend` nus. Les reprendre ici les aligne tous d'un coup
+   * sur le design system, sans toucher à leur balisage ni à leurs libellés.
+   */
+  fieldset {
+    padding: 1.5rem;
+    border: 1px solid var(--color-rule);
+    border-radius: var(--radius-panel);
+    background: var(--color-surface);
+    gap: 1.25rem;
+  }
+
+  legend {
+    font-family: var(--font-display);
+    font-size: 1.0625rem;
+    font-weight: 600;
+    letter-spacing: -0.012em;
+    color: var(--color-ink);
+  }
+
+  /*
+   * `1fr 1fr` À TOUTES LES LARGEURS — c'était un vrai défaut mobile, pas une
+   * préférence. Sur un écran de 390 px, deux colonnes laissent environ 150 px
+   * par champ : un code postal y tient, une date et une heure non, et un
+   * intitulé de mission encore moins. La grille passe donc à une colonne en
+   * dessous de 40 rem.
+   */
+  .form-grid {
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
+  }
+
+  @media (min-width: 40rem) {
+    .form-grid {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+
+  /* Les formulaires pleine page ont leur propre gouttière : ils ne sont pas
+     des écrans de liste, et une colonne de 880 px centrée reste la bonne
+     mesure de lecture pour un formulaire long. */
+  /*
+   * La règle de compatibilité `.app-main > *:not(.im-page)` porte deux classes
+   * et l'emporte donc, par spécificité, sur le `max-width: 880px` hérité de
+   * `.page-form`. Le formulaire s'étalait sur 1 440 px : un champ de saisie de
+   * 1 380 px de large ne se remplit pas, il s'endure. La mesure de lecture est
+   * donc redonnée avec la même spécificité que la règle qui l'écrasait.
+   */
+  .app-main > .page-form {
+    max-width: 880px;
+    margin-inline: auto;
+  }
+
+  .page-form {
+    padding-block: 2rem 3.5rem;
+  }
+
+  .page-form > form {
+    display: grid;
+    gap: 1.25rem;
+  }
+
+  .form-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.625rem;
+  }
+
+  /* Le retour arrière est une commande, pas une note de bas de page : il prend
+     la forme d'un bouton discret, atteignable au doigt. */
+  .link-back {
+    gap: 0.375rem;
+    margin-bottom: 1.25rem;
+    padding: 0.375rem 0.625rem 0.375rem 0.375rem;
+    border-radius: var(--radius-field);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--color-ink-soft);
+    transition:
+      background-color 150ms var(--ease-exit),
+      color 150ms var(--ease-exit);
+  }
+
+  .link-back:hover {
+    background: var(--color-paper-deep);
+    color: var(--color-forest);
+  }
+
+  /*
+   * Bandeau de fiche mission.
+   *
+   * Il est posé sur le vert de marque, mais ne déclarait aucune couleur
+   * d'encre : seuls le titre et quelques éléments la fixaient eux-mêmes. Tout
+   * le reste héritait de l'encre sombre du corps de page — invisible. Le
+   * défaut était masqué tant que chaque élément portait son propre fond plein ;
+   * il est apparu dès que les gélules ont été retirées.
+   *
+   * Le bandeau déclare donc son encre, une fois, et ce qu'il contient en
+   * hérite. C'est la règle qui manquait, pas un correctif par élément.
+   */
+  .detail-hero {
+    color: white;
+  }
+
+  /* L'état reste lisible sur le vert : un voile clair, pas un aplat de
+     couleur, pour ne pas concurrencer le titre juste en dessous. */
+  .detail-hero .mission-status {
+    padding: 0.25rem 0.625rem;
+    border-radius: 999px;
+    background: rgb(255 255 255 / 0.16);
+    color: white;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+
+  /* Le repère temporel gardait son aplat sauge clair ET un texte sauge clair :
+     illisible sur le vert. Il prend la même forme que l'état, en plus discret —
+     c'est un complément, pas un statut. */
+  .detail-hero .mission-timing {
+    padding: 0.25rem 0.625rem;
+    border-radius: 999px;
+    border: 1px solid rgb(255 255 255 / 0.22);
+    background: none;
+    color: rgb(255 255 255 / 0.78);
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+
+  /*
+   * Neutralisation de l'ancienne gélule de document.
+   *
+   * `.document-status` reste l'accroche du conteneur ; la marque de statut est
+   * désormais rendue à l'intérieur. Sans cette coupure, la gélule ambre
+   * enveloppe la nouvelle marque : deux pastilles imbriquées, dont une seule
+   * porte le sens.
+   */
+  .document-status,
+  .document-status.is-completed,
+  .document-status.is-cancelled {
+    display: inline-flex;
+    padding: 0;
+    border-radius: 0;
+    background: none;
+    color: inherit;
+    font-size: inherit;
+    font-weight: inherit;
+  }
+
+  /*
+   * ================================================================
+   *  Filet de séparation titré
+   * ================================================================
+   */
+  .im-rule {
+    display: flex;
+    align-items: center;
+    gap: 0.875rem;
+    color: var(--color-ink-faint);
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .im-rule::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--color-rule);
+  }
+
+  /* Réservé aux lecteurs d'écran. Le projet l'utilise déjà partout sous ce
+     nom dans la couche `legacy` : le redéclarer ici garantit qu'il survit à la
+     disparition éventuelle de l'ancien fichier. */
+  .im-sr {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
+}
+
+/*
+ * Mouvement réduit.
+ *
+ * Hors de toute couche, et en dernier : cette préférence n'est pas une
+ * question de style, elle prime sur tout ce qui précède. Les animations de
+ * Motion sont neutralisées côté composant via `useReducedMotion`, mais les
+ * transitions CSS, elles, se coupent ici.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

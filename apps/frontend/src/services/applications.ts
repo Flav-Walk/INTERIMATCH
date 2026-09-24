@@ -61,6 +61,8 @@ export interface MissionApplication extends Omit<Application, "worker_id"> {
     last_name: string;
     city: string | null;
     main_job: string | null;
+    /** Portrait servi par le serveur. Voir D14 : c'est ce qui justifie la règle. */
+    avatar_url: string | null;
   };
   /**
    * Cette personne a accepté une autre mission qui occupe ce créneau.

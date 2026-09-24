@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import type { CompletionRule } from "./session";
 import {
+  coverageByDay,
   availableFrom,
   humaniseError,
   missingIn,
@@ -111,6 +112,7 @@ describe("saisie et libellés", () => {
       "location",
       "main_job",
       "mobility_radius",
+      "photo",
       "skills",
     ]);
     for (const label of Object.values(requirementLabels))
@@ -206,5 +208,74 @@ describe("sections du profil", () => {
   it("supporte un profil complet ou inconnu", () => {
     expect(missingIn([], "Votre identité")).toEqual([]);
     expect(missingIn(undefined, "Votre identité")).toEqual([]);
+  });
+});
+
+describe("couverture du calendrier de disponibilités", () => {
+  const slot = (
+    starts_at: string,
+    ends_at: string,
+    status: "available" | "unavailable" = "available",
+  ) => ({ id: crypto.randomUUID(), starts_at, ends_at, status });
+
+  it("ne peint aucun jour sans créneau", () => {
+    expect(coverageByDay(undefined, 2027, 0).size).toBe(0);
+    expect(coverageByDay([], 2027, 0).size).toBe(0);
+  });
+
+  it("peint tous les jours civils qu'un intervalle traverse", () => {
+    // Un créneau InteriMatch n'est pas une case : celui-ci couvre trois jours.
+    const days = coverageByDay(
+      [slot("2027-03-10T08:00", "2027-03-12T18:00")],
+      2027,
+      2,
+    );
+    expect([...days.keys()].sort((a, b) => a - b)).toEqual([10, 11, 12]);
+  });
+
+  it("exclut la borne de fin quand elle tombe à minuit pile", () => {
+    // Un créneau qui s'arrête à minuit n'engage personne le jour suivant.
+    const days = coverageByDay(
+      [slot("2027-03-10T20:00", "2027-03-11T00:00")],
+      2027,
+      2,
+    );
+    expect([...days.keys()]).toEqual([10]);
+  });
+
+  it("ignore un intervalle situé hors du mois affiché", () => {
+    expect(
+      coverageByDay([slot("2027-01-05T08:00", "2027-01-06T08:00")], 2027, 2)
+        .size,
+    ).toBe(0);
+  });
+
+  it("distingue disponible, indisponible et les deux", () => {
+    const days = coverageByDay(
+      [
+        slot("2027-03-10T08:00", "2027-03-10T12:00", "available"),
+        slot("2027-03-10T14:00", "2027-03-10T18:00", "unavailable"),
+        slot("2027-03-11T08:00", "2027-03-11T12:00", "unavailable"),
+        slot("2027-03-12T08:00", "2027-03-12T12:00", "available"),
+      ],
+      2027,
+      2,
+    );
+    // Le jour contradictoire est signalé comme tel, jamais arbitré.
+    expect(days.get(10)).toBe("mixed");
+    expect(days.get(11)).toBe("unavailable");
+    expect(days.get(12)).toBe("available");
+  });
+
+  it("ne peint que la portion du mois affichée pour un long créneau", () => {
+    const days = coverageByDay(
+      [slot("2027-02-25T08:00", "2027-04-03T08:00")],
+      2027,
+      2,
+    );
+    // Mars entier, et rien d'autre.
+    expect(days.size).toBe(31);
+    expect(days.get(1)).toBe("available");
+    expect(days.get(31)).toBe("available");
   });
 });

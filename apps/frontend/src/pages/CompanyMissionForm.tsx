@@ -37,6 +37,20 @@ import {
  * La publication n'est pas ici. Enregistrer produit — ou laisse — un brouillon ;
  * publier est une décision distincte, prise depuis le détail de la mission.
  */
+/** Services courants en hôtellerie-restauration. Une fin au-delà de 24 h
+ *  déborde sur le lendemain — c'est le cas le plus fréquent du secteur. */
+const MISSION_SHIFTS = [
+  { label: "Service du midi", from: 11, to: 15 },
+  { label: "Service du soir", from: 18, to: 26 },
+  { label: "Journée", from: 9, to: 18 },
+] as const;
+
+/** `YYYY-MM-DDTHH:mm` local, format attendu par `datetime-local`. */
+function localStamp(date: Date) {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
 export function CompanyMissionForm() {
   const { id } = useParams();
   const editing = Boolean(id);
@@ -94,6 +108,29 @@ export function CompanyMissionForm() {
     [values, initial],
   );
   useUnsavedChanges(dirty && !busy);
+
+  /**
+   * Applique un service courant aux deux bornes.
+   *
+   * La date conservée est celle déjà saisie ; à défaut, DEMAIN. Proposer
+   * aujourd'hui produirait une mission déjà commencée, que le serveur refuse
+   * de publier — un raccourci ne doit pas fabriquer un état invalide.
+   */
+  const applyShift = (shift: (typeof MISSION_SHIFTS)[number]) => {
+    const base = values.starts_at
+      ? new Date(values.starts_at)
+      : (() => {
+          const tomorrow = new Date();
+          tomorrow.setDate(tomorrow.getDate() + 1);
+          return tomorrow;
+        })();
+    const from = new Date(base);
+    from.setHours(shift.from, 0, 0, 0);
+    const to = new Date(from.getTime() + (shift.to - shift.from) * 3_600_000);
+    set("starts_at", localStamp(from));
+    set("ends_at", localStamp(to));
+  };
+
   const span = describeSpan(values.starts_at, values.ends_at);
 
   const set = <K extends keyof MissionFormValues>(
@@ -258,6 +295,38 @@ export function CompanyMissionForm() {
             Les heures sont celles de votre navigateur. Une mission qui se
             termine après minuit se saisit normalement.
           </p>
+          {/*
+           * Raccourcis du secteur.
+           *
+           * Ils n'inventent aucune règle : ils écrivent dans les deux champs
+           * ci-dessous, qui restent la saisie de référence. Leur intérêt est
+           * qu'un service en hôtellerie-restauration tombe presque toujours sur
+           * les mêmes bornes — et qu'un créneau du soir finit après minuit, ce
+           * qu'un `datetime-local` vide n'aide pas du tout à exprimer.
+           *
+           * La date de départ est celle déjà saisie, ou demain : proposer
+           * aujourd'hui produirait des missions déjà commencées, que le serveur
+           * refuse de publier.
+           */}
+          <div className="mb-1">
+            <span className="im-label">Horaires courants</span>
+            <div className="flex flex-wrap gap-2">
+              {MISSION_SHIFTS.map((shift) => (
+                <button
+                  key={shift.label}
+                  type="button"
+                  className="im-btn im-btn--outline im-btn--sm"
+                  onClick={() => applyShift(shift)}
+                >
+                  {shift.label}
+                  <span className="font-normal text-ink-faint tabular-nums">
+                    {String(shift.from).padStart(2, "0")}h–
+                    {String(shift.to % 24).padStart(2, "0")}h
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
           <div className="form-grid">
             <Field name="starts_at" label="Début" error={errors.starts_at}>
               {(props) => (

@@ -1,3 +1,18 @@
+/*
+ * CE FICHIER EST ENTIÈREMENT DANS LA COUCHE `legacy`, et il doit le rester.
+ *
+ * Il n'est pas importé par `global.css` mais directement par un composant, pour
+ * que sa feuille voyage avec le morceau de code qui l'utilise. Un `@import`
+ * depuis un fichier .tsx ne peut pas porter `layer(legacy)` : sans le bloc
+ * ci-dessous, tout ce fichier serait donc NON LAYÉ — et le non-layé l'emporte
+ * sur TOUTES les couches, y compris sur les utilitaires de la refonte.
+ *
+ * Ce n'est pas une hypothèse : la page « Mes candidatures » s'affichait en
+ * quatre colonnes serrées parce que `.worker-application-list > li` imposait
+ * `display: flex` depuis l'extérieur des couches, et que la classe `block`
+ * posée sur l'élément ne pouvait rien y faire.
+ */
+@layer legacy {
 .application-status {
   display: inline-flex;
   align-items: center;
@@ -326,4 +341,6 @@
     flex: 1;
     justify-content: center;
   }
+}
+
 }

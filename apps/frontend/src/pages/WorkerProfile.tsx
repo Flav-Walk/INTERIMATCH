@@ -16,11 +16,18 @@ import {
   Pencil,
   Plus,
   Search,
+  Camera,
   Sparkles,
   Trash2,
   UserRound,
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
+import { AvatarField } from "../components/profile/AvatarField";
+import { AvailabilityCalendar } from "../components/profile/AvailabilityCalendar";
+import { StatusMark } from "../components/ui/Status";
+import { cn } from "../lib/cn";
+import { PageHeader } from "../components/ui/PageHeader";
+import { RuleRing } from "../components/ui/RuleRing";
 import {
   api,
   errorMessage,
@@ -46,10 +53,7 @@ import {
   toLocalInput,
   updateAvailability,
 } from "../services/profile";
-import { HeroBanner } from "../components/HeroBanner";
-import { CircularGauge } from "../components/CircularGauge";
 import { useUnsavedChanges } from "../components/form/Field";
-import { workerRequirementProgress } from "../services/completion";
 import "../styles/profile.css";
 
 type DraftExperience = Omit<Experience, "id">;
@@ -201,6 +205,11 @@ function workerPayload(draft: WorkerProfileDraft) {
   };
 }
 
+/** Règles de complétion, dans l'ordre du parcours, telles que le serveur les nomme. */
+const COMPLETION_RULES = (
+  Object.keys(requirementLabels) as (keyof typeof requirementLabels)[]
+).map((key) => ({ key, label: requirementLabels[key] }));
+
 function ProfileSection({
   id,
   title,
@@ -310,9 +319,6 @@ export function WorkerProfile() {
   if (!user) return null;
   const profile = user.profile;
   const missing = user.missing_requirements ?? [];
-  const requirementProgress = workerRequirementProgress(
-    user.missing_requirements,
-  );
   const slots = profile.availabilities ?? [];
   const jobOptions =
     !draft.main_job || jobs.some((job) => job.value === draft.main_job)
@@ -439,26 +445,19 @@ export function WorkerProfile() {
   }
 
   return (
-    <section className="onboarding worker-profile">
-      <HeroBanner
-        compact
-        eyeline="Votre espace intérimaire"
+    <section className="im-page onboarding worker-profile">
+      <PageHeader
+        eyebrow="Votre espace intérimaire"
         title="Votre profil professionnel"
-        subtitle="Un profil clair aide InteriMatch à rapprocher vos compétences, votre mobilité et vos disponibilités des bonnes missions."
-        mascotPose="profile"
-        gauge={
-          requirementProgress !== null ? (
-            <CircularGauge
-              value={requirementProgress}
-              label="Prérequis missions"
-              subtitle={
-                missing.length === 0
-                  ? "Tous réunis"
-                  : `${missing.length} à compléter`
-              }
-              variant="on-dark"
+        lead="Un profil clair aide InteriMatch à rapprocher vos compétences, votre mobilité et vos disponibilités des bonnes missions."
+        aside={
+          user.missing_requirements === undefined ? undefined : (
+            <RuleRing
+              rules={COMPLETION_RULES}
+              missing={user.missing_requirements}
+              size={104}
             />
-          ) : undefined
+          )
         }
       />
 
@@ -504,7 +503,31 @@ export function WorkerProfile() {
         onSubmit={(event) => void saveProfile(event)}
       >
         <div className="profile-grid">
+          {/*
+           * La photo ouvre le profil.
+           *
+           * Elle est la première section parce qu'elle est la première chose
+           * qu'une entreprise voit d'une candidature, et parce qu'elle est
+           * devenue obligatoire pour postuler (migration 012). La reléguer en
+           * bas de page en aurait fait un blocage découvert trop tard.
+           *
+           * Elle n'est PAS dans le formulaire d'enregistrement : le dépôt
+           * s'écrit immédiatement, sur sa propre route, et renvoie le profil à
+           * jour. Elle n'a donc rien à voir avec le bouton « Enregistrer » des
+           * autres sections, et le dire par sa position évite de le croire.
+           */}
           <ProfileSection
+            id="photo"
+            title="Votre photo"
+            icon={<Camera size={18} />}
+            className="profile-section--photo"
+            missing={missingIn(user.missing_requirements, "Votre photo")}
+          >
+            <AvatarField user={user} onChange={setUser} />
+          </ProfileSection>
+
+          <ProfileSection
+            id="identity"
             title="Votre identité"
             icon={<UserRound size={18} />}
             className="profile-section--identity"
@@ -1013,7 +1036,53 @@ function formValue(form: FormData, name: string) {
   return String(form.get(name) ?? "").trim();
 }
 
-/** Les disponibilités restent autonomes : chacune est persistée immédiatement. */
+/**
+ * Disponibilités.
+ *
+ * CE QUI N'ALLAIT PAS. Une liste de lignes nues, et deux champs
+ * `datetime-local` bruts affichant « dd/mm/yyyy --:-- ». C'était, littéralement,
+ * le formulaire par défaut du navigateur — et c'est la fonctionnalité qui
+ * décide des missions qu'un intérimaire peut recevoir.
+ *
+ * CE QUI LE REMPLACE — trois zones, dans l'ordre où l'on s'en sert.
+ *
+ * 1. UN CALENDRIER qui montre la couverture réelle du mois. La première
+ *    question n'est pas « quelle heure » mais « où sont mes trous ». Voir
+ *    `AvailabilityCalendar`, adapté du `BookingSlotCalendar` d'Opensource UI.
+ * 2. UN COMPOSEUR. Les deux champs `datetime-local` RESTENT — ils sont
+ *    atteignables au clavier, compris des technologies d'assistance, et c'est
+ *    par eux qu'on saisit une date précise. Le calendrier et les raccourcis
+ *    horaires ne les remplacent pas : ils les REMPLISSENT. Un sélecteur qui
+ *    interdit la saisie est un sélecteur qu'on subit.
+ * 3. LA LISTE des créneaux déclarés, avec les marques de statut du produit.
+ *
+ * LES RACCOURCIS HORAIRES sont ceux du secteur, pas des tranches génériques :
+ * le service en hôtellerie-restauration se fait en coupure, et un créneau du
+ * soir finit après minuit. C'est exactement ce qu'une grille de trente minutes
+ * ne sait pas exprimer.
+ *
+ * Chaque créneau est persisté immédiatement et séparément.
+ */
+
+/** Raccourcis de service. Une fin au-delà de 24 h déborde sur le lendemain. */
+const SHIFTS = [
+  { label: "Matin", from: 8, to: 16 },
+  { label: "Service du soir", from: 18, to: 26 },
+  { label: "Journée", from: 8, to: 24 },
+] as const;
+
+/** `YYYY-MM-DDTHH:mm` local, format attendu par `datetime-local`. */
+function localStamp(date: Date) {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+/** Clé de jour `YYYY-MM-DD`, dans le fuseau du navigateur. */
+function dayKey(date: Date) {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
 function AvailabilitySection({
   slots,
   missing,
@@ -1028,19 +1097,61 @@ function AvailabilitySection({
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [editing, setEditing] = useState<Availability | null>(null);
+  // Jour visé par le composeur. Il ne sert qu'à peindre le calendrier : la
+  // valeur qui compte reste celle des champs.
+  const [day, setDay] = useState("");
+
   const orderedSlots = [...slots].sort(
     (a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at),
   );
+
+  const field = (name: "starts_at" | "ends_at") =>
+    formRef.current?.querySelector<HTMLInputElement>(`[name="${name}"]`) ??
+    null;
+
+  /** Applique un intervalle aux deux champs, sans état React intermédiaire. */
+  function writeRange(from: Date, to: Date) {
+    const start = field("starts_at");
+    const end = field("ends_at");
+    if (start) start.value = localStamp(from);
+    if (end) end.value = localStamp(to);
+    setDay(dayKey(from));
+  }
+
+  /** Un jour cliqué garde les heures déjà saisies, ou prend le service du soir. */
+  function pickDay(date: Date) {
+    const current = field("starts_at")?.value ?? "";
+    const previousEnd = field("ends_at")?.value ?? "";
+    const [hours, minutes] = (current.split("T")[1] ?? "18:00")
+      .split(":")
+      .map(Number);
+    const from = new Date(date);
+    from.setHours(hours || 18, minutes || 0, 0, 0);
+    const span =
+      current && previousEnd
+        ? Math.max(
+            3_600_000,
+            new Date(previousEnd).getTime() - new Date(current).getTime(),
+          )
+        : 8 * 3_600_000;
+    writeRange(from, new Date(from.getTime() + span));
+  }
+
+  /** Un raccourci s'applique au jour visé, ou à aujourd'hui s'il n'y en a pas. */
+  function applyShift(shift: (typeof SHIFTS)[number]) {
+    const base = day ? new Date(`${day}T00:00`) : new Date();
+    const from = new Date(base);
+    from.setHours(shift.from, 0, 0, 0);
+    const to = new Date(from.getTime() + (shift.to - shift.from) * 3_600_000);
+    writeRange(from, to);
+  }
 
   function edit(slot: Availability) {
     setEditing(slot);
     setError("");
     setMessage("");
-    requestAnimationFrame(() =>
-      formRef.current
-        ?.querySelector<HTMLInputElement>('[name="starts_at"]')
-        ?.focus(),
-    );
+    setDay(dayKey(new Date(slot.starts_at)));
+    requestAnimationFrame(() => field("starts_at")?.focus());
   }
 
   async function save(event: FormEvent<HTMLFormElement>) {
@@ -1051,9 +1162,7 @@ function AvailabilitySection({
     setError("");
     setMessage("");
     try {
-      const starts_at = new Date(
-        formValue(values, "starts_at"),
-      ).toISOString();
+      const starts_at = new Date(formValue(values, "starts_at")).toISOString();
       const ends_at = new Date(formValue(values, "ends_at")).toISOString();
       if (Date.parse(ends_at) <= Date.parse(starts_at))
         throw new Error("La fin doit suivre le début du créneau.");
@@ -1067,6 +1176,7 @@ function AvailabilitySection({
       await refresh();
       setMessage(editing ? "Créneau modifié." : "Créneau ajouté.");
       setEditing(null);
+      setDay("");
       form.reset();
     } catch (caught) {
       setError(humaniseError(errorMessage(caught)));
@@ -1109,57 +1219,47 @@ function AvailabilitySection({
           )}
         </legend>
         <p className="quiet profile-section__hint">
-          Ces créneaux sont enregistrés séparément et immédiatement. Les heures
-          affichées sont celles de votre navigateur.
+          Une mission ne vous est proposée que si l’un de vos créneaux la couvre
+          entièrement. Chaque créneau est enregistré séparément et immédiatement ;
+          les heures affichées sont celles de votre navigateur.
         </p>
-        <div className="availability-layout">
-          <div>
-            {orderedSlots.length > 0 ? (
-              <ul className="slot-list editable-slots profile-slot-list">
-                {orderedSlots.map((slot) => (
-                  <li key={slot.id}>
-                    <span className="profile-slot-date">
-                      <CalendarDays size={17} aria-hidden="true" />
-                      <strong>{formatSlot(slot)}</strong>
+
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,330px)_minmax(0,1fr)]">
+          <AvailabilityCalendar slots={slots} selected={day} onPick={pickDay} />
+
+          <div
+            className="rounded-panel border border-rule bg-paper p-5"
+            key={editing?.id ?? "new"}
+          >
+            <p className="font-semibold text-[0.875rem] text-ink">
+              {editing
+                ? "Modifier le créneau sélectionné"
+                : "Ajouter un créneau"}
+            </p>
+
+            {/* Raccourcis du secteur. Ils écrivent dans les champs ci-dessous,
+                qui restent la saisie de référence. */}
+            <div className="mt-4">
+              <span className="im-label">Horaires courants</span>
+              <div className="flex flex-wrap gap-2">
+                {SHIFTS.map((shift) => (
+                  <button
+                    key={shift.label}
+                    type="button"
+                    className="im-btn im-btn--outline im-btn--sm"
+                    onClick={() => applyShift(shift)}
+                  >
+                    {shift.label}
+                    <span className="font-normal text-ink-faint tabular-nums">
+                      {String(shift.from).padStart(2, "0")}h–
+                      {String(shift.to % 24).padStart(2, "0")}h
                     </span>
-                    <span
-                      className={`profile-slot-status is-${slot.status}`}
-                    >
-                      {slot.status === "available"
-                        ? "Disponible"
-                        : "Indisponible"}
-                      {Date.parse(slot.ends_at) <= Date.now()
-                        ? " · Terminé"
-                        : ""}
-                    </span>
-                    <div className="slot-actions">
-                      <button
-                        type="button"
-                        className="icon-button"
-                        aria-label={`Modifier le créneau ${formatSlot(slot)}`}
-                        onClick={() => edit(slot)}
-                      >
-                        <Pencil size={16} aria-hidden="true" />
-                      </button>
-                      <button
-                        type="button"
-                        className="icon-button"
-                        aria-label={`Retirer le créneau ${formatSlot(slot)}`}
-                        onClick={() => void drop(slot.id)}
-                      >
-                        <Trash2 size={16} aria-hidden="true" />
-                      </button>
-                    </div>
-                  </li>
+                  </button>
                 ))}
-              </ul>
-            ) : (
-              <p className="quiet">Aucun créneau enregistré pour le moment.</p>
-            )}
-          </div>
-          <div className="availability-editor" key={editing?.id ?? "new"}>
-            {editing && <strong>Modifier le créneau sélectionné</strong>}
-            <div className="form-grid">
+              </div>
+            </div>
+
+            <div className="mt-5 grid gap-4 sm:grid-cols-2">
               <label>
                 Début
                 <input
@@ -1167,6 +1267,7 @@ function AvailabilitySection({
                   type="datetime-local"
                   required
                   defaultValue={toLocalInput(editing?.starts_at)}
+                  onChange={(event) => setDay(event.target.value.slice(0, 10))}
                 />
               </label>
               <label>
@@ -1179,7 +1280,8 @@ function AvailabilitySection({
                 />
               </label>
             </div>
-            <label>
+
+            <label className="mt-4 block">
               Statut
               <select
                 aria-label="Statut"
@@ -1190,37 +1292,113 @@ function AvailabilitySection({
                 <option value="unavailable">Indisponible</option>
               </select>
             </label>
+
+            {error && (
+              <p className="form-error mt-4" role="alert">
+                {error}
+              </p>
+            )}
+            {message && (
+              <p className="form-success mt-4" role="status">
+                {message}
+              </p>
+            )}
+
+            <div className="section-actions mt-5 flex flex-wrap gap-2">
+              <button className="im-btn im-btn--primary" disabled={busy}>
+                {busy
+                  ? "Enregistrement…"
+                  : editing
+                    ? "Enregistrer le créneau"
+                    : "Ajouter ce créneau"}
+              </button>
+              {editing && (
+                <button
+                  type="button"
+                  className="im-btn im-btn--outline"
+                  onClick={() => {
+                    setEditing(null);
+                    setError("");
+                    setDay("");
+                  }}
+                >
+                  Annuler
+                </button>
+              )}
+            </div>
           </div>
         </div>
-        {error && (
-          <p className="form-error" role="alert">
-            {error}
-          </p>
-        )}
-        {message && (
-          <p className="form-success" role="status">
-            {message}
-          </p>
-        )}
-        <div className="section-actions">
-          <button className="secondary-button" disabled={busy}>
-            {busy
-              ? "Enregistrement…"
-              : editing
-                ? "Enregistrer le créneau"
-                : "Ajouter ce créneau"}
-          </button>
-          {editing && (
-            <button
-              type="button"
-              className="secondary-button"
-              onClick={() => {
-                setEditing(null);
-                setError("");
-              }}
-            >
-              Annuler
-            </button>
+
+        <div className="mt-6">
+          <h3 className="im-rule mb-3 text-ink">
+            Créneaux déclarés · {orderedSlots.length}
+          </h3>
+          {orderedSlots.length > 0 ? (
+            <ul className="slot-list editable-slots profile-slot-list im-bare space-y-2">
+              {orderedSlots.map((slot) => {
+                const past = Date.parse(slot.ends_at) <= Date.now();
+                const open = slot.status === "available";
+                return (
+                  <li
+                    key={slot.id}
+                    className={cn(
+                      // Sur un écran étroit, la date, l'état et les actions ne
+                      // tiennent pas sur une ligne : la date se brisait mot par
+                      // mot sur six lignes. La rangée s'empile donc en dessous
+                      // de `sm`, au lieu de comprimer ce qui doit se lire.
+                      "flex flex-col gap-3 rounded-[10px] border px-4 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-4 sm:gap-y-2",
+                      past
+                        ? "border-rule bg-paper-deep/50 opacity-70"
+                        : open
+                          ? "border-sage bg-sage-tint/30"
+                          : "border-rule bg-surface",
+                    )}
+                  >
+                    <span className="min-w-0 font-medium text-[0.875rem] text-ink sm:flex-1">
+                      {formatSlot(slot)}
+                    </span>
+                    <span
+                      className={`profile-slot-status is-${slot.status} inline-flex items-center`}
+                    >
+                      <StatusMark
+                        form={past ? "quiet" : open ? "live" : "struck"}
+                        tone={open ? "forest" : "neutral"}
+                      >
+                        {open ? "Disponible" : "Indisponible"}
+                      </StatusMark>
+                      {past && (
+                        <span className="ml-2 text-[0.75rem] text-ink-faint">
+                          · Terminé
+                        </span>
+                      )}
+                    </span>
+                    <div className="slot-actions flex shrink-0 gap-1 sm:ml-auto">
+                      <button
+                        type="button"
+                        className="flex size-8 cursor-pointer items-center justify-center rounded-[7px] border border-rule bg-surface text-ink-soft transition-colors hover:border-forest hover:text-forest"
+                        aria-label={`Modifier le créneau ${formatSlot(slot)}`}
+                        onClick={() => edit(slot)}
+                      >
+                        <Pencil size={15} aria-hidden="true" />
+                      </button>
+                      <button
+                        type="button"
+                        className="flex size-8 cursor-pointer items-center justify-center rounded-[7px] border border-rule bg-surface text-ink-soft transition-colors hover:border-alert hover:text-alert"
+                        aria-label={`Retirer le créneau ${formatSlot(slot)}`}
+                        onClick={() => void drop(slot.id)}
+                      >
+                        <Trash2 size={15} aria-hidden="true" />
+                      </button>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <p className="rounded-panel border border-rule-strong border-dashed bg-surface/60 px-5 py-8 text-center text-[0.875rem] text-ink-faint">
+              Aucun créneau enregistré. Sans disponibilité, aucune mission ne
+              peut vous être proposée.
+            </p>
           )}
         </div>
       </fieldset>
