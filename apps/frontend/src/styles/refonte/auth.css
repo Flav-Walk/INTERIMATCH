@@ -1,1 +1,228 @@
-/* Connexion — voir commit suivant. */
+/*
+ * Connexion et création de compte.
+ *
+ * Deux panneaux dans une même carte : à gauche le récit (vert), à droite le
+ * formulaire (blanc). Le récit n'a plus de mascotte : trois repères en texte
+ * réel et la signature manuscrite suffisent à poser le ton.
+ */
+
+.auth-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.95fr) minmax(400px, 1.05fr);
+  width: min(100%, 1100px);
+  min-height: 640px;
+  margin: var(--space-6) auto;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  box-shadow: var(--shadow-3);
+}
+
+/* ---------- Récit ---------- */
+.auth-story {
+  isolation: isolate;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: var(--space-10);
+  overflow: hidden;
+  background:
+    radial-gradient(
+      90% 70% at 100% 0%,
+      oklch(0.46 0.09 165 / 0.75),
+      transparent 60%
+    ),
+    var(--forest);
+  color: var(--surface);
+}
+.auth-story::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: repeating-linear-gradient(
+    0deg,
+    oklch(1 0 0 / 0.028) 0 1px,
+    transparent 1px 7px
+  );
+  pointer-events: none;
+}
+.auth-story__logo {
+  align-self: flex-start;
+  font-size: 1.35rem;
+}
+.auth-story__copy {
+  max-width: 440px;
+  margin-top: var(--space-12);
+}
+.auth-story__eyeline {
+  display: inline-flex;
+  padding: 4px 12px;
+  border: 1px solid oklch(1 0 0 / 0.28);
+  border-radius: var(--radius-pill);
+  color: oklch(0.94 0.02 160);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.auth-story h1 {
+  max-width: 15ch;
+  margin: var(--space-5) 0 var(--space-4);
+  color: var(--surface);
+  font-size: clamp(2rem, 3.4vw, 2.75rem);
+  line-height: 1.04;
+}
+.auth-story__copy p {
+  max-width: 40ch;
+  margin: 0;
+  color: oklch(0.92 0.02 160);
+  line-height: 1.6;
+}
+
+.auth-story__points {
+  display: grid;
+  gap: var(--space-3);
+  margin: var(--space-10) 0 0;
+  padding: var(--space-6) 0 0;
+  list-style: none;
+  border-top: 1px solid oklch(1 0 0 / 0.16);
+}
+.auth-story__points li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  color: oklch(0.95 0.015 160);
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+.auth-story__points svg {
+  flex: none;
+  padding: 3px;
+  border-radius: 50%;
+  background: var(--orange);
+  color: var(--forest);
+  box-sizing: content-box;
+}
+
+.auth-story__signature {
+  margin: auto 0 0;
+  padding-top: var(--space-10);
+  color: oklch(1 0 0 / 0.72);
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-style: italic;
+  font-variation-settings: "opsz" 72;
+  transform: rotate(-3deg);
+  transform-origin: left bottom;
+}
+
+/* ---------- Formulaire ---------- */
+.form-panel {
+  align-self: center;
+  width: 100%;
+  max-width: 480px;
+  margin-inline: auto;
+  padding: var(--space-10);
+}
+.form-panel__eyeline {
+  margin: 0;
+  color: var(--orange-ink);
+  font-size: var(--text-xs);
+  font-weight: 650;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.form-panel h2 {
+  margin: var(--space-2) 0 var(--space-2);
+  font-size: clamp(1.75rem, 2.6vw, 2.1rem);
+}
+.form-panel > p:not(.form-panel__eyeline, .form-switch) {
+  margin: 0;
+  color: var(--muted);
+}
+.form-panel form {
+  gap: var(--space-4);
+  margin-top: var(--space-6);
+}
+.form-panel .button.full {
+  min-height: 50px;
+  margin-top: var(--space-2);
+}
+
+.google-button {
+  margin-top: var(--space-6);
+}
+
+/* Séparateur « ou avec votre email » : deux filets de part et d'autre. */
+.form-panel .divider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: var(--space-5) 0 0;
+  font-size: var(--text-xs);
+}
+.form-panel .divider::before,
+.form-panel .divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.form-panel .legal-notice {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--text-xs);
+  line-height: 1.55;
+}
+.form-panel .legal-notice a,
+.form-switch a {
+  color: var(--forest);
+  font-weight: 600;
+  text-underline-offset: 3px;
+}
+
+.form-switch {
+  margin: var(--space-6) 0 0;
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: var(--text-sm);
+}
+
+/* ---------- Responsive ---------- */
+@media (width < 860px) {
+  .auth-grid {
+    grid-template-columns: 1fr;
+    min-height: 0;
+    margin-block: var(--space-4);
+  }
+  .auth-story {
+    padding: var(--space-6);
+  }
+  .auth-story__copy {
+    margin-top: var(--space-6);
+  }
+  .auth-story h1 {
+    max-width: 22ch;
+    font-size: 1.75rem;
+  }
+  .auth-story__points,
+  .auth-story__signature {
+    display: none;
+  }
+  .form-panel {
+    max-width: none;
+    padding: var(--space-6);
+  }
+}
+@media (width < 520px) {
+  .auth-story__copy p {
+    display: none;
+  }
+  .form-panel {
+    padding: var(--space-5);
+  }
+}

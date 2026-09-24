@@ -7,7 +7,7 @@ import { getSupabase, supabaseConfigured } from "../services/supabase";
 import { PasswordField } from "../components/PasswordField";
 import { PasswordStrength } from "../components/PasswordStrength";
 import { Logo } from "../components/Logo";
-import { MatchyMascot } from "../components/MatchyMascot";
+import { Check } from "lucide-react";
 import { MIN_PASSWORD_LENGTH } from "../services/password";
 export function Login({ register = false }: { register?: boolean }) {
   useEffect(() => {
@@ -85,14 +85,26 @@ export function Login({ register = false }: { register?: boolean }) {
             espace professionnel.
           </p>
         </div>
-        <div className="auth-story__scene">
-          <span className="auth-story__arch" aria-hidden="true" />
-          <MatchyMascot
-            pose={register ? "profile" : "dashboard"}
-            includeBackground
-            size={250}
-          />
-        </div>
+        {/* Repères tirés des promesses de l'accueil : aucun chiffre, aucune
+            donnée inventée. Décor lu une seule fois : la liste reste du vrai
+            texte, seules les coches sont masquées. */}
+        <ul className="auth-story__points">
+          <li>
+            <Check size={16} strokeWidth={2.5} aria-hidden="true" />
+            Des missions dans votre zone
+          </li>
+          <li>
+            <Check size={16} strokeWidth={2.5} aria-hidden="true" />
+            Un rapprochement expliqué
+          </li>
+          <li>
+            <Check size={16} strokeWidth={2.5} aria-hidden="true" />
+            Le suivi de chaque candidature
+          </li>
+        </ul>
+        <p className="auth-story__signature" aria-hidden="true">
+          Les bonnes personnes, au bon moment.
+        </p>
       </section>
       <section
         className="form-panel"
