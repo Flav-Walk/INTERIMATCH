@@ -10,7 +10,6 @@ import {
   workerMissionContext,
   type WorkerApplication,
 } from "../../services/applications";
-import "../../styles/applications.css";
 
 const schedule = new Intl.DateTimeFormat("fr-FR", {
   dateStyle: "medium",

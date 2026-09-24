@@ -9,7 +9,6 @@ import {
   updateAdminUserRole,
   type AdminUser,
 } from "../services/admin";
-import "../styles/admin.css";
 
 interface TableProps {
   users: AdminUser[];

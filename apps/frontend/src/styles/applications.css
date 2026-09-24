@@ -128,9 +128,10 @@
   font-size: 0.82rem;
   font-weight: 650;
 }
+/* Mission en cours : vert plein (la charte écarte le bleu). */
 .mission-context-status.is-running {
-  background: oklch(0.9 0.05 235);
-  color: oklch(0.36 0.09 245);
+  background: var(--forest);
+  color: var(--surface);
 }
 
 .mission-applications {

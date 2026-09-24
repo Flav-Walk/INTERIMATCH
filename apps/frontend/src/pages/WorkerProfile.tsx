@@ -50,7 +50,6 @@ import { HeroBanner } from "../components/HeroBanner";
 import { CircularGauge } from "../components/CircularGauge";
 import { useUnsavedChanges } from "../components/form/Field";
 import { workerRequirementProgress } from "../services/completion";
-import "../styles/profile.css";
 
 type DraftExperience = Omit<Experience, "id">;
 type DraftCertification = Omit<Certification, "id">;

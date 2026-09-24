@@ -3,7 +3,6 @@ import {
   applicationLabels,
   type ApplicationStatus as Status,
 } from "../../services/applications";
-import "../../styles/applications.css";
 
 export function ApplicationStatus({ status }: { status: Status }) {
   const Icon =

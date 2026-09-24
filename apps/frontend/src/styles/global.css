@@ -5,6 +5,12 @@
 @import "./brand.css";
 @import "./mission-photo.css";
 @import "./documents.css";
+/* Feuilles autrefois importées par des composants chargés à la demande : leur
+   CSS arrivait après la couche refonte et l'emportait à spécificité égale.
+   Chargées ici, l'ordre de la cascade ne dépend plus de la navigation. */
+@import "./applications.css";
+@import "./profile.css";
+@import "./admin.css";
 * {
   box-sizing: border-box;
 }
