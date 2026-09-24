@@ -21,7 +21,6 @@ import {
 } from "../components/ui/PageHeader";
 import { Reveal } from "../components/ui/Reveal";
 import { cn } from "../lib/cn";
-import { usePageSeo } from "../hooks/usePageSeo";
 
 /**
  * Mes candidatures.
@@ -303,11 +302,6 @@ export function WorkerApplicationList({
 }
 
 export function WorkerApplications() {
-  usePageSeo({
-    title: "Mes candidatures · InteriMatch",
-    description: "Suivi de mes candidatures InteriMatch.",
-    robots: "noindex,nofollow",
-  });
   const [applications, setApplications] = useState<WorkerApplication[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");

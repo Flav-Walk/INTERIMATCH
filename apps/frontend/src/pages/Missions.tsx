@@ -1,43 +1,22 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import {
-  ArrowRight,
-  BriefcaseBusiness,
-  Check,
-  ChevronDown,
-  Globe,
-} from "lucide-react";
+import { ArrowRight, ArrowUpRight, BriefcaseBusiness, Globe } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { usePageSeo } from "../hooks/usePageSeo";
 import { errorMessage } from "../services/session";
 import { MissionCard } from "../components/mission/MissionCard";
-import { HeroBanner } from "../components/HeroBanner";
+import {
+  EmptyState,
+  PageBody,
+  PageHeader,
+} from "../components/ui/PageHeader";
+import { Reveal } from "../components/ui/Reveal";
 import {
   explainEmpty,
   listOpenMissions,
   type Exclusions,
   type OpenMission,
 } from "../services/missions";
-import { EmptyState } from "../components/da/EmptyState";
-import { BlurFade } from "../components/ui/blur-fade";
-import { NumberTicker } from "../components/ui/number-ticker";
-
-/** Rappel de ce qui se passera ensuite, pour l'écran resté vide. */
-const steps = [
-  "Recevoir les missions compatibles avec votre zone",
-  "Consulter le détail et les compétences attendues",
-  "Accepter ou refuser chaque proposition",
-];
-
-function SkeletonGrid() {
-  return (
-    <div className="mission-grid is-wide" aria-hidden="true">
-      {Array.from({ length: 6 }).map((_, index) => (
-        <div key={index} className="skeleton-card" />
-      ))}
-    </div>
-  );
-}
 
 /**
  * Missions offertes aux intérimaires.
@@ -45,7 +24,79 @@ function SkeletonGrid() {
  * Le serveur envoie déjà la liste triée par compatibilité et n'y met que les
  * missions réellement accessibles au profil. Le filtre par ville est un confort
  * de lecture appliqué à ce résultat : il ne rejoue aucune règle de sélection.
+ *
+ * REFONTE. L'écran s'ouvrait sur un bandeau à mascotte, puis un encart bleuté
+ * renvoyant vers France Travail — avant même d'avoir montré une seule mission.
+ * L'ordre disait donc : « voici notre illustration, voici les offres d'un
+ * autre, et enfin voici ce que vous cherchiez ». Le renvoi vers les offres
+ * publiques est désormais EN BAS, là où il répond à une vraie question : « et
+ * s'il n'y en a pas assez ? »
  */
+
+/** Ossature de chargement : la forme de la carte, pas un rectangle gris. */
+function SkeletonGrid() {
+  return (
+    <div
+      className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3"
+      aria-hidden="true"
+    >
+      {Array.from({ length: 6 }).map((_, index) => (
+        <div
+          key={index}
+          className="overflow-hidden rounded-panel border border-rule bg-surface"
+        >
+          <div className="aspect-[16/9] animate-pulse bg-paper-deep" />
+          <div className="space-y-3 p-5">
+            <div className="h-4 w-3/4 animate-pulse rounded bg-paper-deep" />
+            <div className="h-3 w-1/2 animate-pulse rounded bg-paper-deep" />
+            <div className="h-3 w-2/3 animate-pulse rounded bg-paper-deep" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Renvoi vers les offres publiques.
+ *
+ * LA PROVENANCE EST DITE DEUX FOIS, et ce n'est pas une redondance : « France
+ * Travail » dans le titre, et « Ces offres ne sont pas des missions
+ * InteriMatch » dans le corps. C'est la seule passerelle du produit entre deux
+ * jeux de données aux règles différentes — on n'y postule pas de la même
+ * façon — et une confusion à cet endroit se paierait par une candidature
+ * envoyée dans le vide.
+ */
+function PublicOffersBridge() {
+  return (
+    <Link
+      to="/worker/public-offers"
+      className="group flex items-center gap-4 rounded-panel border border-rule border-dashed bg-surface px-5 py-4 no-underline transition-colors hover:border-sage hover:bg-sage-tint/40"
+    >
+      <span
+        aria-hidden="true"
+        className="flex size-9 shrink-0 items-center justify-center rounded-full bg-paper-deep text-ink-soft"
+      >
+        <Globe size={17} />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block font-semibold text-[0.9375rem] text-ink">
+          Élargir aux offres France Travail
+        </span>
+        <span className="block text-[0.8125rem] text-ink-faint leading-relaxed">
+          Ces offres sont publiques et ne sont pas des missions InteriMatch :
+          elles se consultent ici, mais la candidature se fait chez l’employeur.
+        </span>
+      </span>
+      <ArrowUpRight
+        size={17}
+        aria-hidden="true"
+        className="shrink-0 text-ink-faint transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-forest"
+      />
+    </Link>
+  );
+}
+
 export function Missions() {
   usePageSeo({
     title: "Vos propositions de mission · InteriMatch",
@@ -93,30 +144,57 @@ export function Missions() {
     : missions;
 
   return (
-    <div className="missions-page">
-      <HeroBanner
-        compact
-        eyeline="Espace intérimaire"
+    <>
+      <PageHeader
+        eyebrow="Espace intérimaire"
         title="Missions disponibles"
-        subtitle="Les missions compatibles avec votre profil, votre zone et vos disponibilités, classées par le score calculé par InteriMatch."
-        mascotPose="missions"
+        lead="Les missions compatibles avec votre profil, votre zone et vos disponibilités, classées par le score calculé par InteriMatch."
+        aside={
+          !loading &&
+          !error &&
+          missions.length > 0 && (
+            // Le décompte est une information d'état : il se met à jour quand
+            // le filtre change, donc il est annoncé aux synthèses vocales.
+            <p
+              role="status"
+              className="flex items-baseline gap-2 text-[0.875rem] text-ink-soft"
+            >
+              <span className="font-display font-semibold text-[2rem] text-forest leading-none tabular-nums">
+                {shown.length}
+              </span>
+              <span>
+                mission{shown.length > 1 ? "s" : ""} compatible
+                {shown.length > 1 ? "s" : ""}
+                {filterCity ? ` à ${filterCity}` : ""}
+              </span>
+            </p>
+          )
+        }
+        actions={
+          cities.length > 1 && (
+            <>
+              <label htmlFor="filter-city" className="sr-only">
+                Filtrer par ville
+              </label>
+              <select
+                id="filter-city"
+                className="im-field w-auto min-w-44"
+                value={filterCity}
+                onChange={(e) => setFilterCity(e.target.value)}
+              >
+                <option value="">Toutes les villes</option>
+                {cities.map((city) => (
+                  <option key={city} value={city}>
+                    {city}
+                  </option>
+                ))}
+              </select>
+            </>
+          )
+        }
       />
 
-      <div className="missions-page__body">
-        <div className="public-offers-disclaimer" role="note">
-          <Globe size={18} aria-hidden="true" />
-          <div>
-            <strong>Recherche élargie :</strong> En complément des missions
-            InteriMatch, découvrez les opportunités du réseau public.{" "}
-            <Link
-              className="public-offers-disclaimer__link"
-              to="/worker/public-offers"
-            >
-              Consulter les offres France Travail →
-            </Link>
-          </div>
-        </div>
-
+      <PageBody className="space-y-8">
         {error && (
           <p className="form-error" role="alert">
             {error}
@@ -131,129 +209,84 @@ export function Missions() {
               </p>
               <SkeletonGrid />
             </>
-          ) : missions.length > 0 ? (
-            <>
-              <div className="missions-toolbar">
-                <p className="missions-toolbar__count" role="status">
-                  {/* Le chiffre défile jusqu'à sa valeur (Number Ticker, Magic UI). */}
-                  <strong className="missions-toolbar__figure">
-                    <NumberTicker value={shown.length} />
-                  </strong>{" "}
-                  mission
-                  {shown.length > 1 ? "s" : ""} compatible
-                  {shown.length > 1 ? "s" : ""}
-                  {filterCity ? ` à ${filterCity}` : " avec votre profil"}
-                </p>
-
-                {cities.length > 1 && (
-                  <div className="missions-toolbar__filter">
-                    <label htmlFor="filter-city" className="sr-only">
-                      Filtrer par ville
-                    </label>
-                    <div className="select-wrapper">
-                      <select
-                        id="filter-city"
-                        value={filterCity}
-                        onChange={(e) => setFilterCity(e.target.value)}
-                      >
-                        <option value="">Toutes les villes</option>
-                        {cities.map((city) => (
-                          <option key={city} value={city}>
-                            {city}
-                          </option>
-                        ))}
-                      </select>
-                      <ChevronDown size={14} aria-hidden="true" />
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {shown.length > 0 ? (
-                <section aria-labelledby="missions-list-title">
-                  <h2 id="missions-list-title" className="sr-only">
-                    Liste des missions disponibles
-                  </h2>
-                  <div className="mission-grid is-wide">
-                    {/* Les cartes arrivent en cascade (Blur Fade, Magic UI). */}
-                    {shown.map((mission, index) => (
-                      <BlurFade
-                        key={mission.id}
-                        delay={Math.min(index, 8) * 0.06}
-                        inView
-                      >
-                        <MissionCard
-                          mission={mission}
-                          basePath="/worker/missions"
-                          score={mission.match.score}
-                          band={mission.match.band}
-                          bandLabel={mission.match.band_label}
-                        />
-                      </BlurFade>
-                    ))}
-                  </div>
-                </section>
-              ) : (
-                <EmptyState icon={BriefcaseBusiness}>
-                  <h2>Aucune mission à {filterCity}</h2>
-                  <p>
-                    Essayez une autre ville ou revenez à l’ensemble des
-                    missions.
-                  </p>
-                  <button
-                    type="button"
-                    className="button"
-                    onClick={() => setFilterCity("")}
-                  >
-                    Voir toutes les missions
-                  </button>
-                </EmptyState>
-              )}
-            </>
-          ) : (
-            <>
-              <EmptyState icon={BriefcaseBusiness}>
-                <h2>
-                  {reason
-                    ? reason.title
-                    : "Aucune mission disponible pour le moment"}
-                </h2>
-                <p>
-                  {reason
-                    ? reason.detail
-                    : "Aucune mission n’est publiée pour l’instant. Dès qu’un établissement en publie une qui vous correspond, elle apparaît ici."}
-                </p>
-                {reason ? (
-                  <Link className="button" to={reason.action.to}>
+          ) : missions.length === 0 ? (
+            <EmptyState
+              icon={<BriefcaseBusiness size={20} />}
+              title={
+                reason
+                  ? reason.title
+                  : "Aucune mission disponible pour le moment"
+              }
+              action={
+                reason ? (
+                  <Link className="im-btn im-btn--primary" to={reason.action.to}>
                     {reason.action.label}
                     <ArrowRight size={16} aria-hidden="true" />
                   </Link>
                 ) : (
                   !user.onboarding_completed && (
-                    <Link className="button" to="/worker/profile">
+                    <Link
+                      className="im-btn im-btn--primary"
+                      to="/worker/profile"
+                    >
                       Compléter mon profil
+                      <ArrowRight size={16} aria-hidden="true" />
                     </Link>
                   )
-                )}
-              </EmptyState>
-
-              <section className="how-it-works" aria-labelledby="how-title">
-                <h2 id="how-title">Comment cela fonctionnera</h2>
-                <ol className="how-steps">
-                  {steps.map((label, index) => (
-                    <li key={label} className="how-step">
-                      <span className="how-step__num" aria-hidden="true">
-                        {index + 1}
-                      </span>
-                      <Check size={14} aria-hidden="true" />
-                      <span>{label}</span>
-                    </li>
-                  ))}
-                </ol>
-              </section>
-            </>
+                )
+              }
+            >
+              {reason
+                ? reason.detail
+                : "Aucune mission n’est publiée pour l’instant. Dès qu’un établissement en publie une qui vous correspond, elle apparaît ici."}
+            </EmptyState>
+          ) : shown.length === 0 ? (
+            <EmptyState
+              icon={<BriefcaseBusiness size={20} />}
+              title={`Aucune mission à ${filterCity}`}
+              action={
+                <button
+                  type="button"
+                  className="im-btn im-btn--outline"
+                  onClick={() => setFilterCity("")}
+                >
+                  Voir toutes les missions
+                </button>
+              }
+            >
+              Essayez une autre ville, ou revenez à l’ensemble des missions
+              compatibles avec votre profil.
+            </EmptyState>
+          ) : (
+            <section aria-labelledby="missions-list-title">
+              <h2 id="missions-list-title" className="sr-only">
+                Liste des missions disponibles
+              </h2>
+              <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+                {shown.map((mission, index) => (
+                  <Reveal
+                    key={mission.id}
+                    // Le décalage plafonne à six cartes : au-delà, l'arrivée
+                    // en cascade devient une attente, pas une animation.
+                    delay={Math.min(index, 5) * 0.04}
+                    className="h-full"
+                  >
+                    <MissionCard
+                      mission={mission}
+                      basePath="/worker/missions"
+                      establishment={mission.company.establishment_name}
+                      score={mission.match.score}
+                      band={mission.match.band}
+                      bandLabel={mission.match.band_label}
+                    />
+                  </Reveal>
+                ))}
+              </div>
+            </section>
           ))}
-      </div>
-    </div>
+
+        {!error && !loading && <PublicOffersBridge />}
+      </PageBody>
+    </>
   );
 }

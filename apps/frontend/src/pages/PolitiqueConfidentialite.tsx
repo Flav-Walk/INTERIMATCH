@@ -6,8 +6,6 @@ export function PolitiqueConfidentialite() {
     description:
       "Politique de confidentialité et protection des données personnelles sur InteriMatch (RGPD).",
     robots: "index,follow",
-    // Page publique : URL canonique et balises de partage (Open Graph).
-    path: "/politique-confidentialite",
   });
   return (
     <article className="legal-page">

@@ -28,7 +28,6 @@ import {
   validateMission,
   type MissionFormValues,
 } from "../services/missions";
-import { usePageSeo } from "../hooks/usePageSeo";
 
 /**
  * Création et modification d'une mission, par le même écran. Les deux gestes
@@ -55,14 +54,6 @@ function localStamp(date: Date) {
 export function CompanyMissionForm() {
   const { id } = useParams();
   const editing = Boolean(id);
-  // Titre d'onglet propre à la page (RGAA 8.6) ; espace privé non indexé.
-  usePageSeo({
-    title: editing
-      ? "Modifier la mission · Espace entreprise · InteriMatch"
-      : "Publier une mission · Espace entreprise · InteriMatch",
-    description: "Formulaire de mission de l’établissement.",
-    robots: "noindex,nofollow",
-  });
   const navigate = useNavigate();
   const { invalidate } = useAuth();
   const formRef = useRef<HTMLFormElement>(null);

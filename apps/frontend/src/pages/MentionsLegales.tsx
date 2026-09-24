@@ -7,8 +7,6 @@ export function MentionsLegales() {
     description:
       "Mentions légales et informations éditoriales de la plateforme InteriMatch.",
     robots: "index,follow",
-    // Page publique : URL canonique et balises de partage (Open Graph).
-    path: "/mentions-legales",
   });
   return (
     <article className="legal-page">

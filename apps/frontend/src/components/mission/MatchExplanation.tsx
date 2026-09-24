@@ -1,4 +1,4 @@
-import { Check, X } from "lucide-react";
+import { Check, Info, X } from "lucide-react";
 import type {
   BlockerCode,
   DimensionTone,
@@ -174,6 +174,7 @@ export function MatchExplanation({ match }: { match: MatchResult }) {
       {/* Le score est déjà affiché près du titre de la mission : cette carte
           porte les raisons, pas la note. */}
       <div className="rail-head">
+        <Info size={18} aria-hidden="true" />
         <h2>Pourquoi cette mission</h2>
       </div>
 

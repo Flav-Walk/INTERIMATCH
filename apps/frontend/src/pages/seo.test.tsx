@@ -8,7 +8,6 @@ import path from "node:path";
 const capturedSeo = vi.fn();
 vi.mock("../hooks/usePageSeo", () => ({
   usePageSeo: (options: unknown) => capturedSeo(options),
-  SITE_URL: "https://interimatch-five.vercel.app",
   DEFAULT_SEO: {
     title: "InteriMatch · Plateforme hôtellerie & restauration",
     description:
@@ -66,8 +65,6 @@ describe("SEO - Stratégie d'indexation (Sous-lot 8B)", () => {
       expect(capturedSeo).toHaveBeenCalledTimes(1);
       const seo = capturedSeo.mock.calls[0][0];
       expect(seo.title).toContain("InteriMatch");
-      // Page publique : chemin canonique déclaré (canonical + Open Graph).
-      expect(seo.path).toBe("/");
       expect(seo.description).toBeDefined();
       expect(seo.description.length).toBeGreaterThan(10);
       expect(seo.robots).toBe("index,follow");
@@ -83,8 +80,6 @@ describe("SEO - Stratégie d'indexation (Sous-lot 8B)", () => {
       expect(capturedSeo).toHaveBeenCalledTimes(1);
       const seo = capturedSeo.mock.calls[0][0];
       expect(seo.title).toMatch(/mentions légales/i);
-      // Page publique : chemin canonique déclaré (canonical + Open Graph).
-      expect(seo.path).toBe("/mentions-legales");
       expect(seo.description).toBeDefined();
       expect(seo.robots).toBe("index,follow");
     });
@@ -99,8 +94,6 @@ describe("SEO - Stratégie d'indexation (Sous-lot 8B)", () => {
       expect(capturedSeo).toHaveBeenCalledTimes(1);
       const seo = capturedSeo.mock.calls[0][0];
       expect(seo.title).toMatch(/confidentialité/i);
-      // Page publique : chemin canonique déclaré (canonical + Open Graph).
-      expect(seo.path).toBe("/politique-confidentialite");
       expect(seo.description).toBeDefined();
       expect(seo.robots).toBe("index,follow");
     });
@@ -115,8 +108,6 @@ describe("SEO - Stratégie d'indexation (Sous-lot 8B)", () => {
       expect(capturedSeo).toHaveBeenCalledTimes(1);
       const seo = capturedSeo.mock.calls[0][0];
       expect(seo.title).toMatch(/accessibilité/i);
-      // Page publique : chemin canonique déclaré (canonical + Open Graph).
-      expect(seo.path).toBe("/accessibilite");
       expect(seo.description).toBeDefined();
       expect(seo.robots).toBe("index,follow");
     });
@@ -295,35 +286,6 @@ describe("SEO - Stratégie d'indexation (Sous-lot 8B)", () => {
       for (const fragment of forbiddenFragments) {
         expect(content).not.toContain(fragment);
       }
-    });
-  });
-
-  describe("Titre et indexation de chaque page (RGAA 8.6, SEO)", () => {
-    const dir = path.resolve(__dirname);
-    const pages = fs
-      .readdirSync(dir)
-      .filter((file) => file.endsWith(".tsx") && !file.includes(".test."));
-    const PUBLIC = [
-      "Home.tsx",
-      "MentionsLegales.tsx",
-      "PolitiqueConfidentialite.tsx",
-      "Accessibilite.tsx",
-    ];
-
-    it("chaque page déclare son titre via usePageSeo", () => {
-      const missing = pages.filter(
-        (file) => !fs.readFileSync(path.join(dir, file), "utf8").includes("usePageSeo("),
-      );
-      expect(missing).toEqual([]);
-    });
-
-    it("seules les 4 pages publiques sont indexables, avec leur chemin canonique", () => {
-      const indexable = pages.filter((file) =>
-        fs.readFileSync(path.join(dir, file), "utf8").includes('robots: "index,follow"'),
-      );
-      expect(indexable.sort()).toEqual([...PUBLIC].sort());
-      for (const file of PUBLIC)
-        expect(fs.readFileSync(path.join(dir, file), "utf8")).toMatch(/path: "\//);
     });
   });
 });

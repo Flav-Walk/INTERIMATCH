@@ -1,28 +1,23 @@
-import { ScoreBar } from "../da/ScoreBar";
-import { levelFromBand } from "../../lib/levels";
+import { cn } from "../../lib/cn";
 
 /**
- * Pastille de compatibilité — purement présentationnelle.
+ * Compatibilité d'un profil avec une mission.
  *
- * Trois niveaux, alignés sur les paliers du rapprochement. Un dégradé continu
- * donnerait l'illusion d'une précision que le score n'a pas : il ordonne des
- * candidatures, il ne mesure pas une probabilité.
- *
- * LE NIVEAU N'EST PLUS DÉDUIT DU SCORE AFFICHÉ. Cette pastille comparait
+ * LE NIVEAU N'EST PAS DÉDUIT DU SCORE AFFICHÉ. Cette pastille comparait
  * `score >= 70`, sur un nombre déjà arrondi. Un profil à 69,6 % s'affiche
  * « 70 % » : il était donc peint comme « très compatible » alors que le serveur
  * l'avait rangé dans la tranche 60–69, et le même écran annonçait les deux à la
- * fois. Le palier vient désormais du backend, qui le calcule sur le score réel.
+ * fois. Le palier vient du backend, qui le calcule sur le score réel.
  *
- * NOUVELLE DA : plus de pastille colorée ni de jauge en fer à cheval (jugée
- * « nulle » en revue). Une barre fine (da/ScoreBar) avec les repères des
- * paliers 60 et 70 %, puis « Compatible à 92 % ». La couleur suit le palier
- * du serveur via le système de niveaux (vert / ambre / rouge, voir
- * lib/levels.ts et les tokens --level-*), jamais le score arrondi.
+ * CE QUI A CHANGÉ VISUELLEMENT. C'était une gélule colorée de plus, identique
+ * en forme aux statuts, aux compétences et aux filtres : sur une carte qui en
+ * portait déjà deux, plus rien ne se distinguait. C'est désormais un ARC —
+ * une géométrie qu'aucun autre élément du produit n'emploie — dont le
+ * remplissage suit le score, accompagné du nombre en chiffres tabulaires.
  *
- * Le texte du badge reste exactement « Compatible à 92 % — palier » : les
- * tests e2e le comparent mot pour mot (le chiffre de la jauge est dessiné en
- * CSS, hors du texte).
+ * Trois paliers, jamais un dégradé continu : un dégradé donnerait l'illusion
+ * d'une précision que le score n'a pas. Il ordonne des candidatures, il ne
+ * mesure pas une probabilité.
  */
 export function MatchBadge({
   score,
@@ -37,21 +32,110 @@ export function MatchBadge({
   /** Intitulé du palier, servi par le serveur. Jamais déduit du score. */
   bandLabel?: string | null;
   size?: "normal" | "large";
+  /**
+   * Fond sur lequel la pastille est posée.
+   *
+   * La fiche mission l'affiche sur un bandeau vert profond. Sans cette
+   * variante, l'arc et le chiffre gardent leurs couleurs d'encre sombre et
+   * deviennent illisibles — ce qui est exactement arrivé quand l'ancienne
+   * gélule pleine, qui masquait le problème, a été retirée.
+   */
   on?: "light" | "dark";
 }) {
-  // Système de niveaux commun (lib/levels.ts) : vert / ambre / rouge.
-  const level = `is-${levelFromBand(band)}`;
+  const level = band === 70 ? "is-high" : band === 60 ? "is-mid" : "is-low";
+  const large = size === "large";
+  const diameter = large ? 40 : 28;
+  const radius = 14;
+  const circumference = 2 * Math.PI * radius;
+  const bounded = Math.max(0, Math.min(100, score));
+
+  const dark = on === "dark";
+  const stroke = dark
+    ? level === "is-low"
+      ? "stroke-white/45"
+      : "stroke-sage"
+    : level === "is-high"
+      ? "stroke-forest"
+      : level === "is-mid"
+        ? "stroke-sage-deep"
+        : "stroke-ink-faint";
+  const ink = dark
+    ? "text-white"
+    : level === "is-high"
+      ? "text-forest"
+      : level === "is-mid"
+        ? "text-forest-mid"
+        : "text-ink-faint";
+
   return (
     <span
-      className={`match-badge ${level}${size === "large" ? " is-large" : ""}${on === "dark" ? " on-dark" : ""}`}
+      className={cn(
+        "match-badge inline-flex items-center gap-2 align-middle",
+        level,
+        large && "is-large",
+      )}
     >
-      <ScoreBar value={score} large={size === "large"} />
-      <span className="match-badge__text">Compatible à {score}&nbsp;%</span>
-      {/* Le palier ne peut pas tenir à la seule couleur. Deux profils affichés
-          « 70 % » — l'un à 70,2 %, l'autre à 69,6 % — portent le même nombre et
-          des paliers différents : sans ce rappel, une synthèse vocale les
-          restituerait à l'identique. */}
-      {bandLabel && <span className="sr-only"> — {bandLabel}</span>}
+      <span
+        aria-hidden="true"
+        className="relative shrink-0"
+        style={{ width: diameter, height: diameter }}
+      >
+        <svg viewBox="0 0 32 32" className="size-full -rotate-90">
+          <circle
+            cx="16"
+            cy="16"
+            r={radius}
+            fill="none"
+            strokeWidth="3"
+            className={dark ? "stroke-white/20" : "stroke-rule-strong"}
+          />
+          <circle
+            cx="16"
+            cy="16"
+            r={radius}
+            fill="none"
+            strokeWidth="3"
+            strokeLinecap="round"
+            strokeDasharray={`${(circumference * bounded) / 100} ${circumference}`}
+            className={cn(
+              stroke,
+              "transition-[stroke-dasharray] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]",
+            )}
+          />
+        </svg>
+      </span>
+      <span className={cn("leading-tight", ink)}>
+        <span
+          className={cn(
+            "block font-semibold tabular-nums",
+            large ? "text-[1.125rem]" : "text-[0.8125rem]",
+          )}
+        >
+          Compatible à {score}&nbsp;%
+        </span>
+        {/* Le palier ne peut pas tenir à la seule couleur. Deux profils affichés
+            « 70 % » — l'un à 70,2 %, l'autre à 69,6 % — portent le même nombre
+            et des paliers différents : sans ce rappel, une synthèse vocale les
+            restituerait à l'identique. Sur la grande taille, il est aussi
+            visible, parce que la place le permet. */}
+        {bandLabel &&
+          (large ? (
+            // Le tiret cadratin fait partie du TEXTE, pas de la mise en forme :
+            // « Compatible à 100 % — Très compatibles » se lit d'une traite, et
+            // c'est cette phrase entière que la recette entreprise vérifie.
+            <span
+              className={cn(
+                "block text-[0.8125rem]",
+                dark ? "text-white/65" : "text-ink-faint",
+              )}
+            >
+              {" — "}
+              {bandLabel}
+            </span>
+          ) : (
+            <span className="sr-only"> — {bandLabel}</span>
+          ))}
+      </span>
     </span>
   );
 }

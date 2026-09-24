@@ -86,8 +86,7 @@
   flex-wrap: wrap;
   gap: var(--space-3);
   flex: 1;
-  /* Jamais plus large que l'écran (RGAA 10.11, affichage à 320 px). */
-  min-width: min(280px, 100%);
+  min-width: 280px;
 }
 
 .public-offers-toolbar__input-wrap {
