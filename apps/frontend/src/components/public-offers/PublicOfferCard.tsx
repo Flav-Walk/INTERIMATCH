@@ -1,13 +1,5 @@
 import { Link } from "react-router-dom";
-import {
-  Building2,
-  MapPin,
-  Coins,
-  GraduationCap,
-  Clock,
-  ArrowRight,
-  ExternalLink,
-} from "lucide-react";
+import { Building2, ArrowRight, ExternalLink } from "lucide-react";
 import type { PublicJobOffer } from "../../services/publicOffers";
 
 interface PublicOfferCardProps {
@@ -15,12 +7,21 @@ interface PublicOfferCardProps {
   basePath?: string;
 }
 
+/**
+ * Carte d'offre France Travail.
+ *
+ * Refonte : on choisit une offre en trois secondes. La carte répond dans
+ * l'ordre à « quoi » (source, contrat, intitulé, établissement), « où et
+ * quand » (sur une seule ligne) et « combien » (en pied de carte). Les
+ * compétences et le code ROME détaillé restent sur la fiche : jusqu'à huit
+ * pastilles par carte rendaient la liste illisible.
+ */
 export function PublicOfferCard({
   offer,
   basePath = "/worker/public-offers",
 }: PublicOfferCardProps) {
-  const visibleSkills = offer.skills.slice(0, 3);
-  const remainingSkills = offer.skills.length - visibleSkills.length;
+  const place = [offer.postal_code, offer.city].filter(Boolean).join(" ");
+  const facts = [place, offer.working_time].filter(Boolean);
 
   return (
     <article
@@ -31,72 +32,53 @@ export function PublicOfferCard({
           donner une — locale ou Unsplash — laisserait croire qu'elle vient de
           l'établissement ou de la source. La carte se tient par son badge, son
           intitulé et ses informations. */}
-      <div className="public-offer-card__header">
-        <div className="public-offer-card__badges">
-          <span className="badge badge--france-travail">
-            <ExternalLink size={12} aria-hidden="true" />
-            France Travail
-          </span>
-          <span className="badge badge--contract">{offer.contract_label}</span>
-        </div>
-        <h2 id={`offer-${offer.id}`} className="public-offer-card__title">
-          <Link to={`${basePath}/${offer.id}`}>{offer.title}</Link>
-        </h2>
-        <div className="public-offer-card__company">
-          <Building2 size={15} aria-hidden="true" />
-          <span>{offer.company_name || "Établissement non communiqué"}</span>
-        </div>
-      </div>
-
-      <div className="public-offer-card__meta">
-        <span className="public-offer-meta-chip">
-          <MapPin size={13} aria-hidden="true" />
-          {offer.postal_code ? `${offer.postal_code} ` : ""}
-          {offer.city}
+      <div className="public-offer-card__badges">
+        <span className="badge badge--france-travail">
+          <ExternalLink size={12} aria-hidden="true" />
+          France Travail
         </span>
-        {offer.working_time && (
-          <span className="public-offer-meta-chip">
-            <Clock size={13} aria-hidden="true" />
-            {offer.working_time}
-          </span>
-        )}
-        {offer.salary_label && (
-          <span className="public-offer-meta-chip public-offer-meta-chip--salary">
-            <Coins size={13} aria-hidden="true" />
-            {offer.salary_label}
-          </span>
-        )}
-        {offer.experience_label && (
-          <span className="public-offer-meta-chip">
-            <GraduationCap size={13} aria-hidden="true" />
-            {offer.experience_label}
-          </span>
-        )}
+        <span className="badge badge--contract">{offer.contract_label}</span>
       </div>
 
-      {visibleSkills.length > 0 && (
-        <div className="public-offer-card__skills" aria-label="Compétences">
-          {visibleSkills.map((s) => (
-            <span
-              key={s.name}
-              className={`badge ${s.required ? "badge--required" : ""}`}
-            >
-              {s.name}
+      <h2 id={`offer-${offer.id}`} className="public-offer-card__title">
+        <Link to={`${basePath}/${offer.id}`}>{offer.title}</Link>
+      </h2>
+
+      <p className="public-offer-card__company">
+        <Building2 size={15} aria-hidden="true" />
+        <span>{offer.company_name || "Établissement non communiqué"}</span>
+      </p>
+
+      {facts.length > 0 && (
+        <p className="public-offer-card__facts">
+          {facts.map((fact, index) => (
+            <span key={fact}>
+              {index > 0 && (
+                <span className="public-offer-card__sep" aria-hidden="true">
+                  ·
+                </span>
+              )}
+              {fact}
             </span>
           ))}
-          {remainingSkills > 0 && (
-            <span className="badge badge--more">+{remainingSkills}</span>
-          )}
-        </div>
+        </p>
+      )}
+
+      {offer.experience_label && (
+        <p className="public-offer-card__experience">
+          {offer.experience_label}
+        </p>
       )}
 
       <div className="public-offer-card__footer">
-        <span className="public-offer-card__rome quiet">
-          ROME {offer.rome_code} · {offer.rome_label}
-        </span>
+        <p className="public-offer-card__salary">
+          {offer.salary_label ?? (
+            <span className="quiet">Salaire non communiqué</span>
+          )}
+        </p>
         <Link
           to={`${basePath}/${offer.id}`}
-          className="button-ghost button-small public-offer-card__cta"
+          className="public-offer-card__cta"
         >
           Consulter l’offre
           <ArrowRight size={14} aria-hidden="true" />

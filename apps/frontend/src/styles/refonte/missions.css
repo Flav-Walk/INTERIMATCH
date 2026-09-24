@@ -1,0 +1,293 @@
+/*
+ * Listes de missions (Missions, Offres France Travail).
+ *
+ * Même gabarit : bandeau, note d'information, barre d'outils (compteur +
+ * filtre), grille de cartes. Le corps prend toute la largeur du bandeau.
+ */
+
+.missions-page {
+  min-height: 0;
+}
+.missions-page__body {
+  max-width: none;
+  padding: 0;
+}
+
+/* ---------- Note « Recherche élargie » / avertissements ----------
+   Plus de bleu : fond blanc, filet vert à gauche, icône verte. */
+.public-offers-disclaimer {
+  align-items: center;
+  margin-bottom: var(--space-6);
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--forest);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--shadow-1);
+}
+.public-offers-disclaimer svg {
+  margin-top: 0;
+  color: var(--forest);
+}
+.public-offers-disclaimer strong {
+  color: var(--forest);
+}
+.public-offers-disclaimer__link {
+  color: var(--forest);
+  text-underline-offset: 3px;
+}
+
+/* ---------- Barre d'outils ---------- */
+.missions-toolbar {
+  align-items: flex-end;
+  margin-bottom: var(--space-5);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--border);
+}
+.missions-toolbar__count {
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+}
+.missions-toolbar__count svg {
+  color: var(--orange-ink);
+}
+/* Le nombre en Fraunces : c'est l'information de la ligne. */
+.missions-toolbar__count strong {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.select-wrapper select {
+  min-height: 40px;
+  padding: 0 2.5rem 0 var(--space-4);
+  border-radius: var(--radius-pill);
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+.select-wrapper select:focus {
+  outline: none;
+}
+.select-wrapper select:focus-visible {
+  border-color: var(--forest);
+  box-shadow: 0 0 0 3px oklch(0.32 0.065 165 / 0.18);
+}
+.select-wrapper svg {
+  right: var(--space-4);
+}
+
+/* ---------- Chargement ---------- */
+.skeleton-card {
+  height: 300px;
+  background: linear-gradient(
+    90deg,
+    var(--tint) 25%,
+    oklch(0.96 0.015 160) 50%,
+    var(--tint) 75%
+  );
+  background-size: 200% 100%;
+}
+
+/* ---------- « Comment cela fonctionnera » ----------
+   Frise horizontale numérotée en Fraunces, au lieu de pastilles vertes. */
+.how-it-works {
+  margin-top: var(--space-8);
+  padding: var(--space-8);
+  box-shadow: var(--shadow-1);
+}
+.how-it-works h2 {
+  margin-bottom: var(--space-6);
+  font-size: 1.35rem;
+}
+.how-steps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--space-5);
+  counter-reset: none;
+}
+.how-step {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: start;
+  gap: var(--space-1) var(--space-3);
+  padding: var(--space-4) 0 0;
+  border-top: 2px solid var(--forest);
+  border-radius: 0;
+  background: none;
+  font-size: var(--text-sm);
+}
+.how-step__num {
+  width: auto;
+  height: auto;
+  background: none;
+  color: var(--orange-ink);
+  font-family: var(--font-display);
+  font-size: 1.75rem;
+  font-style: italic;
+  font-weight: 500;
+  line-height: 1;
+}
+/* La coche redit le numéro : elle s'efface, le texte suffit. */
+.how-step > svg {
+  display: none;
+}
+
+@media (width < 640px) {
+  .missions-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .select-wrapper select {
+    width: 100%;
+  }
+  .how-it-works {
+    padding: var(--space-5);
+  }
+}
+
+/* ---------- Offres France Travail ---------- */
+.public-offers-toolbar {
+  gap: var(--space-3);
+  margin-bottom: var(--space-6);
+  padding: var(--space-3);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-1);
+}
+.public-offers-toolbar__input-wrap input {
+  min-height: 44px;
+  border-radius: var(--radius-pill);
+}
+.public-offers-toolbar .button {
+  min-height: 44px;
+}
+
+/* Carte d'offre : texte seul, pas d'image. Filet vert en tête pour la
+   distinguer d'une carte mission InteriMatch, qui porte une photo. */
+.public-offer-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-5);
+  border: 1px solid var(--border);
+  border-top: 3px solid var(--forest);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
+  transition:
+    transform var(--normal) var(--ease-out),
+    box-shadow var(--normal) var(--ease-out);
+}
+.public-offer-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-3);
+}
+.public-offer-card__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+.public-offer-card .badge--france-travail {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--forest);
+  color: var(--surface);
+}
+.public-offer-card .badge--contract {
+  background: var(--background);
+  color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+.public-offer-card__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  font-weight: 600;
+  line-height: 1.15;
+}
+.public-offer-card__title a {
+  color: var(--ink);
+  text-decoration: none;
+}
+/* Toute la carte devient cliquable via le titre, sans second lien caché. */
+.public-offer-card__title a::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+.public-offer-card__title a:focus-visible {
+  outline: none;
+}
+.public-offer-card:has(.public-offer-card__title a:focus-visible) {
+  outline: 3px solid var(--forest);
+  outline-offset: 3px;
+}
+.public-offer-card__company {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--text-sm);
+}
+.public-offer-card__facts {
+  margin: 0;
+  color: var(--ink);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+.public-offer-card__sep {
+  margin-inline: var(--space-2);
+  color: var(--orange-ink);
+}
+.public-offer-card__experience {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--text-xs);
+}
+.public-offer-card__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-top: auto;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
+}
+.public-offer-card__salary {
+  margin: 0;
+  color: var(--forest);
+  font-size: var(--text-sm);
+  font-weight: 650;
+}
+/* Le lien reste au-dessus de la zone cliquable du titre. */
+.public-offer-card__cta {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--forest);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.public-offer-card__cta:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .public-offer-card:hover {
+    transform: none;
+  }
+}
