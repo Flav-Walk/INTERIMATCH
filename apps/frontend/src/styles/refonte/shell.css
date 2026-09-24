@@ -298,3 +298,20 @@
 .shell-footer > .shell-footer__meta {
   margin-left: 0;
 }
+
+/* Visiteur sur mobile : logo et deux liens tiennent sur une ligne. Sans
+   navigation, rien ne justifie le passage sur deux rangs. */
+.app-header__inner:not(:has(.app-header__nav)) {
+  flex-wrap: nowrap;
+  padding-top: 0;
+}
+@media (width < 420px) {
+  .app-header .account-link {
+    gap: var(--space-1);
+  }
+  .app-header .account-link a {
+    min-height: 38px;
+    padding-inline: var(--space-3);
+    font-size: var(--text-xs);
+  }
+}

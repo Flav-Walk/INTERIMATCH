@@ -1,1 +1,468 @@
-/* Accueil — voir commit suivant. */
+/*
+ * Accueil public.
+ *
+ * Structure : un bandeau vert (le seul moment fort de la page : le ticket
+ * qui se pose), deux colonnes Intérimaires / Établissements, un parcours en
+ * trois temps, puis un appel final. L'orange n'apparaît que sur l'action
+ * principale de chaque écran.
+ */
+
+.landing {
+  display: grid;
+  gap: var(--space-12);
+}
+
+/* ---------- Ouverture ---------- */
+.landing-hero {
+  isolation: isolate;
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
+  align-items: center;
+  gap: var(--space-10);
+  min-height: 520px;
+  padding: clamp(2.5rem, 6vw, 4.5rem) clamp(1.5rem, 5vw, 4rem);
+  overflow: hidden;
+  border-radius: var(--radius-card);
+  background:
+    radial-gradient(
+      70% 90% at 95% 10%,
+      oklch(0.46 0.09 165 / 0.8),
+      transparent 60%
+    ),
+    radial-gradient(
+      80% 100% at 0% 100%,
+      oklch(0.22 0.045 165 / 0.9),
+      transparent 60%
+    ),
+    var(--forest);
+  color: var(--surface);
+  box-shadow: var(--shadow-3);
+}
+/* Grain de papier, comme sur les bandeaux des espaces connectés. */
+.landing-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: repeating-linear-gradient(
+    0deg,
+    oklch(1 0 0 / 0.028) 0 1px,
+    transparent 1px 7px
+  );
+  mask-image: linear-gradient(100deg, transparent 15%, #000 70%);
+  pointer-events: none;
+}
+
+.landing-hero__eyeline {
+  display: inline-flex;
+  padding: 5px 14px;
+  border: 1px solid oklch(1 0 0 / 0.28);
+  border-radius: var(--radius-pill);
+  color: oklch(0.94 0.02 160);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.landing-hero__title {
+  max-width: 12ch;
+  margin: var(--space-6) 0 var(--space-5);
+  color: var(--surface);
+  font-size: clamp(2.6rem, 6vw, 4.6rem);
+  line-height: 0.98;
+  letter-spacing: -0.035em;
+}
+/* La seconde moitié du slogan en italique orange : sur le vert, l'orange de
+   marque atteint 5,11:1, au-dessus du seuil AA même en texte courant. */
+.landing-hero__accent {
+  display: block;
+  color: var(--orange);
+  font-style: italic;
+  font-weight: 500;
+}
+
+.landing-hero__lead {
+  max-width: 50ch;
+  margin: 0;
+  color: oklch(0.92 0.02 160);
+  font-size: 1.05rem;
+  line-height: 1.6;
+}
+
+.landing-hero__ctas {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-8);
+}
+.landing-hero__ctas .button {
+  min-height: 52px;
+  padding-inline: var(--space-6);
+  font-size: 1rem;
+}
+.landing-hero__ghost {
+  display: inline-flex;
+  align-items: center;
+  min-height: 52px;
+  padding: 0 var(--space-5);
+  border: 1px solid oklch(1 0 0 / 0.32);
+  border-radius: var(--radius);
+  color: var(--surface);
+  font-weight: 600;
+  text-decoration: none;
+  transition:
+    background var(--fast) var(--ease-out),
+    border-color var(--fast) var(--ease-out);
+}
+.landing-hero__ghost:hover {
+  border-color: oklch(1 0 0 / 0.55);
+  background: oklch(1 0 0 / 0.1);
+}
+.landing-hero :is(a, button):focus-visible {
+  outline-color: var(--orange);
+}
+
+/* ---------- Ticket d'exemple ----------
+   Papier crème, bords dentelés en haut et en bas (dégradés radiaux), léger
+   décalage de rotation : un bon de commande posé sur le passe. */
+/* L'ombre est portée par le conteneur : sur le ticket, le masque des dents
+   la couperait. */
+.landing-hero__visual {
+  display: flex;
+  justify-content: center;
+  filter: drop-shadow(0 18px 30px oklch(0.15 0.04 165 / 0.45));
+}
+.landing-ticket {
+  --notch: 9px;
+  position: relative;
+  width: min(100%, 360px);
+  padding: var(--space-8) var(--space-6) var(--space-6);
+  color: var(--ink);
+  background: oklch(0.985 0.012 85);
+  /* Dents en haut et en bas. Les deux moitiés se chevauchent (51 %) pour
+     qu'aucune ligne de raccord n'apparaisse au milieu. */
+  --teeth-top: radial-gradient(circle var(--notch) at 50% 0, #0000 97%, #000) top / 22px 51% repeat-x;
+  --teeth-bottom: radial-gradient(circle var(--notch) at 50% 100%, #0000 97%, #000) bottom / 22px 51% repeat-x;
+  -webkit-mask: var(--teeth-top), var(--teeth-bottom);
+  mask: var(--teeth-top), var(--teeth-bottom);
+  transform: rotate(2.5deg);
+  animation: ticket-in 800ms var(--ease-out) 150ms both;
+}
+@keyframes ticket-in {
+  from {
+    opacity: 0;
+    transform: translateY(24px) rotate(7deg);
+  }
+}
+
+.landing-ticket__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: var(--space-4);
+  border-bottom: 1px dashed oklch(0.23 0.02 160 / 0.25);
+}
+.landing-ticket__tag {
+  padding: 2px 10px;
+  border-radius: var(--radius-pill);
+  background: var(--tint);
+  color: var(--forest);
+  font-size: var(--text-xs);
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.landing-ticket__no {
+  color: var(--muted);
+  font-family: var(--font-display);
+  font-size: var(--text-sm);
+  font-style: italic;
+}
+
+.landing-ticket__role {
+  margin: var(--space-5) 0 var(--space-4);
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 600;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+}
+
+.landing-ticket__meta {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-5);
+}
+.landing-ticket__meta div {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+}
+/* Points de conduite entre le libellé et la valeur, comme sur une carte. */
+.landing-ticket__meta div::after {
+  content: "";
+  order: 1;
+  flex: 1;
+  border-bottom: 1px dotted oklch(0.23 0.02 160 / 0.35);
+  transform: translateY(-4px);
+}
+.landing-ticket__meta dt {
+  color: var(--muted);
+}
+.landing-ticket__meta dd {
+  order: 2;
+  margin: 0;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.landing-ticket__criteria {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-4);
+  list-style: none;
+  border-radius: var(--radius);
+  background: oklch(0.32 0.065 165 / 0.07);
+}
+.landing-ticket__criteria li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--forest);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+.landing-ticket__criteria svg {
+  flex: none;
+  padding: 2px;
+  border-radius: 50%;
+  background: var(--forest);
+  color: var(--surface);
+}
+
+.landing-ticket__foot {
+  display: grid;
+  gap: 2px;
+  margin: var(--space-5) 0 0;
+  padding-top: var(--space-4);
+  border-top: 1px dashed oklch(0.23 0.02 160 / 0.25);
+  font-size: var(--text-sm);
+}
+.landing-ticket__foot span {
+  color: var(--muted);
+}
+
+/* ---------- Deux publics ---------- */
+.landing-paths {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-6);
+}
+.landing-path {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: clamp(1.75rem, 3.5vw, 2.75rem);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
+}
+.landing-path--company {
+  border-color: transparent;
+  background: var(--tint);
+  box-shadow: none;
+}
+.landing-path h2 {
+  max-width: 18ch;
+  margin: 0 0 var(--space-3);
+  font-size: clamp(1.6rem, 2.6vw, 2.1rem);
+  line-height: 1.1;
+}
+.landing-path__lead {
+  margin: 0 0 var(--space-6);
+  color: var(--muted);
+}
+
+/* Liste d'avantages : un filet orange en tête de chaque ligne remplace les
+   pictos. Le texte porte l'information. */
+.landing-features {
+  display: grid;
+  gap: 0;
+  width: 100%;
+  margin: 0 0 var(--space-8);
+  padding: 0;
+  list-style: none;
+}
+.landing-features li {
+  position: relative;
+  padding: var(--space-4) 0 var(--space-4) var(--space-6);
+  border-top: 1px solid var(--border);
+}
+.landing-path--company .landing-features li {
+  border-top-color: oklch(0.32 0.065 165 / 0.14);
+}
+.landing-features li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: calc(var(--space-4) + 0.55em);
+  width: 12px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--orange);
+}
+.landing-features h3 {
+  margin: 0 0 var(--space-1);
+}
+.landing-features p {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--text-sm);
+}
+
+.landing-path > .secondary-button,
+.landing-path__access {
+  margin-top: auto;
+}
+.landing-path__access {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-3);
+  color: var(--muted);
+  font-size: var(--text-sm);
+}
+
+/* ---------- Parcours ---------- */
+.landing-how {
+  display: grid;
+  grid-template-columns: minmax(240px, 0.7fr) minmax(0, 2fr);
+  align-items: start;
+  gap: var(--space-10);
+  padding-block: var(--space-4);
+}
+.landing-how__head h2 {
+  margin: 0 0 var(--space-3);
+  font-size: clamp(1.7rem, 3vw, 2.3rem);
+}
+.landing-how__head p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.landing-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-6);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: none;
+}
+.landing-step {
+  position: relative;
+  padding-top: var(--space-5);
+  border-top: 2px solid var(--forest);
+}
+.landing-step__num {
+  display: block;
+  margin-bottom: var(--space-3);
+  color: var(--orange-ink);
+  font-family: var(--font-display);
+  font-size: 2.6rem;
+  font-style: italic;
+  font-weight: 500;
+  line-height: 1;
+}
+.landing-step h3 {
+  margin: 0 0 var(--space-2);
+  font-size: 1.1rem;
+}
+.landing-step p {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--text-sm);
+}
+
+/* ---------- Appel final ---------- */
+.landing-final {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-6);
+  padding: clamp(1.75rem, 4vw, 2.75rem) clamp(1.5rem, 4vw, 3rem);
+  border-radius: var(--radius-card);
+  background: var(--forest);
+  color: var(--surface);
+}
+.landing-final h2 {
+  margin: 0 0 var(--space-2);
+  color: var(--surface);
+  font-size: clamp(1.5rem, 2.6vw, 2rem);
+}
+.landing-final p {
+  margin: 0;
+  color: oklch(0.92 0.02 160);
+}
+.landing-final .button {
+  flex: none;
+}
+.landing-final :is(a, button):focus-visible {
+  outline-color: var(--orange);
+}
+
+/* ---------- Responsive ---------- */
+@media (width < 1000px) {
+  .landing-hero {
+    grid-template-columns: 1fr;
+    min-height: 0;
+  }
+  .landing-hero__visual {
+    justify-content: flex-start;
+  }
+  .landing-how {
+    grid-template-columns: 1fr;
+    gap: var(--space-6);
+  }
+}
+@media (width < 800px) {
+  .landing {
+    gap: var(--space-8);
+  }
+  .landing-paths {
+    grid-template-columns: 1fr;
+  }
+  .landing-steps {
+    grid-template-columns: 1fr;
+  }
+  .landing-final {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+@media (width < 520px) {
+  .landing-hero {
+    margin-inline: calc(var(--page-gutter) * -0.5);
+    padding: var(--space-8) var(--space-5);
+  }
+  .landing-hero__title {
+    font-size: 2.6rem;
+  }
+  .landing-hero__ctas > * {
+    flex: 1 1 100%;
+    justify-content: center;
+  }
+  .landing-ticket {
+    transform: rotate(1.5deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-ticket {
+    animation: none;
+  }
+}
