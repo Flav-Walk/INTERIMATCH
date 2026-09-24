@@ -1091,7 +1091,8 @@ test("a company drafts, edits and publishes a mission", async ({
     .click();
 
   // L'interface reflète immédiatement l'état établi par le serveur.
-  await expect(page.locator(".mission-status")).toHaveText("À pourvoir");
+  // Mission ouverte = état normal : plus de badge.
+  await expect(page.locator(".mission-status")).toHaveCount(0);
   // Ciblé sur la bannière : la boîte de confirmation emploie les mêmes mots.
   await expect(page.locator(".form-success")).toContainText("Mission publiée.");
   // L'action qui n'a plus lieu d'être disparaît.
@@ -1314,7 +1315,8 @@ test("the company dashboard reflects mission changes without reloading", async (
     .getByRole("dialog")
     .getByRole("button", { name: "Publier" })
     .click();
-  await expect(page.locator(".mission-status")).toHaveText("À pourvoir");
+  // Mission ouverte = état normal : plus de badge.
+  await expect(page.locator(".mission-status")).toHaveCount(0);
   await page.getByRole("link", { name: "Accueil", exact: true }).click();
   await expect(page).toHaveURL(/\/company$/);
   await expect(openTab).toContainText("1");
@@ -1391,7 +1393,8 @@ test("a published mission becomes visible to an intérimaire", async ({
     .getByRole("dialog")
     .getByRole("button", { name: "Publier" })
     .click();
-  await expect(page.locator(".mission-status")).toHaveText("À pourvoir");
+  // Mission ouverte = état normal : plus de badge.
+  await expect(page.locator(".mission-status")).toHaveCount(0);
   const idOffert = urlOfferte.split("/").pop();
 
   const urlBrouillon = await create(brouillon, "19");
@@ -1432,7 +1435,7 @@ test("a published mission becomes visible to an intérimaire", async ({
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(offert);
 
   const detail = page.locator(".detail-grid");
-  await expect(detail).toContainText("2 postes à pourvoir");
+  await expect(detail).toContainText("2 postes");
   await expect(detail).toContainText("69002 Lyon");
   await expect(detail).toContainText("14,00 €");
   await expect(detail).toContainText("1 an d’expérience");
@@ -1521,7 +1524,8 @@ test("matching connects a published mission to a compatible intérimaire", async
     .getByRole("dialog")
     .getByRole("button", { name: "Publier" })
     .click();
-  await expect(page.locator(".mission-status")).toHaveText("À pourvoir");
+  // Mission ouverte = état normal : plus de badge.
+  await expect(page.locator(".mission-status")).toHaveCount(0);
 
   await openAccount(page);
   await page.getByRole("button", { name: "Se déconnecter" }).click();

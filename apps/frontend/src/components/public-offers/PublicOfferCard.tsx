@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Building2, MapPin, Clock, ArrowRight, ExternalLink } from "lucide-react";
+import { ArrowRight, ExternalLink } from "lucide-react";
 import type { PublicJobOffer } from "../../services/publicOffers";
 import { MagicCard } from "../ui/magic-card";
 import { MAGIC_CARD_COLORS } from "../../lib/brand";
@@ -36,7 +36,9 @@ interface PublicOfferCardProps {
 function formatCity(city: string): string {
   const clean = city.replace(/^\d{2,3}\s*-\s*/, "").trim();
   if (clean !== clean.toUpperCase()) return clean;
-  return clean.toLowerCase().replace(/(^|[\s'-])\p{L}/gu, (c) => c.toUpperCase());
+  return clean
+    .toLowerCase()
+    .replace(/(^|[\s'-])\p{L}/gu, (c) => c.toUpperCase());
 }
 
 export function PublicOfferCard({
@@ -68,7 +70,9 @@ export function PublicOfferCard({
               <ExternalLink size={12} aria-hidden="true" />
               France Travail
             </span>
-            <span className="badge badge--contract">{offer.contract_label}</span>
+            <span className="badge badge--contract">
+              {offer.contract_label}
+            </span>
           </div>
         </div>
         <div className="public-offer-card__header">
@@ -76,23 +80,14 @@ export function PublicOfferCard({
             <Link to={href}>{offer.title}</Link>
           </h2>
           <div className="public-offer-card__company">
-            <Building2 size={15} aria-hidden="true" />
             <span>{offer.company_name || "Établissement non communiqué"}</span>
           </div>
         </div>
 
         {/* Où et quand, en texte simple : plus de pastilles ici. */}
         <p className="public-offer-card__facts">
-          <span>
-            <MapPin size={14} aria-hidden="true" />
-            {formatCity(offer.city)}
-          </span>
-          {offer.working_time && (
-            <span>
-              <Clock size={14} aria-hidden="true" />
-              {offer.working_time}
-            </span>
-          )}
+          <span>{formatCity(offer.city)}</span>
+          {offer.working_time && <span>{offer.working_time}</span>}
         </p>
 
         <div className="public-offer-card__footer">

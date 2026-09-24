@@ -4,21 +4,7 @@ import { motion, useReducedMotion } from "motion/react";
 import { cascade, revealOnScroll, rise } from "../lib/motion";
 import { offerIllustrationFor } from "../lib/job-photos";
 import { UnsplashCredit } from "../components/mission/MissionPhotoField";
-import {
-  ArrowLeft,
-  Briefcase,
-  Building2,
-  Clock,
-  Coins,
-  ExternalLink,
-  FileText,
-  GraduationCap,
-  Info,
-  MapPin,
-  Sparkles,
-  Users,
-  Wrench,
-} from "lucide-react";
+import { ArrowLeft, ExternalLink } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { errorMessage } from "../services/session";
 import {
@@ -161,7 +147,6 @@ export function WorkerPublicOfferDetail() {
               </div>
               <h1 className="detail-hero__title">{offer.title}</h1>
               <p className="detail-hero__company">
-                <Building2 size={14} aria-hidden="true" />
                 <span>
                   {offer.company_name || "Établissement non communiqué"}
                 </span>
@@ -173,42 +158,25 @@ export function WorkerPublicOfferDetail() {
             </div>
           </motion.div>
 
-          <motion.div
-            className="detail-hero__meta detail-grid"
-            variants={rise}
-          >
+          <motion.div className="detail-hero__meta detail-grid" variants={rise}>
             <span className="detail-meta-chip">
-              <MapPin size={13} aria-hidden="true" />
               {offer.postal_code ? `${offer.postal_code} ` : ""}
               {offer.city}
             </span>
-            <span className="detail-meta-chip">
-              <Briefcase size={13} aria-hidden="true" />
-              {offer.contract_label}
-            </span>
+            <span className="detail-meta-chip">{offer.contract_label}</span>
             {offer.working_time && (
-              <span className="detail-meta-chip">
-                <Clock size={13} aria-hidden="true" />
-                {offer.working_time}
-              </span>
+              <span className="detail-meta-chip">{offer.working_time}</span>
             )}
             {offer.salary_label && (
               <span className="detail-meta-chip detail-meta-chip--pay">
-                <Coins size={13} aria-hidden="true" />
                 {offer.salary_label}
               </span>
             )}
             {offer.experience_label && (
-              <span className="detail-meta-chip">
-                <GraduationCap size={13} aria-hidden="true" />
-                {offer.experience_label}
-              </span>
+              <span className="detail-meta-chip">{offer.experience_label}</span>
             )}
             {offer.positions > 1 && (
-              <span className="detail-meta-chip">
-                <Users size={13} aria-hidden="true" />
-                {offer.positions} postes à pourvoir
-              </span>
+              <span className="detail-meta-chip">{offer.positions} postes</span>
             )}
           </motion.div>
         </motion.div>
@@ -225,7 +193,6 @@ export function WorkerPublicOfferDetail() {
                 {...reveal}
               >
                 <h2 id="desc-title" className="detail-card__title">
-                  <FileText size={16} aria-hidden="true" />
                   Description du poste
                 </h2>
                 <div className="public-offer-description-text">
@@ -236,7 +203,6 @@ export function WorkerPublicOfferDetail() {
 
             <section className="detail-card" aria-labelledby="skills-title">
               <h2 id="skills-title" className="detail-card__title">
-                <Wrench size={16} aria-hidden="true" />
                 Compétences mentionnées
               </h2>
 
@@ -292,7 +258,6 @@ export function WorkerPublicOfferDetail() {
                   aria-labelledby="qualities-title"
                 >
                   <h2 id="qualities-title" className="detail-card__title">
-                    <Sparkles size={16} aria-hidden="true" />
                     Qualités professionnelles recherchées
                   </h2>
                   <div className="steps-list">
@@ -320,7 +285,6 @@ export function WorkerPublicOfferDetail() {
           <aside className="detail-rail" aria-label="Origine de l'offre">
             <section className="detail-card" aria-labelledby="origin-title">
               <h2 id="origin-title" className="detail-card__title">
-                <Info size={16} aria-hidden="true" />
                 Origine de l'offre
               </h2>
 

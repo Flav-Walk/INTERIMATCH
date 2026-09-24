@@ -2,10 +2,7 @@ import { Link } from "react-router-dom";
 import { motion } from "motion/react";
 import {
   ArrowRight,
-  CalendarDays,
   Check,
-  Coins,
-  MapPin,
   ChefHat,
   ConciergeBell,
   UtensilsCrossed,
@@ -147,18 +144,22 @@ export function MissionCard({
               decoding="async"
             />
           )}
-          {/* key = l'état de la mission. Si l'état change (ex. « À pourvoir »
-              → « Pourvue »), React recrée le badge et il refait son petit
-              zoom d'apparition : on remarque le changement. */}
-          <motion.span
-            key={status.className}
-            className={`mission-status ${status.className}`}
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ type: "spring", bounce: 0.3, duration: 0.4 }}
-          >
-            {status.label}
-          </motion.span>
+          {/* Une mission ouverte n'affiche pas de badge : c'est l'état
+              normal, l'écrire sur chaque carte chargeait l'interface pour
+              rien. Le badge n'apparaît que quand l'état apporte une info
+              (Pourvue, En cours, Terminée…). key = l'état : s'il change,
+              React recrée le badge et il refait son zoom d'apparition. */}
+          {status.key !== "open" && (
+            <motion.span
+              key={status.className}
+              className={`mission-status ${status.className}`}
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ type: "spring", bounce: 0.3, duration: 0.4 }}
+            >
+              {status.label}
+            </motion.span>
+          )}
           {pendingApplications > 0 && (
             <span className="mission-pending">
               {pendingApplications}
@@ -176,20 +177,9 @@ export function MissionCard({
               <span className="mission-timing">À venir</span>
             )}
           </div>
-          <p className="mission-meta">
-            <MapPin size={14} aria-hidden="true" />
-            {mission.city}
-          </p>
-          <p className="mission-meta">
-            <CalendarDays size={14} aria-hidden="true" />
-            {missionSchedule(mission)}
-          </p>
-          {pay && (
-            <p className="mission-meta mission-meta--pay">
-              <Coins size={14} aria-hidden="true" />
-              {pay}
-            </p>
-          )}
+          <p className="mission-meta">{mission.city}</p>
+          <p className="mission-meta">{missionSchedule(mission)}</p>
+          {pay && <p className="mission-meta mission-meta--pay">{pay}</p>}
         </div>
         <div className="mission-foot">
           {score === undefined ? (

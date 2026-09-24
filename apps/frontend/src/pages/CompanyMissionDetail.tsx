@@ -1,16 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
-import {
-  ArrowLeft,
-  Ban,
-  CalendarDays,
-  Coins,
-  MapPin,
-  Pencil,
-  Send,
-  Users,
-  Wrench,
-} from "lucide-react";
+import { ArrowLeft, Ban, Pencil, Send } from "lucide-react";
 import { errorMessage } from "../services/session";
 import { ApiError } from "../services/api";
 import { useAuth } from "../hooks/useAuth";
@@ -235,9 +225,14 @@ export function CompanyMissionDetail() {
 
       <div className="section-head">
         <h1>{mission.title}</h1>
-        <span className={`mission-status is-inline ${presentation.className}`}>
-          {presentation.label}
-        </span>
+        {/* Pas de badge pour une mission ouverte : c'est l'état normal. */}
+        {presentation.key !== "open" && (
+          <span
+            className={`mission-status is-inline ${presentation.className}`}
+          >
+            {presentation.label}
+          </span>
+        )}
         {presentation.temporal === "upcoming" && mission.status !== "draft" && (
           <span className="mission-timing is-inline">À venir</span>
         )}
@@ -321,26 +316,20 @@ export function CompanyMissionDetail() {
         <div className="layout-main">
           <section className="rail-card">
             <div className="detail-grid">
+              <p className="mission-meta">{missionSchedule(mission)}</p>
               <p className="mission-meta">
-                <CalendarDays size={15} aria-hidden="true" />
-                {missionSchedule(mission)}
-              </p>
-              <p className="mission-meta">
-                <MapPin size={15} aria-hidden="true" />
                 {mission.address ? `${mission.address}, ` : ""}
                 {mission.postal_code} {mission.city}
               </p>
               <p className="mission-meta">
-                <Users size={15} aria-hidden="true" />
                 {!capacity
                   ? mission.headcount > 1
-                    ? `${mission.headcount} postes à pourvoir`
-                    : "1 poste à pourvoir"
+                    ? `${mission.headcount} postes`
+                    : "1 poste"
                   : missionCapacityLabel(capacity.filled, capacity.headcount)}
               </p>
               {mission.pay_amount && mission.pay_unit && (
                 <p className="mission-meta">
-                  <Coins size={15} aria-hidden="true" />
                   {Number(mission.pay_amount).toLocaleString("fr-FR", {
                     style: "currency",
                     currency: "EUR",
@@ -356,7 +345,6 @@ export function CompanyMissionDetail() {
 
           <section className="rail-card">
             <div className="rail-head">
-              <Wrench size={18} aria-hidden="true" />
               <h2>Compétences attendues</h2>
             </div>
             {required.length > 0 ? (

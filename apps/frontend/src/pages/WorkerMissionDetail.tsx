@@ -3,17 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { motion, useReducedMotion } from "motion/react";
 import { cascade, pop, revealOnScroll, rise } from "../lib/motion";
 import { illustrationFor } from "../lib/job-photos";
-import {
-  ArrowLeft,
-  Building2,
-  CalendarDays,
-  Coins,
-  FileText,
-  GraduationCap,
-  MapPin,
-  Users,
-  Wrench,
-} from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { errorMessage, type ReferenceValue } from "../services/session";
 import { api } from "../services/session";
@@ -174,18 +164,20 @@ export function WorkerMissionDetail() {
 
           <motion.div className="detail-hero__head" variants={rise}>
             <div className="detail-hero__title-wrap">
-              <span
-                className={`mission-status is-inline ${presentation.className}`}
-              >
-                {presentation.label}
-              </span>
+              {/* Pas de badge pour une mission ouverte : c'est l'état normal. */}
+              {presentation.key !== "open" && (
+                <span
+                  className={`mission-status is-inline ${presentation.className}`}
+                >
+                  {presentation.label}
+                </span>
+              )}
               {presentation.temporal === "upcoming" && (
                 <span className="mission-timing is-inline">À venir</span>
               )}
               <h1 className="detail-hero__title">{mission.title}</h1>
               {mission.company.establishment_name && (
                 <p className="detail-hero__company">
-                  <Building2 size={14} aria-hidden="true" />
                   {mission.company.establishment_name}
                   {sector && (
                     <span className="detail-hero__sector"> · {sector}</span>
@@ -206,28 +198,19 @@ export function WorkerMissionDetail() {
             )}
           </motion.div>
 
-          <motion.div
-            className="detail-hero__meta detail-grid"
-            variants={rise}
-          >
+          <motion.div className="detail-hero__meta detail-grid" variants={rise}>
+            <span className="detail-meta-chip">{missionSchedule(mission)}</span>
             <span className="detail-meta-chip">
-              <CalendarDays size={13} aria-hidden="true" />
-              {missionSchedule(mission)}
-            </span>
-            <span className="detail-meta-chip">
-              <MapPin size={13} aria-hidden="true" />
               {mission.address ? `${mission.address}, ` : ""}
               {mission.postal_code} {mission.city}
             </span>
             <span className="detail-meta-chip">
-              <Users size={13} aria-hidden="true" />
               {mission.headcount > 1
-                ? `${mission.headcount} postes à pourvoir`
-                : "1 poste à pourvoir"}
+                ? `${mission.headcount} postes`
+                : "1 poste"}
             </span>
             {mission.pay_amount && mission.pay_unit && (
               <span className="detail-meta-chip detail-meta-chip--pay">
-                <Coins size={13} aria-hidden="true" />
                 {Number(mission.pay_amount).toLocaleString("fr-FR", {
                   style: "currency",
                   currency: "EUR",
@@ -237,7 +220,6 @@ export function WorkerMissionDetail() {
             )}
             {Number.isFinite(experience) && experience > 0 && (
               <span className="detail-meta-chip">
-                <GraduationCap size={13} aria-hidden="true" />
                 {experience} an{experience > 1 ? "s" : ""} d’expérience attendus
               </span>
             )}
@@ -256,7 +238,6 @@ export function WorkerMissionDetail() {
                 {...reveal}
               >
                 <h2 id="desc-title" className="detail-card__title">
-                  <FileText size={16} aria-hidden="true" />
                   Description de la mission
                 </h2>
                 <p className="detail-description">{mission.description}</p>
@@ -270,7 +251,6 @@ export function WorkerMissionDetail() {
               {...reveal}
             >
               <h2 id="skills-title" className="detail-card__title">
-                <Wrench size={16} aria-hidden="true" />
                 Compétences attendues
               </h2>
 
@@ -347,7 +327,6 @@ export function WorkerMissionDetail() {
               {...reveal}
             >
               <h2 id="company-title" className="detail-card__title">
-                <Building2 size={16} aria-hidden="true" />
                 L’établissement
               </h2>
 
