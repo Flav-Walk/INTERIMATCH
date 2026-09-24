@@ -1,0 +1,80 @@
+/*
+ * Profil intérimaire (et fiche établissement, qui partage `.onboarding`).
+ *
+ * Le profil prend toute la largeur de page, comme les autres écrans : il
+ * était borné à 850 px par `.onboarding`. Les rubriques gardent leur grille
+ * sur 12 colonnes ; seules leur typographie et leurs surfaces changent.
+ */
+
+.onboarding.worker-profile {
+  width: auto;
+  max-width: none;
+  margin: 0;
+}
+
+/* ---------- Aperçu en tête ---------- */
+.profile-overview {
+  margin: 0 0 var(--space-6);
+  padding: var(--space-5) var(--space-6);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-1);
+}
+
+/* ---------- Rubriques ---------- */
+.profile-grid {
+  gap: var(--space-5);
+}
+.worker-profile .profile-section {
+  gap: var(--space-4);
+  padding: var(--space-6);
+  border-color: var(--border);
+  border-radius: var(--radius-card);
+}
+/* Le titre de rubrique sort du cadre du fieldset et devient un vrai titre :
+   Fraunces, encre, icône nue (plus de pastille teintée). */
+.worker-profile .profile-section legend {
+  float: left;
+  width: 100%;
+  margin-bottom: var(--space-2);
+  padding: 0 0 var(--space-3);
+  border-bottom: 1px solid var(--border);
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.worker-profile .profile-section legend + * {
+  clear: both;
+}
+.profile-section__icon {
+  width: auto;
+  height: auto;
+  background: none;
+  color: var(--forest);
+}
+
+.worker-profile :is(input, select, textarea) {
+  min-height: 46px;
+  border-color: var(--border);
+  border-radius: var(--radius);
+}
+
+/* Deux champs côte à côte : alignés par le bas, même si l'un des libellés
+   passe sur deux lignes (« Années d'expérience du métier (facultatif) »). */
+.profile-job-fields,
+.profile-mobility-fields {
+  align-items: end;
+}
+
+/* ---------- Barre d'enregistrement ---------- */
+.profile-savebar {
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-2);
+}
+
+@media (width < 720px) {
+  .worker-profile .profile-section {
+    padding: var(--space-5);
+  }
+}
