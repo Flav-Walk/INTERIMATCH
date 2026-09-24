@@ -1,125 +1,1752 @@
+@import "./tokens.css";
+@import "./shell.css";
+@import "./company-applications.css";
+@import "./public-offers.css";
+@import "./brand.css";
+@import "./mission-photo.css";
+@import "./documents.css";
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  background: var(--background);
+  color: var(--ink);
+  font: 1rem/1.6 var(--font-body);
+  /* Lissage des polices sur macOS : texte plus net sur fond clair. */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+a {
+  color: inherit;
+}
+button,
+input {
+  font: inherit;
+}
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+a:focus-visible,
+button:focus-visible {
+  outline: 3px solid var(--forest);
+  outline-offset: 5px;
+}
+/* Le contenu principal reçoit le focus à chaque changement de page (voir
+   AppLayout) : c'est un conteneur, pas une commande, on n'y dessine pas de
+   contour. Les éléments interactifs gardent leur focus visible. */
+.app-main:focus {
+  outline: none;
+}
+h1,
+h2,
+h3,
+p {
+  margin-top: 0;
+}
+h1,
+h2 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  /* Fraunces adapte le dessin des lettres à la taille (axe « opsz »). */
+  font-optical-sizing: auto;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+h1 {
+  font-size: 2.6rem;
+  line-height: 1.14;
+  letter-spacing: -0.025em;
+}
+h2 {
+  font-size: 1.45rem;
+  line-height: 1.3;
+}
+/* Petits titres dans la police du texte : c'est plus net qu'un serif en
+   petite taille. */
+h3 {
+  font-size: 1.1rem;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+p {
+  max-width: 65ch;
+  text-wrap: pretty;
+}
+.site-header {
+  min-height: 80px;
+  padding: 16px 4%;
+  display: flex;
+  align-items: center;
+  gap: 40px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 750;
+  font-size: 1.4rem;
+  text-decoration: none;
+  letter-spacing: -0.035em;
+}
+.brand svg {
+  color: var(--forest);
+}
+nav {
+  display: flex;
+  gap: 24px;
+}
+nav a {
+  text-decoration: none;
+  font-size: 0.9rem;
+  padding: 8px 0;
+  border-bottom: 2px solid transparent;
+}
+nav a.active {
+  border-color: var(--orange);
+  color: var(--forest);
+  font-weight: 650;
+}
+.account-link {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  text-decoration: none;
+}
+main {
+  max-width: var(--page-max);
+  margin: auto;
+  /* <main> est déjà borné et centré : une gouttière fixe suffit. L'en-tête,
+     lui, est pleine largeur et recalcule la même marge — les trois s'alignent.
+     Avec box-sizing: border-box, un padding en pourcentage rognerait la
+     largeur utile du contenu. */
+  padding-block: 24px 56px;
+  padding-inline: var(--page-gutter);
+  min-height: calc(100vh - 170px);
+}
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(260px, 1fr);
+  gap: 24px;
+}
+.welcome {
+  padding: 40px;
+  background: var(--forest);
+  color: white;
+  border-radius: var(--radius);
+  position: relative;
+}
+.eyeline {
+  font-size: 0.85rem;
+  margin-bottom: 16px;
+}
+.welcome h1 {
+  max-width: 17ch;
+}
+.welcome p {
+  max-width: 47ch;
+  color: oklch(0.92 0.025 160);
+}
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  background: var(--orange);
+  color: var(--ink);
+  font-weight: 700;
+  border: 0;
+  border-radius: 8px;
+  padding: 12px 20px;
+  text-decoration: none;
+  cursor: pointer;
+  min-height: 48px;
+}
+.button:hover {
+  background: var(--orange-hover);
+}
+.button:disabled {
+  background: var(--border);
+  color: var(--muted);
+  cursor: not-allowed;
+}
+.button.is-danger {
+  background: var(--danger);
+  color: var(--surface);
+}
+.button.is-danger:hover {
+  background: var(--danger);
+}
+.button.is-danger:disabled {
+  background: var(--border);
+  color: var(--muted);
+}
+.welcome-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  margin-top: 24px;
+  color: oklch(0.92 0.025 160);
+}
+.section {
+  margin-top: 28px;
+}
+.section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.section-heading h2 {
+  margin: 0;
+}
+.badge {
+  display: inline-block;
+  background: var(--tint);
+  color: var(--forest);
+  padding: 4px 10px;
+  border-radius: 99px;
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+.empty {
+  padding: 30px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.empty > svg {
+  color: var(--forest);
+  margin-bottom: 12px;
+}
+.empty p,
+.side-panel p {
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+.quiet {
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+.secondary {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+.side-panel {
+  padding: 28px;
+  background: var(--surface);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+}
+.side-panel > svg {
+  color: var(--forest);
+  margin-bottom: 16px;
+}
+.pale {
+  background: var(--tint);
+  border: 0;
+}
+footer {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+  padding: 24px 4%;
+  border-top: 1px solid var(--border);
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+footer .brand {
+  font-size: 1rem;
+  color: var(--ink);
+}
+footer > span:last-child {
+  margin-left: auto;
+}
+.login {
+  max-width: 620px;
+  margin: 60px auto;
+  padding: 36px;
+  background: var(--surface);
+  border-radius: var(--radius);
+}
+.login .quiet {
+  margin-top: 20px;
+}
+@media (max-width: 900px) {
+  .workspace {
+    /* minmax(0, 1fr) et non 1fr : une colonne « 1fr » ne rétrécit pas sous
+       la largeur minimale de son contenu, et débordait à 320 px (RGAA 10.11). */
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .secondary {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+  .site-header {
+    gap: 24px;
+  }
+  .welcome h1 {
+    max-width: 22ch;
+  }
+}
+@media (max-width: 560px) {
+  .site-header {
+    flex-wrap: wrap;
+    gap: 10px 20px;
+    padding: 16px 5%;
+  }
+  .brand {
+    font-size: 1.2rem;
+  }
+  nav {
+    order: 3;
+    width: 100%;
+  }
+  .account-link {
+    font-size: 0.82rem;
+  }
+  main {
+    padding: 20px 5% 32px;
+  }
+  .welcome {
+    padding: 28px 24px;
+  }
+  h1 {
+    font-size: 2rem;
+  }
+  .secondary {
+    grid-template-columns: 1fr;
+  }
+  .empty,
+  .side-panel {
+    padding: 24px;
+  }
+  footer {
+    flex-wrap: wrap;
+    gap: 8px 20px;
+  }
+  footer > span:last-child {
+    margin-left: 0;
+  }
+  .login {
+    padding: 24px;
+    margin: 20px auto;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+.auth-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(420px, 0.95fr);
+  width: min(100% - (var(--page-gutter) * 2), 1120px);
+  min-height: 680px;
+  margin: var(--space-8) auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-3);
+}
+.auth-story {
+  position: relative;
+  isolation: isolate;
+  min-width: 0;
+  padding: var(--space-8);
+  background: var(--forest);
+  color: white;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.auth-story__logo {
+  position: relative;
+  z-index: 2;
+  align-self: flex-start;
+  font-size: var(--text-xl);
+}
+.auth-story__copy {
+  position: relative;
+  z-index: 2;
+  max-width: 470px;
+  margin-top: var(--space-12);
+}
+.auth-story__eyeline,
+.form-panel__eyeline {
+  color: var(--orange);
+  font-size: var(--text-xs);
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+.auth-story h1 {
+  max-width: 15ch;
+  margin: var(--space-3) 0 var(--space-4);
+  font-size: clamp(2rem, 4vw, 3rem);
+  line-height: 1.08;
+}
+.auth-story p {
+  max-width: 42ch;
+  margin: 0;
+  color: oklch(0.92 0.025 160);
+  line-height: 1.65;
+}
+.auth-story__scene {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: flex-end;
+  min-height: 270px;
+  margin-top: auto;
+}
+.auth-story__scene .matchy-mascot {
+  position: relative;
+  z-index: 1;
+  align-self: flex-end;
+  transform: translate(8px, 24px);
+}
+.auth-story__arch {
+  position: absolute;
+  right: -70px;
+  bottom: -135px;
+  width: 410px;
+  height: 410px;
+  border: 46px solid oklch(1 0 0 / 0.09);
+  border-radius: 50%;
+}
+.form-panel {
+  align-self: center;
+  padding: var(--space-10);
+}
+.form-panel h2 {
+  margin: var(--space-2) 0;
+  font-size: var(--text-2xl);
+}
+.form-panel > p {
+  max-width: 48ch;
+  color: var(--muted);
+}
+.form-panel > .form-panel__eyeline {
+  margin: 0;
+  color: var(--orange-ink);
+}
+.form-panel form {
+  margin-top: var(--space-6);
+}
+form {
+  display: grid;
+  gap: 20px;
+}
+label {
+  display: grid;
+  gap: 6px;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+input,
+select,
+textarea {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  min-width: 0;
+}
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--forest);
+  outline-offset: 2px;
+}
+textarea {
+  min-height: 100px;
+}
+input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--forest);
+}
+.secondary-button {
+  background: var(--surface);
+  color: var(--forest);
+  border: 1px solid var(--forest);
+  border-radius: 8px;
+  padding: 12px 18px;
+  cursor: pointer;
+  font-weight: 650;
+  min-height: 48px;
+}
+.google-button,
+.full {
+  width: 100%;
+}
+.divider {
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.82rem;
+  margin: 22px 0;
+}
+.form-switch {
+  margin: 20px 0 0;
+  font-size: 0.85rem;
+}
+.form-error {
+  background: oklch(0.95 0.025 25);
+  color: oklch(0.38 0.12 25);
+  padding: 14px;
+  border-radius: 8px;
+  margin: 0;
+}
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+.onboarding {
+  max-width: 850px;
+  margin: 30px auto;
+}
+.onboarding h1 {
+  max-width: 24ch;
+}
+.onboarding > p {
+  color: var(--muted);
+  margin-bottom: 30px;
+}
+fieldset {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+  display: grid;
+  gap: 20px;
+  background: var(--surface);
+  min-width: 0;
+}
+legend {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  padding: 0 8px;
+}
+.skill-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 12px 0;
+}
+.skill-options label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--tint);
+  border-radius: 8px;
+  font-weight: 500;
+}
+.role-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-top: 32px;
+}
+.role-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  gap: 20px;
+  padding: 32px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--forest);
+  cursor: pointer;
+  min-width: 0;
+}
+.role-card:hover {
+  border-color: var(--forest);
+  background: var(--tint);
+}
+.role-card strong {
+  font-size: 1.35rem;
+}
+.role-card span {
+  color: var(--muted);
+}
+.text-button {
+  background: none;
+  border: 0;
+  cursor: pointer;
+  color: var(--ink);
+  padding: 10px;
+}
+.public-welcome {
+  margin: 40px auto;
+  padding: 64px;
+  max-width: 1050px;
+}
+.public-welcome h1 {
+  max-width: 19ch;
+  margin-top: 24px;
+}
+.home-login {
+  display: inline-block;
+  margin: 16px 24px;
+}
+.demo-label {
+  color: var(--forest);
+  font-weight: 600;
+  background: var(--tint);
+  padding: 10px 16px;
+  border-radius: 8px;
+}
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+small {
+  color: var(--muted);
+}
+@media (max-width: 800px) {
+  .auth-grid {
+    grid-template-columns: 1fr;
+    width: min(100% - 32px, 640px);
+    min-height: 0;
+    margin-block: var(--space-4);
+  }
+  .auth-story {
+    min-height: 210px;
+    padding: var(--space-5);
+  }
+  .auth-story h1 {
+    max-width: 20ch;
+    margin-block: var(--space-2);
+    font-size: var(--text-xl);
+  }
+  .auth-story__copy {
+    max-width: calc(100% - 120px);
+    margin-top: var(--space-5);
+  }
+  .auth-story__copy p {
+    font-size: var(--text-sm);
+  }
+  .auth-story__scene {
+    position: absolute;
+    right: var(--space-3);
+    bottom: 0;
+    min-height: 0;
+  }
+  .auth-story__scene .matchy-mascot {
+    width: 128px;
+    height: 145px;
+    transform: translateY(18px);
+  }
+  .auth-story__arch {
+    right: -70px;
+    bottom: -115px;
+    width: 260px;
+    height: 260px;
+    border-width: 30px;
+  }
+  .form-panel {
+    padding: 28px;
+  }
+  .role-grid {
+    grid-template-columns: 1fr;
+  }
+  .public-welcome {
+    padding: 32px;
+  }
+}
+@media (max-width: 560px) {
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+  .form-panel {
+    padding: 24px;
+  }
+  .auth-story {
+    min-height: 170px;
+  }
+  .auth-story__copy {
+    max-width: calc(100% - 82px);
+    margin-top: var(--space-3);
+  }
+  .auth-story__copy p {
+    display: none;
+  }
+  .auth-story__scene .matchy-mascot {
+    width: 96px;
+    height: 112px;
+  }
+  .onboarding {
+    margin-top: 16px;
+  }
+  fieldset {
+    padding: 20px;
+  }
+  .role-card {
+    padding: 24px;
+  }
+  .account-link {
+    flex-wrap: wrap;
+  }
+  .home-login {
+    margin-left: 0;
+  }
+  .legal-page {
+    padding: 24px;
+    margin: 16px auto;
+  }
+}
+
+/* ---- Pages d'espace ---- */
+.page {
+  max-width: 900px;
+  margin: 8px auto 0;
+}
+.page > p {
+  color: var(--muted);
+  margin-bottom: 28px;
+}
+.card-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-top: 28px;
+}
+.steps-list {
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 12px;
+}
+.steps-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.92rem;
+}
+.steps-list svg {
+  color: var(--forest);
+  flex: none;
+}
+.inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+}
+.welcome-note.ink {
+  color: var(--muted);
+  margin-bottom: 0;
+}
+/* `p` plafonne la prose à 65ch, pour la longueur de ligne. Un bandeau
+   encadré n'est pas de la prose : plafonné, il s'arrêtait avant le bord du
+   formulaire qu'il commente, et l'écran paraissait désaligné. */
+.form-success,
+p.form-error {
+  max-width: none;
+}
+.form-success {
+  background: var(--tint);
+  color: var(--forest);
+  padding: 14px;
+  border-radius: 8px;
+  margin: 0;
+  font-weight: 600;
+}
+.quiet-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.quiet-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+[data-tour="profile-status"] .button,
+[data-tour="profile-status"] .secondary-button {
+  margin-top: 4px;
+}
+
+/* ---- Visite guidée ---- */
+.tour {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+}
+.tour-veil {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: auto;
+}
+.tour-veil rect[mask] {
+  fill: oklch(0.18 0.02 160 / 0.74);
+}
+.tour-ring {
+  position: fixed;
+  border-radius: 14px;
+  outline: 2px solid var(--orange);
+  outline-offset: 0;
+  box-shadow: 0 0 0 6px oklch(0.75 0.17 43 / 0.22);
+  pointer-events: none;
+  transition: all 220ms ease;
+}
+.tour-card {
+  position: fixed;
+  width: min(380px, calc(100vw - 32px));
+  background: var(--surface);
+  color: var(--ink);
+  border-radius: var(--radius);
+  padding: 22px 24px;
+  box-shadow: 0 18px 40px oklch(0.23 0.02 160 / 0.28);
+  transition:
+    top 220ms ease,
+    left 220ms ease,
+    bottom 220ms ease;
+}
+.tour-card.docked {
+  left: 50%;
+  bottom: 16px;
+  top: auto;
+  transform: translateX(-50%);
+}
+.tour-card:focus-visible {
+  outline: 3px solid var(--forest);
+  outline-offset: 3px;
+}
+.tour-card h2 {
+  font-size: 1.25rem;
+  margin-bottom: 8px;
+}
+.tour-card > p {
+  color: var(--muted);
+  font-size: 0.93rem;
+  margin-bottom: 18px;
+}
+.tour-progress {
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+.tour-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.tour-nav {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+.tour-nav .button,
+.tour-nav .secondary-button {
+  min-height: 42px;
+  padding: 8px 16px;
+  gap: 8px;
+  font-size: 0.9rem;
+}
+@media (max-width: 720px) {
+  .card-grid {
+    grid-template-columns: 1fr;
+  }
+  .tour-card {
+    padding: 20px;
+  }
+  .tour-actions {
+    flex-wrap: wrap;
+  }
+  .tour-nav {
+    width: 100%;
+  }
+  .tour-nav .button {
+    flex: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tour-ring,
+  .tour-card {
+    transition: none;
+  }
+}
+
+/* ---- Profil intérimaire : sections enregistrables ---- */
+.section-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+.repeat-row {
+  display: grid;
+  grid-template-columns: 2fr 2fr 1fr auto;
+  gap: 12px;
+  align-items: end;
+}
+.icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--muted);
+  cursor: pointer;
+}
+.icon-button:hover {
+  border-color: var(--forest);
+  color: var(--forest);
+}
+.slot-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 8px;
+}
+.slot-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--tint);
+  border-radius: 8px;
+  font-size: 0.92rem;
+}
+.slot-list.plain li {
+  background: none;
+  padding: 0;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+.lead-figure {
+  font-weight: 650;
+  color: var(--ink);
+  margin-bottom: 8px;
+}
+.onboarding form + form {
+  margin-top: 20px;
+}
+.onboarding .side-panel .steps-list li,
+[data-tour="profile-status"] .steps-list li {
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+@media (max-width: 720px) {
+  .repeat-row {
+    grid-template-columns: 1fr 1fr;
+  }
+  .repeat-row .icon-button {
+    grid-column: 2;
+    justify-self: end;
+  }
+}
+
+.editable-slots li {
+  flex-wrap: wrap;
+}
+.slot-actions {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+/* ---- Pages larges de l'espace entreprise ---- */
+.page-wide {
+  max-width: 1320px;
+  margin: 0 auto;
+}
+.page-wide > .section-head h1 {
+  margin: 0;
+  font-size: 1.75rem;
+}
+.link-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 14px;
+  font-size: 0.84rem;
+  color: var(--muted);
+  text-decoration: none;
+}
+.link-back:hover {
+  color: var(--forest);
+}
+.search-note {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.mission-status.is-inline {
+  position: static;
+}
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 12px 24px;
+}
+.detail-description {
+  margin: 18px 0 0;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+.rail-card + .rail-card,
+.layout-main > .rail-card + .rail-card {
+  margin-top: 0;
+}
+.rail-card .skill-options {
+  margin-top: 6px;
+}
+
+/* Emplacement en attente : centré et borné, pour garder le rythme de la
+   maquette là où une rangée de cartes prendra place. */
+.empty.is-placeholder {
+  display: grid;
+  justify-items: center;
+  text-align: center;
+  padding: 34px 24px;
+}
+.empty.is-placeholder p {
+  max-width: 52ch;
+}
+
+/* ---- Profil intérimaire : choix explicites et champs nécessaires ---- */
+.choice-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-self: start;
+  gap: 8px 12px;
+}
+.choice-label {
+  flex-basis: 100%;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+.choice-group label,
+.choice-single {
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  /* Les intitulés sont courts : les couper sur deux lignes rendrait le choix
+     moins lisible que la question elle-même. */
+  white-space: nowrap;
+  gap: 8px;
+  padding: 9px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  font-weight: 500;
+  font-size: 0.92rem;
+  cursor: pointer;
+}
+.choice-group label:has(input:checked) {
+  border-color: var(--forest);
+  background: var(--tint);
+  font-weight: 600;
+}
+.choice-single:has(input:disabled) {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.choice-single:has(input:checked) {
+  border-color: var(--forest);
+  background: var(--tint);
+  font-weight: 600;
+}
+.choice-group input,
+.choice-single input {
+  accent-color: var(--forest);
+}
+/* Action compacte du tableau de bord quand le profil est complet. */
+.welcome-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  padding: 8px 14px;
+  border: 1px solid oklch(1 0 0 / 0.28);
+  border-radius: 99px;
+  font-size: 0.85rem;
+  color: oklch(0.95 0.02 160);
+  text-decoration: none;
+}
+.welcome-action:hover {
+  background: oklch(1 0 0 / 0.1);
+  color: #fff;
+}
+.form-legend {
+  margin-bottom: 18px;
+}
+
+/* ---- Missions entreprise : formulaire, choix des compétences, confirmation ---- */
+
+.page-form {
+  max-width: 880px;
+  margin: 0 auto;
+}
+.page-form h1 {
+  margin: 0 0 8px;
+  font-size: 1.75rem;
+}
+.page-lead {
+  margin: 0 0 28px;
+  max-width: 62ch;
+}
+/* Deux sujets différents doivent s'éloigner davantage que deux champs du même
+   sujet, sans quoi le découpage en sections ne se voit plus. */
+.page-form fieldset + fieldset {
+  margin-top: 28px;
+}
+.page-form fieldset + fieldset,
+.page-form fieldset {
+  gap: 18px;
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
 /*
- * Point d'entrée des styles. Il n'écrit rien lui-même : il déclare l'ordre de
- * la cascade, puis assemble les trois couches.
- *
- * POURQUOI DES COUCHES, ET POURQUOI DANS CET ORDRE.
- * Le produit porte 7 200 lignes de CSS écrites à la main, qui font vivre des
- * écrans qui fonctionnent. Les remplacer d'un bloc, c'est la refonte
- * précédente — et ses régressions. Les laisser tels quels, c'est une interface
- * que plus personne ne peut faire évoluer.
- *
- * Les couches tranchent : `legacy` reçoit l'existant SANS y toucher, et se
- * retrouve au plus bas de la cascade. Tout ce que la refonte écrit passe
- * au-dessus sans avoir à surenchérir en spécificité, sans `!important`, et sans
- * qu'une seule ligne de l'ancien fichier soit modifiée. Un écran non encore
- * repris continue de s'afficher exactement comme avant ; un écran repris est
- * gouverné par les nouvelles règles, point.
- *
- * POURQUOI PAS `@import "tailwindcss"`.
- * L'import complet embarque Preflight, qui remet à zéro marges, titres, listes
- * et boutons de la page entière. Sur une base qui compte sur les styles par
- * défaut du navigateur, c'est une régression visuelle immédiate sur tous les
- * écrans non encore repris. On importe donc le thème et les utilitaires, et
- * rien d'autre : la base est écrite explicitement dans `interimatch.css`.
+ * La règle globale `label { display: grid }` sert aux libellés qui enveloppent
+ * leur champ. Ici le libellé ne contient que du texte — et sa mention
+ * « facultatif » — qui doivent rester sur la même ligne.
  */
-@layer legacy, theme, base, components, utilities;
+.field > label {
+  display: block;
+  font-weight: 600;
+  font-size: var(--text-sm);
+}
+.field-hint {
+  margin: 0;
+}
+.field-error {
+  margin: 0;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--danger);
+}
+.field :is(input, select, textarea)[aria-invalid="true"] {
+  border-color: var(--danger);
+}
+.page-form textarea {
+  min-height: 120px;
+  resize: vertical;
+}
 
-@import "./legacy.css" layer(legacy);
+.form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+  margin-top: 28px;
+}
+/* Le lien d'annulation doit peser autant qu'un bouton pour ne pas se perdre. */
+.form-actions .secondary-button {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
 
-@import "tailwindcss/theme.css" layer(theme);
-@import "tailwindcss/utilities.css" layer(utilities);
+/* Une ligne par compétence, une seule réponse possible : l'exclusivité entre
+   « obligatoire » et « souhaitée » est portée par la forme du choix. */
+.skill-matrix {
+  display: grid;
+  gap: 8px;
+}
+.skill-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+.skill-name {
+  font-weight: 600;
+  font-size: 0.92rem;
+}
+.skill-levels {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.skill-choice {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 12px;
+  border: 1px solid var(--border);
+  border-radius: 99px;
+  background: var(--surface);
+  font-size: 0.85rem;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.skill-choice input {
+  width: auto;
+  margin: 0;
+  padding: 0;
+  accent-color: var(--forest);
+}
+.skill-choice:has(input:checked) {
+  border-color: var(--forest);
+  background: var(--tint);
+  font-weight: 650;
+}
+/* Une pastille non retenue reste en retrait, pour que le regard n'ait à
+   parcourir que les choix réellement faits. */
+.skill-choice:not(:has(input:checked)) {
+  color: var(--muted);
+}
+/* « Non » est l'état de départ de toutes les lignes. Le teinter en vert comme
+   les deux autres ferait lire une exigence là où il n'y en a pas, et noierait
+   les compétences réellement retenues. Il doit malgré tout se voir comme
+   sélectionné : c'est la seule marque d'état quand le bouton radio est masqué,
+   sur écran étroit. */
+.skill-choice[data-level="none"]:has(input:checked) {
+  border-color: var(--muted);
+  background: var(--surface);
+  color: var(--ink);
+}
+.skill-row:has(.skill-choice[data-level="required"] input:checked) {
+  border-color: var(--forest);
+}
 
-@import "./interimatch.css";
+.head-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.head-actions .secondary-button,
+.head-actions .button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+}
 
-/* Tailwind déduit les classes utilisées en lisant les sources. Le chemin est
-   déclaré explicitement : l'entrée CSS vit dans `src/styles`, pas à la racine. */
-@source "../";
+.confirm {
+  /* Sur un écran étroit, `max-width` seul laisse la boîte toucher les deux
+     bords : la marge doit être retirée de la largeur, pas espérée. */
+  max-width: min(460px, calc(100vw - 32px));
+  padding: 26px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink);
+}
+.confirm::backdrop {
+  background: oklch(0.23 0.02 160 / 0.5);
+}
+.confirm h2 {
+  margin: 0 0 10px;
+  font-size: 1.2rem;
+}
+.confirm p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+.confirm .form-error {
+  margin-top: 14px;
+  color: oklch(0.38 0.12 25);
+}
+.confirm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+@media (max-width: 620px) {
+  /* Sur un écran étroit, la ligne se lit en deux temps : le nom, puis les trois
+     réponses réparties sur toute la largeur. Mesuré à 390 px, les trois
+     pastilles réclament 290 px pour 275 px disponibles : le bouton radio ne
+     tient pas à côté de son libellé. C'est donc la pastille qui porte l'état —
+     teinte, bordure et graisse le disent déjà sans ambiguïté — tandis que
+     l'input, étendu à toute sa surface, reste la cible réelle du clic, du
+     focus et des flèches du clavier. */
+  .skill-row {
+    justify-content: flex-start;
+  }
+  .skill-levels {
+    width: 100%;
+    justify-content: space-between;
+    gap: 6px;
+  }
+  .skill-choice {
+    justify-content: center;
+    padding: 10px 12px;
+    font-size: 0.84rem;
+  }
+  .skill-choice input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+  .skill-choice:has(input:focus-visible) {
+    outline: 3px solid var(--forest);
+    outline-offset: 2px;
+  }
+  .form-actions > * {
+    flex: 1 1 100%;
+    justify-content: center;
+  }
+}
+
+/* ---- Mot de passe : bascule d'affichage et indicateur de force ---- */
+
+.password-input {
+  position: relative;
+  display: grid;
+}
+/* La réserve à droite empêche le texte de passer sous le bouton. */
+.password-input input {
+  padding-right: 48px;
+}
+.password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+.password-toggle:hover {
+  color: var(--forest);
+  background: var(--tint);
+}
+
+.password-meter {
+  display: grid;
+  gap: 8px;
+  margin-top: -4px;
+}
+.password-rule {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+/* L'exigence remplie se signale, sans crier : elle n'est pas une réussite en
+   soi, seulement une condition levée. */
+.password-rule.is-met {
+  color: var(--forest);
+}
+.strength-bar {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+}
+.strength-bar span {
+  height: 4px;
+  border-radius: 99px;
+  background: var(--border);
+  transition: background-color 160ms ease-out;
+}
+/* Une seule teinte par niveau : la couleur dit la force, la longueur remplie
+   la répète. Le libellé écrit reste la source lisible pour tous. */
+.strength-bar span.is-filled[data-level="0"] {
+  background: oklch(0.6 0.17 25);
+}
+.strength-bar span.is-filled[data-level="1"] {
+  background: oklch(0.7 0.15 60);
+}
+.strength-bar span.is-filled[data-level="2"] {
+  background: oklch(0.68 0.13 110);
+}
+.strength-bar span.is-filled[data-level="3"] {
+  background: var(--forest);
+}
+.strength-note {
+  margin: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .strength-bar span {
+    transition: none;
+  }
+}
+
+/* ---- Rapprochement : pastille, explication, profils compatibles ---- */
+
+.match-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 99px;
+  border: 1px solid transparent;
+  font-size: 0.74rem;
+  font-weight: 650;
+  white-space: nowrap;
+}
+.match-badge.is-large {
+  padding: 5px 14px;
+  font-size: 0.85rem;
+}
+/* Trois niveaux, alignés sur les paliers. La couleur redit ce que le chiffre
+   annonce déjà : elle ne porte jamais l'information à elle seule. */
+.match-badge.is-high {
+  background: var(--tint);
+  border-color: var(--forest);
+  color: var(--forest);
+}
+.match-badge.is-mid {
+  background: oklch(0.95 0.04 95);
+  border-color: oklch(0.72 0.11 95);
+  color: oklch(0.42 0.09 95);
+}
+.match-badge.is-low {
+  background: var(--background);
+  border-color: var(--border);
+  color: var(--muted);
+}
+
+.match-card .rail-head {
+  flex-wrap: wrap;
+}
+.match-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.match-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+.match-list li svg {
+  flex: none;
+  margin-top: 2px;
+}
+.match-list li.is-good {
+  color: var(--ink);
+}
+.match-list li.is-good svg {
+  color: var(--forest);
+}
+.match-list li.is-blocked {
+  color: oklch(0.45 0.16 25);
+}
+/* Puce neutre : un critère non rempli n'est pas une erreur, seulement un point
+   qui ne joue pas en faveur du candidat. */
+.match-dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  margin: 7px 4px 0;
+  border-radius: 99px;
+  background: var(--border);
+}
+
+/* ---- Rapprochement entreprise : une liste, pas une galerie de cartes ---- */
+.matched-profiles-intro {
+  margin-bottom: 18px;
+}
+.matched-profiles-state {
+  padding: 18px;
+  border: 1px dashed var(--border);
+  border-radius: calc(var(--radius) - 3px);
+  background: var(--background);
+}
+.matched-profiles-state p:last-child {
+  margin-bottom: 0;
+}
+.matched-profiles-state .secondary-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.matched-profiles-loading {
+  display: grid;
+  gap: 12px;
+  padding: 18px 0 4px;
+}
+.matched-profiles-loading > span:not(.sr-only) {
+  display: block;
+  width: min(100%, 620px);
+  height: 12px;
+  border-radius: 99px;
+  background: var(--border);
+  opacity: 0.65;
+}
+.matched-profiles-loading > span:nth-child(3) {
+  width: min(72%, 460px);
+}
+.matched-profiles-loading > span:nth-child(4) {
+  width: min(46%, 300px);
+}
+.matched-profiles-summary {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 4px;
+  color: var(--forest);
+  font-size: 0.9rem;
+  font-weight: 650;
+}
+.matched-profiles-summary svg {
+  flex: none;
+  margin-top: 3px;
+}
+.matched-profile-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.matched-profile {
+  padding: 22px 0;
+  border-top: 1px solid var(--border);
+}
+.matched-profile:first-child {
+  margin-top: 16px;
+}
+.matched-profile:last-child {
+  padding-bottom: 0;
+}
+.matched-profile-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+.matched-profile h3 {
+  margin: 0 0 7px;
+}
+.matched-profile-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px 16px;
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+.matched-profile-meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.matched-profile-skills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 15px;
+}
+.match-breakdown {
+  margin-top: 16px;
+}
+.match-breakdown summary {
+  width: fit-content;
+  color: var(--forest);
+  font-size: 0.86rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+.match-breakdown summary:focus-visible {
+  outline: 3px solid var(--forest);
+  outline-offset: 5px;
+}
+.match-breakdown[open] summary {
+  margin-bottom: 10px;
+}
+.match-breakdown p {
+  margin-bottom: 10px;
+}
+/* Le détail servait autrefois un relèvement de ratios sur deux colonnes
+   (« Proximité — 40 % »). Il porte désormais des phrases, et réutilise donc
+   `.match-list`, la même liste à puces que l'explication côté intérimaire :
+   une seule mise en forme pour un seul type de contenu. */
+.match-breakdown .match-list {
+  max-width: 520px;
+  margin-bottom: 12px;
+  gap: 7px;
+}
+.match-breakdown .match-list li {
+  font-size: 0.86rem;
+}
+.match-breakdown h4 {
+  margin: 0 0 7px;
+  font-size: 0.8rem;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+  color: var(--ink);
+}
+.outside-zone-profiles {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+.outside-zone-profiles > .secondary-button {
+  display: inline-flex;
+  margin-bottom: 18px;
+}
+.outside-zone-profiles h3 {
+  margin-bottom: 4px;
+}
+.outside-zone-profiles .matched-profile:first-child {
+  margin-top: 12px;
+}
+
+@media (max-width: 620px) {
+  .matched-profile-head {
+    display: grid;
+    gap: 12px;
+  }
+  .matched-profile-head .match-badge {
+    justify-self: start;
+  }
+  .match-breakdown li {
+    gap: 10px;
+  }
+}
 
 /*
- * ------------------------------------------------------------------
- *  Thème InteriMatch
- * ------------------------------------------------------------------
- *
- * L'identité ne change pas : vert émeraude, vert sauge, terracotta. Elle est
- * seulement portée à maturité. Les valeurs sont en OKLCH, comme le reste du
- * projet — c'est ce qui permet d'éclaircir une teinte sans la voir virer.
- *
- * Ce bloc est la SEULE source des couleurs de la refonte. `tokens.css`, dans la
- * couche `legacy`, continue de servir les écrans non repris ; les deux
- * cohabitent sans se contredire parce qu'ils ne nomment pas les mêmes choses.
+ * Texte réservé aux technologies d'assistance. Il double chaque pastille
+ * numérique : « 3 » seul ne dit pas de quoi il s'agit, et une couleur seule ne
+ * dit rien à qui ne la distingue pas.
  */
-@theme {
-  /* --- Vert émeraude : la marque. --- */
-  --color-forest: oklch(0.3 0.062 163);
-  --color-forest-deep: oklch(0.21 0.044 163);
-  --color-forest-mid: oklch(0.42 0.085 165);
-  --color-forest-soft: oklch(0.55 0.07 163);
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
 
-  /* --- Vert sauge : les aplats, les fonds de section, le calme. --- */
-  --color-sage: oklch(0.72 0.042 160);
-  --color-sage-tint: oklch(0.955 0.016 160);
-  --color-sage-deep: oklch(0.6 0.05 160);
-
-  /* --- Terracotta : l'accent. Une seule chose à la fois le porte.
-         `--color-clay` est une couleur d'APLAT décoratif et de petits repères,
-         pas un fond de texte blanc : à cette clarté, le blanc dessus plafonne
-         autour de 2,8:1, très en dessous des 4,5:1 exigés. Tout ce qui porte du
-         texte clair utilise `--color-clay-ink`, assombri pour cette raison. --- */
-  --color-clay: oklch(0.63 0.135 42);
-  --color-clay-ink: oklch(0.47 0.15 40);
-  --color-clay-tint: oklch(0.958 0.022 45);
-  --color-clay-soft: oklch(0.78 0.1 45);
-
-  /* --- Papier. Blanc cassé CHAUD : un gris bleuté ferait tableau de bord
-         financier, ce que ce produit n'est pas. --- */
-  --color-paper: oklch(0.982 0.005 95);
-  --color-paper-deep: oklch(0.962 0.008 95);
-  --color-surface: oklch(1 0 0);
-
-  /* --- Encre. Jamais de noir pur : il vibre sur un fond chaud. --- */
-  --color-ink: oklch(0.235 0.018 160);
-  --color-ink-soft: oklch(0.46 0.016 160);
-  /* 0,605 donnait 3,84:1 sur le papier — sous le seuil de 4,5:1, alors que
-     cette encre porte précisément les textes les plus petits du produit
-     (légendes, précisions, unités). Mesuré par `e2e/contraste.spec.ts`. */
-  --color-ink-faint: oklch(0.54 0.014 160);
-
-  /* --- Filets. Chauds eux aussi, sinon ils trahissent le fond. --- */
-  --color-rule: oklch(0.906 0.008 140);
-  --color-rule-strong: oklch(0.845 0.01 140);
-
-  /* --- États. Le vert de marque sert déjà le succès. --- */
-  --color-alert: oklch(0.52 0.19 27);
-  --color-alert-tint: oklch(0.958 0.025 27);
-  --color-caution-ink: oklch(0.47 0.11 75);
-  --color-caution-tint: oklch(0.96 0.045 85);
-
-  /* --- Typographie.
-         Playfair Display porte les titres : une didone à fort contraste, qui
-         donne le registre éditorial demandé sans tomber dans le luxe.
-         Inter porte l'interface : c'est une grotesque neutre, lisible à petite
-         taille, faite pour les écrans denses. --- */
-  --font-display: "Playfair Display", Georgia, "Times New Roman", serif;
-  --font-sans:
-    "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-
-  /* --- Rayons. Volontairement SERRÉS.
-         Le « tout arrondi » est la signature la plus reconnaissable d'une
-         interface produite à la chaîne. Un rayon de 4 px sur un contrôle et de
-         14 px sur une carte suffit à adoucir sans infantiliser. --- */
-  --radius-field: 8px;
-  --radius-panel: 14px;
-  --radius-frame: 20px;
-
-  /* --- Ombres. Trois niveaux, et le filet fait l'essentiel du travail. --- */
-  --shadow-lift: 0 1px 2px oklch(0.235 0.018 160 / 0.05);
-  --shadow-raise:
-    0 2px 4px oklch(0.235 0.018 160 / 0.04), 0 8px 24px
-    oklch(0.235 0.018 160 / 0.06);
-  --shadow-float:
-    0 4px 8px oklch(0.235 0.018 160 / 0.05), 0 18px 48px
-    oklch(0.235 0.018 160 / 0.1);
-
-  /* --- Mouvement. Sorties exponentielles, jamais de rebond. --- */
-  --ease-exit: cubic-bezier(0.22, 1, 0.36, 1);
+/* ---- Pages légales (Sous-lot 8A) ---- */
+.footer-links {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.footer-links a {
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 0.78rem;
+  padding: 0;
+  border-bottom: none;
+}
+.footer-links a:hover,
+.footer-links a:focus-visible {
+  color: var(--forest);
+  text-decoration: underline;
+}
+.legal-page {
+  max-width: 860px;
+  margin: 20px auto 40px;
+  padding: 40px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.legal-page h1 {
+  margin-bottom: 8px;
+}
+.legal-page h2 {
+  margin-top: 36px;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.legal-page h3 {
+  margin-top: 20px;
+  margin-bottom: 8px;
+}
+.legal-page p,
+.legal-page ul {
+  margin-bottom: 16px;
+  line-height: 1.6;
+}
+.legal-page ul {
+  padding-left: 24px;
+}
+.legal-page li {
+  margin-bottom: 6px;
+}
+.legal-placeholder {
+  display: inline-block;
+  font-style: italic;
+  color: var(--muted);
+  background: var(--tint);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.88em;
+}
+.legal-notice-box {
+  padding: 16px;
+  background: var(--tint);
+  border-radius: var(--radius);
+  margin-bottom: 28px;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+.legal-notice {
+  margin-top: 16px;
+  font-size: 0.8rem;
+  color: var(--muted);
+  line-height: 1.4;
+  text-align: center;
+}
+.legal-notice a {
+  color: var(--forest);
+  text-decoration: underline;
 }
