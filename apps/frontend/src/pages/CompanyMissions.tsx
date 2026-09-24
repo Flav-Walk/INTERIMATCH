@@ -72,7 +72,9 @@ export function CompanyMissions() {
           subtitle="Préparez, publiez et suivez chaque besoin de renfort depuis un seul espace."
           mascotPose="missions"
           action={
-            <Link className="brand-hero__link" to="/company/missions/new">
+            // Action principale de l'écran : le seul bouton orange, comme sur
+            // la maquette (« Créer une mission »).
+            <Link className="button" to="/company/missions/new">
               <Plus size={16} aria-hidden="true" />
               Créer une mission
             </Link>
@@ -162,7 +164,7 @@ export function CompanyMissions() {
               </p>
               <button
                 type="button"
-                className="button"
+                className="secondary-button"
                 onClick={() => setParams({})}
               >
                 Effacer la recherche
@@ -180,7 +182,7 @@ export function CompanyMissions() {
                 Décrivez le poste, les horaires et les compétences attendues :
                 les candidats compatibles vous seront ensuite proposés.
               </p>
-              <Link className="button" to="/company/missions/new">
+              <Link className="secondary-button" to="/company/missions/new">
                 Créer une mission
                 <ArrowRight size={16} aria-hidden="true" />
               </Link>

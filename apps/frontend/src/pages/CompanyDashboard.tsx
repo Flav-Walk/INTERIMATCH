@@ -97,7 +97,9 @@ export function CompanyDashboard() {
           subtitle="Publiez une mission en quelques minutes et suivez les candidatures qualifiées près de chez vous."
           mascotPose="dashboard"
           action={
-            <Link className="brand-hero__link" to="/company/missions/new">
+            // Action principale de l'écran : le seul bouton orange, comme sur
+            // la maquette (« Créer une mission »).
+            <Link className="button" to="/company/missions/new">
               <Plus size={18} aria-hidden="true" />
               Créer une mission
             </Link>
@@ -166,7 +168,7 @@ export function CompanyDashboard() {
                       Créez une mission pour commencer à recevoir des candidats
                       compatibles.
                     </p>
-                    <Link className="button" to="/company/missions/new">
+                    <Link className="secondary-button" to="/company/missions/new">
                       Créer une mission
                     </Link>
                   </div>

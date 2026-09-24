@@ -1,0 +1,286 @@
+/*
+ * Espace entreprise — tableau de bord, liste des missions, planning.
+ *
+ * Les pages entreprise empilaient leurs propres gabarits (max-width 1280 px
+ * + 1,5 rem de marge interne) à l'intérieur de <main>, déjà borné et centré :
+ * le contenu se retrouvait en retrait de l'en-tête. On les aligne sur la
+ * gouttière commune.
+ */
+
+.dashboard-page,
+.missions-list-page {
+  min-height: 0;
+}
+.company-brand-hero {
+  max-width: none;
+  margin: 0 0 var(--space-8);
+  padding: 0;
+}
+.dashboard-body {
+  padding: 0;
+  background: none;
+}
+.dashboard-layout {
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 330px);
+  gap: var(--space-6);
+  max-width: none;
+  padding: 0;
+}
+.dashboard-main {
+  gap: var(--space-10);
+}
+.missions-list-body {
+  max-width: none;
+  padding: 0;
+}
+.dashboard-rail {
+  gap: var(--space-5);
+  top: calc(var(--header-h) + var(--space-5));
+}
+
+/* ---------- Titres de section ---------- */
+.dashboard-section-head {
+  align-items: flex-end;
+  margin-bottom: var(--space-4);
+}
+.dashboard-section-head h2 {
+  font-size: clamp(1.35rem, 2vw, 1.6rem);
+  font-weight: 600;
+}
+.dashboard-section-head .link-more,
+.dashboard-rail .link-more {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--forest);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.dashboard-section-head .link-more:hover,
+.dashboard-rail .link-more:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* ---------- Onglets de statut ----------
+   Pilules, onglet actif en vert plein : « En cours 3 » sur la maquette. */
+.dashboard-tabs {
+  gap: var(--space-2);
+  margin-bottom: var(--space-5);
+}
+.dashboard-tab {
+  min-height: 36px;
+  padding: 0 var(--space-4);
+  font-size: var(--text-sm);
+  transition:
+    border-color var(--fast) var(--ease-out),
+    background var(--fast) var(--ease-out),
+    color var(--fast) var(--ease-out);
+}
+.dashboard-tab__count {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Rail : planning et établissement ---------- */
+.dashboard-rail .rail-card,
+.dashboard-rail .detail-card {
+  padding: var(--space-6);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-1);
+}
+.rail-head h2 {
+  font-size: 1.2rem;
+}
+.calendar-day.is-today {
+  box-shadow: 0 0 0 3px oklch(0.32 0.065 165 / 0.18);
+}
+.agenda-date strong {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+.agenda-date span {
+  color: var(--orange-ink);
+}
+
+/* ---------- Bannière démo ---------- */
+.demo-banner {
+  margin-bottom: var(--space-4);
+  border: 1px solid oklch(0.75 0.17 43 / 0.5);
+  border-radius: var(--radius);
+  color: var(--orange-ink);
+}
+
+@media (width < 1024px) {
+  .dashboard-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .dashboard-rail {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  }
+}
+
+/* ---------- Fiche mission (entreprise) ----------
+   Photo en bandeau arrondi avec crédit posé dessus, titre suivi de ses
+   pastilles d'état, actions alignées à droite. */
+.page-wide > .link-back {
+  margin-bottom: var(--space-4);
+  color: var(--forest);
+  font-weight: 600;
+}
+.mission-photo {
+  position: relative;
+  margin: 0 0 var(--space-2);
+  border: 0;
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-2);
+}
+.mission-photo img {
+  aspect-ratio: 21 / 7;
+  max-height: 300px;
+}
+.mission-photo figcaption:not(:empty) {
+  position: absolute;
+  right: var(--space-3);
+  bottom: var(--space-3);
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+  background: oklch(0 0 0 / 0.5);
+  font-size: var(--text-xs);
+  backdrop-filter: blur(6px);
+}
+.mission-photo figcaption :is(.photo-credit, a) {
+  color: oklch(0.95 0.01 160);
+}
+.mission-photo__missing {
+  border-color: oklch(0.32 0.065 165 / 0.3);
+  border-radius: var(--radius-card);
+  background: oklch(1 0 0 / 0.6);
+}
+
+/* En-tête : titre, puis pastilles d'état collées à lui, actions à droite. */
+.page-wide > .section-head:has(.head-actions) {
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  align-items: center;
+  column-gap: var(--space-3);
+}
+.page-wide > .section-head:has(.head-actions) h1 {
+  margin: 0;
+}
+.page-wide > .section-head .mission-status.is-inline {
+  position: static;
+  box-shadow: none;
+  background: var(--tint);
+}
+.page-wide > .section-head .head-actions {
+  margin-left: auto;
+}
+
+/* Repères de la mission : pastilles en ligne plutôt qu'une grille étirée. */
+.layout-main > .rail-card:first-child .detail-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.layout-main > .rail-card:first-child .detail-grid .mission-meta {
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--background);
+  color: var(--ink);
+}
+.layout-main {
+  gap: var(--space-5);
+}
+.layout-main > .rail-card {
+  padding: var(--space-6);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-1);
+}
+.layout-main > .rail-card + .rail-card {
+  margin-top: 0;
+}
+
+/* ---------- Formulaire de mission ---------- */
+.page-form > h1 {
+  margin-top: var(--space-2);
+  font-size: clamp(2rem, 3.2vw, 2.6rem);
+  line-height: 1.05;
+}
+.page-form > .link-back {
+  color: var(--forest);
+  font-weight: 600;
+}
+
+/* ---------- Candidatures reçues ----------
+   Cartes candidats de la maquette : pastille d'initiales, nom, métier, puis
+   la mission et le lien d'action en pied. */
+.application-cards {
+  gap: var(--space-4);
+}
+.application-card {
+  gap: var(--space-3);
+  padding: var(--space-5);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-1);
+  transition:
+    border-color var(--fast) var(--ease-out),
+    box-shadow var(--normal) var(--ease-out);
+}
+.application-card:hover {
+  border-color: oklch(0.42 0.085 165 / 0.3);
+  box-shadow: var(--shadow-2);
+}
+.application-card-head {
+  align-items: center;
+}
+.application-card-head > div {
+  flex: 1;
+  min-width: 0;
+}
+.application-card-head strong {
+  font-size: 1.02rem;
+}
+.application-card-avatar {
+  width: 44px;
+  height: 44px;
+  font-size: var(--text-sm);
+}
+.application-card-mission {
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border);
+}
+.application-card-mission a {
+  color: var(--ink);
+  text-decoration: none;
+}
+.application-card-mission a:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.application-card > .link-more {
+  margin-top: auto;
+  color: var(--forest);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  text-decoration: none;
+}
+.application-card > .link-more:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* Filtres en pilules, comme les onglets du tableau de bord. */
+.page-wide > .chips .chip {
+  min-height: 36px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+.page-wide > .chips .chip.is-active {
+  border-color: var(--forest);
+  background: var(--forest);
+}

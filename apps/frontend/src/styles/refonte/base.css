@@ -230,3 +230,34 @@ textarea {
   border-radius: 2px;
   background: var(--orange);
 }
+
+/* ---------- Formulaires en rubriques ----------
+   Titre de rubrique sorti du trait du cadre (rendu natif de <legend>) :
+   il devient un vrai titre Fraunces, souligné d'un filet. Même traitement
+   pour la mission (entreprise) et la fiche établissement. */
+:is(.page-form, .onboarding) fieldset {
+  gap: var(--space-4);
+  padding: var(--space-6);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-1);
+}
+:is(.page-form, .onboarding) fieldset > legend {
+  float: left;
+  width: 100%;
+  margin-bottom: var(--space-2);
+  padding: 0 0 var(--space-3);
+  border-bottom: 1px solid var(--border);
+  font-size: 1.25rem;
+}
+:is(.page-form, .onboarding) fieldset > legend + * {
+  clear: both;
+}
+
+/* Un champ garde sa hauteur naturelle : sans cela, dans une grille, le champ
+   sans texte d'aide s'étirait pour égaler son voisin. */
+label {
+  align-content: start;
+}
+.form-grid {
+  align-items: end;
+}

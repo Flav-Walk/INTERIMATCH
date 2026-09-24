@@ -29,13 +29,29 @@ const filters: { key: Filter; label: string }[] = [
   { key: "all", label: "Toutes" },
 ];
 
+/** Deux initiales pour la pastille de la carte (« Camille Martin » → « CM »). */
+const initialsOf = (name: string) =>
+  name
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toLocaleUpperCase("fr");
+
 function Card({ application }: { application: CompanyApplication }) {
   const { mission, worker } = application;
+  const name = applicationCandidateName(application);
   return (
     <li className="application-card">
       <div className="application-card-head">
+        {/* Repère visuel des cartes candidats de la maquette. Décoratif :
+            le nom complet est lu juste à côté. */}
+        <span className="avatar application-card-avatar" aria-hidden="true">
+          {initialsOf(name)}
+        </span>
         <div>
-          <strong>{applicationCandidateName(application)}</strong>
+          <strong>{name}</strong>
           <p className="quiet">
             {[worker.main_job, worker.city].filter(Boolean).join(" · ") ||
               "Profil en cours de complétion"}
