@@ -1,32 +1,40 @@
-import { Link } from "react-router-dom";
 import {
   ArrowRight,
   Briefcase,
-  CalendarCheck,
-  ClipboardList,
-  MapPin,
-  ShieldCheck,
-  Sparkles,
   Users,
 } from "lucide-react";
-import { MatchyMascot } from "../components/MatchyMascot";
-import { useAuth } from "../hooks/useAuth";
-import { usePageSeo } from "../hooks/usePageSeo";
-import { destination } from "../services/session";
+// Fond photo animé. À droite du titre : les faisceaux d'Animated Beam
+// (Magic UI), à la place de l'ancienne carte « InteriMatch vous accompagne ».
+import { PhotoBackdrop } from "../components/PhotoBackdrop";
+import { MatchingBeam } from "../components/da/MatchingBeam";
+// Bandeau défilant des métiers et des villes (Marquee, Magic UI), à la place
+// des pastilles en verre posées sur les photos.
+import { JobsMarquee } from "../components/da/JobsMarquee";
+// Le métier qui change dans l'accroche (Word Rotate, Magic UI).
+import { WordRotate } from "../components/ui/word-rotate";
+// Sections « Intérimaires » et « Établissements » : grille bento (Aceternity)
+// avec la photo du métier et un visuel animé par avantage (Magic UI, Animata).
+import { CompanyBento, WorkerBento } from "../components/da/HomeBento";
+import { illustrationFor } from "../lib/job-photos";
+import { UnsplashCredit } from "../components/mission/MissionPhotoField";
+import { motion, useReducedMotion } from "motion/react";
+import { cascade, revealOnScroll, rise } from "../lib/motion";
+// CTA : halo qui suit la souris (principaux, Hover.dev) et fond qui glisse
+// au survol (secondaires). Les classes home-cta gardent le style d'origine.
+import { SpotlightLink } from "../components/ui/spotlight-button";
+import { SlideFillLink } from "../components/ui/slide-fill-button";
+import { SITE_URL, usePageSeo } from "../hooks/usePageSeo";
 
 const WORKER_FEATURES = [
   {
-    icon: <MapPin size={21} aria-hidden="true" />,
     title: "Des missions dans votre zone",
     desc: "Les besoins publiés en Auvergne-Rhône-Alpes sont rapprochés de votre mobilité.",
   },
   {
-    icon: <Sparkles size={21} aria-hidden="true" />,
     title: "Un rapprochement expliqué",
     desc: "Métier, compétences et distance rendent chaque proposition compréhensible.",
   },
   {
-    icon: <CalendarCheck size={21} aria-hidden="true" />,
     title: "Votre agenda reste le vôtre",
     desc: "Vous renseignez vos créneaux et choisissez les missions auxquelles postuler.",
   },
@@ -34,17 +42,14 @@ const WORKER_FEATURES = [
 
 const COMPANY_FEATURES = [
   {
-    icon: <Users size={21} aria-hidden="true" />,
     title: "Des profils adaptés au besoin",
     desc: "Les compétences, disponibilités et mobilité renseignées alimentent le rapprochement.",
   },
   {
-    icon: <ClipboardList size={21} aria-hidden="true" />,
     title: "Un besoin décrit précisément",
     desc: "Poste, horaires, lieu et compétences structurent chaque mission publiée.",
   },
   {
-    icon: <ShieldCheck size={21} aria-hidden="true" />,
     title: "Des échanges maîtrisés",
     desc: "L’établissement examine les candidatures reçues et décide de l’attribution.",
   },
@@ -68,31 +73,14 @@ const HOW_STEPS = [
   },
 ];
 
-function FeatureList({
-  features,
-  tone = "forest",
-}: {
-  features: typeof WORKER_FEATURES;
-  tone?: "forest" | "orange";
-}) {
-  return (
-    <ul className="home-feature-list">
-      {features.map((feature) => (
-        <li key={feature.title}>
-          <span
-            className={`home-feature-list__icon home-feature-list__icon--${tone}`}
-          >
-            {feature.icon}
-          </span>
-          <div>
-            <h3>{feature.title}</h3>
-            <p>{feature.desc}</p>
-          </div>
-        </li>
-      ))}
-    </ul>
-  );
-}
+/*
+ * Photos d'illustration de l'accueil, prises dans la bibliothèque des métiers
+ * (lib/job-photos.ts). La « graine » fixe le choix : la page affiche toujours
+ * les mêmes photos.
+ */
+const WORKER_PHOTO = illustrationFor("Serveur en salle", "accueil-interimaires");
+const COMPANY_PHOTO = illustrationFor("Cuisinier", "accueil-etablissements");
+const FINAL_PHOTO = illustrationFor("Barman", "accueil-appel-final");
 
 export function Home() {
   usePageSeo({
@@ -100,19 +88,52 @@ export function Home() {
     description:
       "Plateforme de mise en relation entre professionnels et établissements de l’hôtellerie-restauration. Missions adaptées, compétences et disponibilités.",
     robots: "index,follow",
+    // Page publique : URL canonique et balises de partage (Open Graph).
+    path: "/",
+    // Données structurées schema.org : qui est InteriMatch, quel site.
+    // Pas de JobPosting : les missions sont privées (réservées aux inscrits).
+    jsonLd: {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Organization",
+          "@id": `${SITE_URL}/#organization`,
+          name: "InteriMatch",
+          url: SITE_URL,
+          description:
+            "Plateforme de mise en relation entre professionnels et établissements de l’hôtellerie-restauration.",
+        },
+        {
+          "@type": "WebSite",
+          "@id": `${SITE_URL}/#website`,
+          name: "InteriMatch",
+          url: SITE_URL,
+          inLanguage: "fr-FR",
+          publisher: { "@id": `${SITE_URL}/#organization` },
+        },
+      ],
+    },
   });
-  const { user } = useAuth();
+  const reduceMotion = useReducedMotion();
+  // Révélation au scroll, sauf si « Réduire les animations » est activé.
+  const reveal = reduceMotion ? {} : revealOnScroll;
 
   return (
     <div className="home">
       <section className="home-hero" aria-labelledby="hero-title">
-        <span className="home-hero__arch home-hero__arch--one" aria-hidden />
-        <span className="home-hero__arch home-hero__arch--two" aria-hidden />
+        <PhotoBackdrop src="/images/hero/accueil.jpg" />
         <div className="home-hero__inner">
           <div className="home-hero__body">
-            <span className="home-hero__eyeline">
-              Hôtellerie · Restauration · Auvergne-Rhône-Alpes
-            </span>
+            {/* Accroche en texte simple, plus de pilule : seul le métier
+                bouge (Word Rotate). */}
+            <p className="home-hero__kicker">
+              Missions de{" "}
+              <WordRotate
+                words={["serveur", "cuisinier", "barman", "réceptionniste"]}
+                className="home-hero__kicker-word"
+              />{" "}
+              en Auvergne-Rhône-Alpes
+            </p>
             <h1 id="hero-title" className="home-hero__title">
               Les bonnes personnes,
               <span className="home-hero__accent"> au bon moment.</span>
@@ -122,55 +143,52 @@ export function Home() {
               profils disponibles, avec des critères visibles et un suivi
               simple de chaque candidature.
             </p>
-            {user ? (
-              <Link
-                className="home-cta home-cta--primary"
-                to={destination(user)}
-              >
-                Retrouver mon espace
+            {/* Toujours la version publique : l'accueil est la vitrine du
+                site, il s'affiche pareil pour tout le monde. */}
+            <div className="home-hero__ctas">
+              <SpotlightLink className="home-cta home-cta--primary" to="/register">
+                Créer mon profil
                 <ArrowRight size={18} aria-hidden="true" />
-              </Link>
-            ) : (
-              <div className="home-hero__ctas">
-                <Link className="home-cta home-cta--primary" to="/register">
-                  Créer mon profil
-                  <ArrowRight size={18} aria-hidden="true" />
-                </Link>
-                <Link className="home-cta home-cta--ghost" to="/login">
-                  Me connecter
-                </Link>
-              </div>
-            )}
-          </div>
-          <div className="home-hero__visual">
-            <div className="home-hero__matchy-frame">
-              <p>
-                <strong>InteriMatch vous accompagne</strong>
-                <span>Du profil jusqu’à la mission confirmée.</span>
-              </p>
-              <MatchyMascot pose="missions" includeBackground size={310} />
+              </SpotlightLink>
+              <SlideFillLink
+                className="home-cta home-cta--ghost"
+                to="/login"
+                color="var(--surface)"
+              >
+                Me connecter
+              </SlideFillLink>
             </div>
+          </div>
+          <div className="home-hero__beam">
+            <MatchingBeam />
           </div>
         </div>
       </section>
 
+      <JobsMarquee />
+
+      {/* Intérimaires : titre et bouton en ligne, puis la grille bento
+          (Aceternity) dont chaque case porte un visuel animé. */}
       <section className="home-section home-path" aria-labelledby="worker-title">
-        <div className="home-section__inner home-path__inner">
-          <div className="home-path__intro">
-            <span className="home-section__tag">Intérimaires</span>
-            <h2 id="worker-title">Votre profil ouvre le bon chemin</h2>
-            <p>
-              Plus votre situation est précise, plus les propositions sont
-              faciles à comprendre et à choisir.
-            </p>
-            {!user && (
-              <Link className="home-cta home-cta--outline" to="/register">
-                <Briefcase size={16} aria-hidden="true" />
-                Créer mon profil intérimaire
-              </Link>
-            )}
+        <div className="home-section__inner home-path__stack">
+          <div className="home-path__head">
+            <div>
+              <span className="home-section__tag">Intérimaires</span>
+              <h2 id="worker-title">Votre profil ouvre le bon chemin</h2>
+              <p>
+                Plus votre situation est précise, plus les propositions sont
+                faciles à comprendre et à choisir.
+              </p>
+            </div>
+            <SlideFillLink
+              className="home-cta home-cta--outline"
+              to="/register"
+            >
+              <Briefcase size={16} aria-hidden="true" />
+              Créer mon profil intérimaire
+            </SlideFillLink>
           </div>
-          <FeatureList features={WORKER_FEATURES} />
+          <WorkerBento features={WORKER_FEATURES} photo={WORKER_PHOTO} />
         </div>
       </section>
 
@@ -178,27 +196,27 @@ export function Home() {
         className="home-section home-section--tinted home-path home-path--company"
         aria-labelledby="company-title"
       >
-        <div className="home-section__inner home-path__inner">
-          <div className="home-path__intro">
-            <span className="home-section__tag home-section__tag--orange">
-              Établissements
-            </span>
-            <h2 id="company-title">Un recrutement lisible, de bout en bout</h2>
-            <p>
-              Décrivez la mission, consultez les candidatures et attribuez les
-              postes depuis le même espace.
-            </p>
-            {!user && (
-              <div className="home-company-access">
-                <span>Vous disposez déjà d’un accès établissement ?</span>
-                <Link className="home-cta home-cta--outline" to="/login">
-                  <Users size={16} aria-hidden="true" />
-                  Accéder à l’espace entreprise
-                </Link>
-              </div>
-            )}
+        <div className="home-section__inner home-path__stack">
+          <div className="home-path__head">
+            <div>
+              <span className="home-section__tag home-section__tag--orange">
+                Établissements
+              </span>
+              <h2 id="company-title">Un recrutement lisible, de bout en bout</h2>
+              <p>
+                Décrivez la mission, consultez les candidatures et attribuez
+                les postes depuis le même espace.
+              </p>
+            </div>
+            <div className="home-company-access">
+              <span>Vous disposez déjà d’un accès établissement ?</span>
+              <SlideFillLink className="home-cta home-cta--outline" to="/login">
+                <Users size={16} aria-hidden="true" />
+                Accéder à l’espace entreprise
+              </SlideFillLink>
+            </div>
           </div>
-          <FeatureList features={COMPANY_FEATURES} tone="orange" />
+          <CompanyBento features={COMPANY_FEATURES} photo={COMPANY_PHOTO} />
         </div>
       </section>
 
@@ -209,9 +227,15 @@ export function Home() {
             <h2 id="how-title">Trois étapes, sans détour</h2>
             <p>Chaque étape correspond à une action réellement disponible.</p>
           </div>
-          <ol className="home-steps" aria-label="Étapes pour utiliser InteriMatch">
+          {/* Les étapes apparaissent l'une après l'autre au scroll. */}
+          <motion.ol
+            className="home-steps"
+            aria-label="Étapes pour utiliser InteriMatch"
+            variants={cascade}
+            {...reveal}
+          >
             {HOW_STEPS.map((step) => (
-              <li key={step.num} className="home-step">
+              <motion.li key={step.num} className="home-step" variants={rise}>
                 <span className="home-step__num" aria-hidden="true">
                   {step.num}
                 </span>
@@ -219,32 +243,34 @@ export function Home() {
                   <h3 className="home-step__title">{step.title}</h3>
                   <p className="home-step__desc">{step.desc}</p>
                 </div>
-              </li>
+              </motion.li>
             ))}
-          </ol>
+          </motion.ol>
         </div>
       </section>
 
-      {!user && (
-        <section className="home-final-cta" aria-labelledby="final-cta-title">
-          <div className="home-final-cta__inner">
-            <span className="home-final-cta__icon" aria-hidden="true">
-              <Sparkles size={22} />
-            </span>
-            <div>
-              <h2 id="final-cta-title">Prêt à construire votre profil ?</h2>
-              <p>
-                Commencez par vos informations professionnelles, puis complétez
-                vos disponibilités à votre rythme.
-              </p>
-            </div>
-            <Link className="home-cta home-cta--primary" to="/register">
-              Créer mon compte intérimaire
-              <ArrowRight size={18} aria-hidden="true" />
-            </Link>
+      <section className="home-final-cta" aria-labelledby="final-cta-title">
+        {/* Photo de fond (illustration), voile vert, crédit en bas. */}
+        <PhotoBackdrop src={FINAL_PHOTO.url} />
+        <motion.div
+          className="home-final-cta__inner"
+          variants={rise}
+          {...reveal}
+        >
+          <div>
+            <h2 id="final-cta-title">Prêt à construire votre profil ?</h2>
+            <p>
+              Commencez par vos informations professionnelles, puis complétez
+              vos disponibilités à votre rythme.
+            </p>
           </div>
-        </section>
-      )}
+          <SpotlightLink className="home-cta home-cta--primary" to="/register">
+            Créer mon compte intérimaire
+            <ArrowRight size={18} aria-hidden="true" />
+          </SpotlightLink>
+        </motion.div>
+        <UnsplashCredit media={FINAL_PHOTO} className="photo-credit home-final-cta__credit" />
+      </section>
     </div>
   );
 }

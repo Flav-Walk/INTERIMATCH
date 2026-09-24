@@ -341,6 +341,43 @@ test("un worker postule, l’entreprise accepte et l’état persiste", async ({
   }
 });
 
+test("l’annulation retire la candidature du board entreprise mais la conserve côté worker", async ({
+  page,
+}) => {
+  const project = test.info().project.name;
+  const workerEmail = `application.worker.${project}@example.test`;
+  const companyEmail = `application.company.${project}@example.test`;
+  const title = "Serveur candidature";
+
+  await signIn(page, companyEmail);
+  await expect(page).toHaveURL(/\/company$/);
+  await completeTour(page);
+  const missionId = await missionIdFromCompany(page, title);
+  await page.goto(`/company/missions/${missionId}`);
+  await page.getByRole("button", { name: "Annuler la mission" }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Confirmer l’annulation" })
+    .click();
+  await expect(page.getByText("Mission annulée", { exact: false }).first()).toBeVisible();
+
+  // L'invalidation déclenchée par l'annulation suffit : aucune reconnexion ni
+  // rechargement manuel n'est nécessaire pour obtenir la vue active corrigée.
+  await page.goto("/company/applications");
+  await expect(page.getByText(title, { exact: true })).toHaveCount(0);
+  await logout(page);
+
+  await signIn(page, workerEmail);
+  await expect(page).toHaveURL(/\/worker$/);
+  await page.goto("/worker/applications");
+  const application = page.locator(".worker-application-list li").filter({
+    hasText: title,
+  });
+  await expect(application).toBeVisible();
+  await expect(application).toContainText("Mission annulée");
+  await expect(application).toContainText("Acceptée");
+});
+
 test("une candidature refusée reste visible et ne redevient pas disponible", async ({
   page,
 }, testInfo) => {

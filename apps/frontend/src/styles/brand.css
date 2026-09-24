@@ -1,7 +1,7 @@
 /* Identité Gemini portée sur les écrans fonctionnels, sans styles globaux. */
 .brand-wordmark {
   display: inline-block;
-  font-family: Georgia, "Times New Roman", serif;
+  font-family: var(--font-display);
   font-size: 1.3rem;
   font-weight: 700;
   line-height: 1;
@@ -78,7 +78,7 @@
   max-width: 22ch;
   margin: 0;
   color: var(--surface);
-  font-family: Georgia, "Times New Roman", serif;
+  font-family: var(--font-display);
   font-size: clamp(1.75rem, 3vw, 2.55rem);
   line-height: 1.1;
   letter-spacing: -0.025em;
@@ -288,4 +288,629 @@
   .completion-gauge__value {
     transition: none;
   }
+}
+
+/* ── Fond photo partagé (composant PhotoBackdrop) ────────────────────────────
+ * Utilisé par le bandeau des pages internes, la connexion et l'accueil.
+ * Couches, du fond vers l'avant :
+ *   1. .photo-backdrop : la photo (zoom lent + parallaxe en JS).
+ *   2. .photo-backdrop::after : teinte verte en « soft-light », pour que
+ *      toutes les photos aient la même couleur, quelle que soit leur source.
+ *   3. .photo-backdrop__veil : dégradé vert foncé sous le texte, plus un
+ *      grain léger. Deux sens : --left (bandeaux) et --bottom (connexion).
+ *   4. Le contenu, devant (z-index ≥ 0).
+ */
+.brand-hero--photo {
+  background: var(--forest);
+}
+
+.photo-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  overflow: hidden;
+}
+
+.photo-backdrop img {
+  position: absolute;
+  top: -10%;
+  left: 0;
+  width: 100%;
+  height: 120%;
+  object-fit: cover;
+  object-position: center 40%;
+  filter: saturate(0.85) contrast(1.05);
+  will-change: transform;
+}
+
+.photo-backdrop::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: oklch(0.4 0.08 165);
+  mix-blend-mode: soft-light;
+  opacity: 0.7;
+}
+
+.photo-backdrop__veil {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+}
+
+/* Dense à gauche (sous le texte), la photo respire à droite. */
+.photo-backdrop__veil--left {
+  background:
+    linear-gradient(
+      100deg,
+      oklch(0.24 0.05 165 / 0.95) 0%,
+      oklch(0.26 0.055 165 / 0.86) 40%,
+      oklch(0.28 0.06 165 / 0.45) 72%,
+      oklch(0.28 0.06 165 / 0.2) 100%
+    ),
+    linear-gradient(to top, oklch(0.18 0.04 165 / 0.55), transparent 55%);
+}
+
+/* Grain photo : un bruit SVG très léger, fusionné en « overlay ». */
+.photo-backdrop__veil--bottom {
+  background: linear-gradient(
+    to top,
+    oklch(0.2 0.045 165 / 0.96) 0%,
+    oklch(0.24 0.05 165 / 0.82) 38%,
+    oklch(0.26 0.055 165 / 0.35) 68%,
+    oklch(0.22 0.05 165 / 0.55) 100%
+  );
+}
+
+.photo-backdrop__veil::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E");
+  mix-blend-mode: overlay;
+  opacity: 0.18;
+}
+
+/* Les mots du titre restent sur la même ligne tant qu'il y a la place. */
+.brand-hero__word {
+  display: inline-block;
+  white-space: pre;
+}
+
+.brand-hero--photo .brand-hero__eyeline {
+  display: block;
+}
+
+/* Slogan manuscrit, en haut à droite, comme sur la maquette. Polices
+   manuscrites présentes sur macOS / Windows, sans téléchargement. */
+.brand-hero__slogan {
+  position: absolute;
+  /* Coin haut droit, au-dessus de Matchy : c'est la seule zone libre quand
+     le bandeau affiche aussi la jauge. */
+  top: var(--space-4);
+  right: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  color: oklch(0.97 0.02 90);
+  font-family: "Bradley Hand", "Snell Roundhand", "Segoe Print", "Segoe Script", cursive;
+  font-size: clamp(1rem, 1.35vw, 1.3rem);
+  line-height: 1.15;
+  text-align: right;
+  text-shadow: 0 2px 10px oklch(0 0 0 / 0.35);
+  transform: rotate(-6deg);
+  pointer-events: none;
+}
+
+.brand-hero__slogan > span {
+  display: block;
+}
+
+.brand-hero__swoosh {
+  width: 7.5rem;
+  margin-top: 0.15rem;
+  color: var(--orange);
+}
+
+.brand-hero__mascot-wrap {
+  align-self: end;
+}
+
+@media (width < 900px) {
+  .brand-hero__mascot-wrap {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+  }
+
+  .brand-hero__slogan {
+    display: none;
+  }
+}
+
+@media (width < 620px) {
+  .brand-hero__mascot-wrap {
+    display: none;
+  }
+}
+
+/* ── Bandeau photo, version moderne ──────────────────────────────────────────
+ * Sans Matchy : texte à gauche, jauge dans une carte en verre dépoli en bas
+ * à droite, slogan en haut à droite. Halo qui suit la souris.
+ */
+.brand-hero--photo {
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: var(--space-8);
+  min-height: 260px;
+}
+
+.brand-hero--photo.brand-hero--compact {
+  min-height: 200px;
+}
+
+/* Le texte et la jauge passent devant le halo. */
+.brand-hero--photo .brand-hero__copy,
+.brand-hero--photo .brand-hero__gauge {
+  position: relative;
+  z-index: 1;
+}
+
+/* Halo : dégradé circulaire centré sur la souris (--mx / --my écrites en JS).
+   Invisible au repos, il apparaît au survol. */
+.brand-hero--photo::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    480px circle at var(--mx, 75%) var(--my, 30%),
+    oklch(0.88 0.08 160 / 0.13),
+    transparent 60%
+  );
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+
+.brand-hero--photo:hover::before {
+  opacity: 1;
+}
+
+/* Badge en verre avec pastille orange. */
+/* Étiquette du bandeau : plus de pilule en verre ni de pastille qui
+   pulse (retour de revue). Un trait orange, puis le texte en capitales. */
+.brand-hero--photo .brand-hero__eyeline {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: var(--space-4);
+  color: oklch(0.93 0.03 160);
+  letter-spacing: 0.1em;
+}
+
+.brand-hero--photo .brand-hero__eyeline::before {
+  content: "";
+  width: 22px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--orange);
+}
+
+.brand-hero__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--orange);
+  animation: brand-hero-pulse 2.4s ease-out infinite;
+}
+
+/* La pastille émet une onde qui s'élargit puis disparaît. */
+@keyframes brand-hero-pulse {
+  0% {
+    box-shadow: 0 0 0 0 oklch(0.7 0.17 50 / 0.6);
+  }
+  70%,
+  100% {
+    box-shadow: 0 0 0 8px oklch(0.7 0.17 50 / 0);
+  }
+}
+
+.brand-hero--photo h1 {
+  font-size: clamp(2rem, 3.4vw, 2.9rem);
+  letter-spacing: -0.035em;
+}
+
+.brand-hero--photo p {
+  color: oklch(0.92 0.02 160);
+}
+
+/* Bouton d'action en verre. */
+.brand-hero--photo .brand-hero__link {
+  border-color: oklch(1 0 0 / 0.22);
+  background: oklch(1 0 0 / 0.1);
+  backdrop-filter: blur(10px);
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease;
+}
+
+.brand-hero--photo .brand-hero__link:hover {
+  background: oklch(1 0 0 / 0.18);
+  transform: translateY(-1px);
+}
+
+/* Jauge dans une carte en verre dépoli, calée en bas à droite. */
+/* Jauge du bandeau : plus de boîte en verre dépoli (effet « carte IA »).
+   La jauge Gauge Chart (Animata) est posée directement sur la photo,
+   séparée du texte par un simple filet vertical. */
+.brand-hero--photo .brand-hero__gauge {
+  align-self: end;
+  min-width: 0;
+  padding: 0 0 0 var(--space-6);
+  border-left: 1px solid oklch(1 0 0 / 0.2);
+}
+
+@media (width < 900px) {
+  .brand-hero--photo .brand-hero__gauge {
+    justify-self: start;
+    margin-top: var(--space-4);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brand-hero__dot {
+    animation: none;
+  }
+
+  .brand-hero--photo::before,
+  .brand-hero--photo .brand-hero__link {
+    transition: none;
+  }
+}
+
+/* ── Connexion / inscription : panneau photo ────────────────────────────────
+ * Plus de Matchy : la photo occupe le panneau, le texte descend en bas sur
+ * le voile sombre, le logo reste en haut.
+ */
+.auth-story {
+  justify-content: space-between;
+  background: var(--forest);
+}
+
+.auth-story .auth-story__copy {
+  margin-top: auto;
+  padding-top: var(--space-12);
+}
+
+/* Même étiquette que le bandeau des pages internes : un trait orange puis
+   le texte, sans pilule en verre ni pastille (retour de revue). */
+.auth-story .auth-story__eyeline {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  color: oklch(0.93 0.03 160);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-size: var(--text-xs);
+  font-weight: 700;
+}
+
+.auth-story .auth-story__eyeline::before {
+  content: "";
+  width: 22px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--orange);
+}
+
+/* Le texte du panneau arrive en cascade : animé avec Motion dans Login.tsx.
+   L'animation CSS auth-rise ci-dessous reste utilisée par l'accueil. */
+@keyframes auth-rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+    filter: blur(6px);
+  }
+}
+
+@media (width < 900px) {
+  .auth-story {
+    min-height: 260px;
+  }
+
+  .auth-story .auth-story__copy {
+    max-width: none;
+    padding-top: var(--space-8);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-story .auth-story__eyeline::before {
+    animation: none;
+  }
+}
+
+/* ── Accueil : haut de page photo ───────────────────────────────────────────
+ * Le fond vert uni et ses arches sont remplacés par la photo (PhotoBackdrop).
+ * Matchy est remplacé par la carte « parcours » en verre (JourneyCard).
+ */
+.home-hero {
+  isolation: isolate;
+  min-height: min(88vh, 760px);
+  display: flex;
+  align-items: center;
+}
+
+.home-hero .home-hero__inner {
+  width: 100%;
+}
+
+/* Le texte arrive en fondu, ligne par ligne. */
+.home-hero__body > * {
+  animation: auth-rise 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.home-hero__body > :nth-child(2) {
+  animation-delay: 0.1s;
+}
+
+.home-hero__body > :nth-child(3) {
+  animation-delay: 0.2s;
+}
+
+.home-hero__body > :nth-child(4) {
+  animation-delay: 0.3s;
+}
+
+/* Accroche : texte simple, sans pilule ni pastille. Seul le métier
+   bouge (Word Rotate de Magic UI, components/ui/word-rotate.tsx). */
+.home-hero .home-hero__kicker {
+  margin: 0;
+  color: oklch(0.9 0.03 160);
+  font-size: var(--text-base);
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+.home-hero .home-hero__kicker-word {
+  color: var(--orange);
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 600;
+}
+
+.home-hero .home-hero__lead {
+  color: oklch(0.9 0.02 160);
+}
+
+/* Faisceaux Animated Beam (components/da/MatchingBeam.tsx). */
+.home-hero .home-hero__beam {
+  display: flex;
+  flex: 1 1 360px;
+  justify-content: flex-end;
+  max-width: 540px;
+}
+
+@media (width < 900px) {
+  .home-hero {
+    min-height: 0;
+  }
+
+  .home-hero .home-hero__beam {
+    justify-content: flex-start;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-hero__body > * {
+    animation: none;
+  }
+}
+
+/* ── Bouton d'envoi animé (ui/submit-button) ─────────────────────────────── */
+.submit-button__content {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+}
+
+/* Validé : le bouton passe au vert, le temps de voir la coche. */
+.button.submit-button--success,
+.button.submit-button--success:disabled {
+  background: var(--forest);
+  color: var(--surface);
+  opacity: 1;
+  transition: background 0.25s ease, color 0.25s ease;
+}
+
+/* ── Connexion Google ───────────────────────────────────────────────────── */
+.auth-google {
+  margin-top: var(--space-5);
+}
+
+.auth-google .google-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  min-height: 48px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 600;
+  box-shadow: var(--shadow-1);
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
+}
+
+.auth-google .google-button:hover:not(:disabled) {
+  border-color: oklch(0.8 0.01 160);
+  box-shadow: var(--shadow-2);
+  transform: translateY(-1px);
+}
+
+.auth-google .google-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.auth-google__note {
+  margin: var(--space-2) 0 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  text-align: center;
+}
+
+/* « ou avec votre email » entre deux traits. */
+.auth-google .divider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: var(--space-5) 0;
+}
+
+.auth-google .divider::before,
+.auth-google .divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-google .google-button {
+    transition: none;
+  }
+}
+
+/* ── Accueil : sections « Intérimaires » et « Établissements » ──────────────
+ * Titre et bouton sur une ligne, puis la grille bento pleine largeur
+ * (components/da/HomeBento.tsx : Bento Grid d'Aceternity + visuels Magic UI
+ * et Animata). La section établissements met la photo à droite.
+ */
+.home-path .home-path__stack {
+  display: grid;
+  gap: var(--space-8);
+}
+
+.home-path .home-path__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-6);
+}
+
+.home-path .home-path__head h2 {
+  max-width: 18ch;
+  margin: var(--space-3) 0;
+  font-size: clamp(1.8rem, 4vw, 2.65rem);
+  line-height: 1.13;
+}
+
+.home-path .home-path__head p {
+  max-width: 46ch;
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+/* Les h3 des cases bento : le style global des h3 ne doit pas gagner. */
+.home-path h3 {
+  margin: 0 0 var(--space-1);
+}
+
+/* Étiquette de section : plus de pilule teintée, un simple mot en
+   capitales précédé d'un trait (retour de revue sur les badges « IA »). */
+.home-section__tag,
+.home-section__tag--orange {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0;
+  border-radius: 0;
+  background: none;
+}
+
+.home-section__tag::before {
+  content: "";
+  width: 24px;
+  height: 2px;
+  background: currentColor;
+}
+
+.home-section__tag--orange {
+  color: var(--orange-ink);
+}
+
+/* ── Accueil : appel final sur photo ────────────────────────────────────── */
+.home-final-cta {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  padding-block: clamp(4.5rem, 9vw, 7rem);
+}
+
+.home-final-cta .home-final-cta__inner {
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.home-final-cta .home-final-cta__inner h2 {
+  font-size: clamp(1.8rem, 3.4vw, 2.6rem);
+  letter-spacing: -0.025em;
+}
+
+/* Double classe : .photo-credit (mission-photo.css, chargé après) imposait
+   un gris foncé illisible sur le vert (contraste 1,67:1, audit axe). */
+.photo-credit.home-final-cta__credit {
+  position: absolute;
+  right: var(--space-4);
+  bottom: var(--space-3);
+  margin: 0;
+  color: oklch(0.85 0.02 160);
+  font-size: 0.72rem;
+}
+
+.photo-credit.home-final-cta__credit a {
+  color: inherit;
+}
+
+@media (width < 900px) {
+  .home-final-cta .home-final-cta__inner {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* ── En-tête public : « Créer un compte » en pilule orange ──────────────── */
+.app-header .account-link {
+  align-items: center;
+}
+
+.app-header .account-link .account-link__cta {
+  padding: 0.5rem 1.05rem;
+  border-radius: var(--radius-pill);
+  background: var(--orange);
+  color: var(--ink);
+  font-weight: 650;
+  text-decoration: none;
+  transition: filter 0.2s ease, transform 0.2s ease;
+}
+
+.app-header .account-link .account-link__cta:hover {
+  filter: brightness(1.06);
+  color: var(--ink);
+  text-decoration: none;
+  transform: translateY(-1px);
+}
+
+/* ── Accueil : un bouton seul dans le hero ne s'étire jamais sur toute la
+ * largeur (la colonne flex étire ses enfants par défaut). */
+.home-hero__body > .home-cta {
+  align-self: flex-start;
 }

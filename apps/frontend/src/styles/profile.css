@@ -111,29 +111,42 @@
   grid-column: 1 / -1;
 }
 
-.worker-profile .profile-section legend {
+/* Titres de rubrique : numéro orange en Fraunces (01, 02…) puis le titre
+   en Fraunces, à la place de l'icône dans un rond teinté (revue). Le
+   numéro vient d'un compteur CSS : rien à écrire dans le JSX. */
+.worker-profile {
+  counter-reset: profile-section;
+}
+
+.worker-profile .profile-section {
+  counter-increment: profile-section;
+}
+
+.worker-profile .profile-section > legend {
   display: flex;
-  align-items: center;
-  gap: var(--space-2);
+  align-items: baseline;
+  gap: var(--space-3);
   max-width: 100%;
   padding-inline: var(--space-1) var(--space-2);
-  color: var(--forest);
-  font-family: inherit;
-  font-size: var(--text-lg);
-  font-weight: 750;
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  font-weight: 600;
+  letter-spacing: -0.01em;
   line-height: 1.2;
 }
 
+.worker-profile .profile-section > legend::before {
+  content: counter(profile-section, decimal-leading-zero);
+  color: var(--orange-ink);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+/* Ancienne icône de rubrique : plus affichée (nouvelle DA). */
 .profile-section__icon {
-  display: inline-flex;
-  flex: none;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  color: var(--forest);
-  background: var(--tint);
+  display: none;
 }
 
 .profile-section__hint,
@@ -572,7 +585,7 @@
     padding: var(--space-4);
   }
 
-  .worker-profile .profile-section legend {
+  .worker-profile .profile-section > legend {
     flex-wrap: wrap;
     font-size: var(--text-base);
   }
@@ -658,4 +671,288 @@
   .profile-savebar {
     transition: none;
   }
+}
+
+/* Champs Animated Input (SmoothUI) : un peu d'air entre eux, et le libellé
+   flottant a besoin de place au-dessus du champ. */
+.worker-profile .profile-float-fields {
+  row-gap: var(--space-5);
+  padding-top: var(--space-2);
+}
+
+/* ═══ Mise en page du profil (nouvelle organisation) ═════════════════════════
+ * Deux colonnes : à gauche la colonne d'orientation (ProfileNav), collante ;
+ * à droite les rubriques l'une sous l'autre, pleine largeur. Plus de grille
+ * 5/7 colonnes où l'œil sautait d'un bloc à l'autre.
+ */
+.profile-layout {
+  display: grid;
+  /* Colonne de gauche retirée (revue) : une seule colonne pleine largeur. */
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-8);
+  margin-top: var(--space-6);
+}
+
+.profile-aside {
+  position: sticky;
+  top: 108px; /* sous l'en-tête et la navigation, qui restent collés */
+  display: grid;
+  gap: var(--space-4);
+}
+
+.profile-main {
+  display: grid;
+  gap: var(--space-5);
+  min-width: 0;
+}
+
+/* Les formulaires empilent leurs rubriques avec le même écart. */
+.profile-main .profile-editor {
+  display: grid;
+  gap: var(--space-5);
+}
+
+/* Chaque rubrique prend toute la largeur de la colonne. Le décalage de
+   défilement laisse le titre visible sous l'en-tête collant. */
+.worker-profile .profile-main .profile-section {
+  grid-column: auto;
+  scroll-margin-top: 120px;
+}
+
+.profile-main .profile-availability {
+  margin-top: 0;
+  scroll-margin-top: 120px;
+}
+
+/* Prérequis manquants / réunis, sous le sommaire : texte simple, sans bloc
+   jaune ni pastilles. */
+.profile-aside .profile-overview__todo,
+.profile-aside .profile-overview__ready {
+  padding: 0 var(--space-3);
+  background: none;
+  font-size: var(--text-sm);
+}
+
+.profile-aside .profile-overview__todo {
+  color: var(--orange-ink);
+}
+
+.profile-aside .profile-overview__missing {
+  display: grid;
+  gap: 2px;
+}
+
+.profile-aside .profile-overview__missing span {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font-size: var(--text-sm);
+}
+
+.profile-aside .profile-overview__missing span::before {
+  content: "– ";
+  color: var(--orange-ink);
+}
+
+.profile-aside .profile-overview__ready {
+  align-items: flex-start;
+  font-weight: 600;
+}
+
+/* Barre d'enregistrement : collée en bas de l'écran, toujours à portée. */
+.profile-main .profile-savebar {
+  position: sticky;
+  bottom: var(--space-4);
+  z-index: var(--z-sticky);
+  margin-top: 0;
+  padding: var(--space-3) var(--space-4);
+  box-shadow: var(--shadow-3);
+}
+
+.profile-main .profile-savebar.is-dirty {
+  border-color: var(--orange);
+  background: var(--surface);
+}
+
+@media (width < 1000px) {
+  .profile-layout {
+    grid-template-columns: 1fr;
+    gap: var(--space-5);
+  }
+
+  /* Sur petit écran, la colonne d'orientation passe au-dessus et ne colle
+     plus : elle prendrait tout l'écran. */
+  .profile-aside {
+    position: static;
+    padding: var(--space-4);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+  }
+}
+
+/* Divider fin entre compétences et métiers, dans la même carte Bento. */
+.profile-divider {
+  width: 100%;
+  height: 1px;
+  margin: var(--space-1) 0;
+  border: 0;
+  background: var(--border);
+}
+
+/* Sous-groupes de la carte « Compétences & Métiers » : le style global des
+   fieldset/legend (bordure, padding, Fraunces) est hors @layer, il passe
+   donc devant les utilitaires Tailwind. On le neutralise ici pour que les
+   deux listes vivent à plat dans UNE seule carte, séparées par le divider. */
+.worker-profile .profile-chip-group {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.worker-profile .profile-chip-group > legend {
+  width: 100%;
+  padding: 0;
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+/* La vitrine remplace la bannière : même écart sous elle. */
+.worker-profile > .profile-showcase {
+  margin-bottom: var(--space-6);
+}
+
+/* ======================================================================
+   Grille Bento des rubriques du profil (12 colonnes)
+   ----------------------------------------------------------------------
+   Les rubriques vivent dans 3 formulaires (principal, disponibilités,
+   facultatif). Pour qu'elles forment UNE seule grille, les deux
+   formulaires « rubriques » passent en display: contents : leurs
+   fieldsets deviennent directement des cases de la grille. Ça ne change
+   rien au fonctionnement des formulaires (l'appartenance d'un champ à son
+   <form> dépend du DOM, pas de l'affichage).
+   Le formulaire des disponibilités reste, lui, une vraie boîte : il porte
+   l'ancre #disponibilites utilisée par le tableau de bord.
+
+   Ligne 1 : Identité (4) · Métier (5) · Recherche (3)
+   Ligne 2 : Compétences & Métiers (12)
+   Ligne 3 : Mobilité + carte (7) · Disponibilités (5)
+   Ligne 4 : Expériences (7) · Diplômes (5)
+   ====================================================================== */
+.worker-profile .profile-main {
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: var(--space-4);
+  align-items: stretch; /* cartes d'une même ligne à la même hauteur */
+}
+
+.worker-profile .profile-main > .profile-editor {
+  display: contents;
+}
+
+.worker-profile .profile-main > * {
+  grid-column: 1 / -1; /* par défaut : pleine largeur (barre d'enregistrement…) */
+}
+
+.worker-profile .profile-main .profile-section {
+  height: 100%;
+  margin: 0;
+}
+
+.worker-profile .profile-main #identite { grid-column: span 4; }
+.worker-profile .profile-main #metier { grid-column: span 5; }
+.worker-profile .profile-main #recherche { grid-column: span 3; }
+.worker-profile .profile-main #competences { grid-column: 1 / -1; }
+.worker-profile .profile-main #mobilite { grid-column: span 7; }
+.worker-profile .profile-main > .profile-availability { grid-column: span 5; }
+.worker-profile .profile-main #experiences { grid-column: span 7; }
+.worker-profile .profile-main #diplomes { grid-column: span 5; }
+
+/* Cartes étroites : on empile ce qui était côte à côte. */
+.worker-profile .profile-main #metier .profile-job-fields,
+.worker-profile .profile-main .profile-availability .availability-layout,
+.worker-profile .profile-main #diplomes .profile-repeat {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.worker-profile .profile-main #recherche .profile-section__hint {
+  display: block;
+}
+
+/* Tablette : deux colonnes de cartes, puis une seule sur mobile. */
+@media (width < 1100px) {
+  .worker-profile .profile-main #identite,
+  .worker-profile .profile-main #metier,
+  .worker-profile .profile-main #mobilite,
+  .worker-profile .profile-main > .profile-availability,
+  .worker-profile .profile-main #experiences,
+  .worker-profile .profile-main #diplomes {
+    grid-column: span 6;
+  }
+
+  .worker-profile .profile-main #recherche {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (width < 760px) {
+  .worker-profile .profile-main > *,
+  .worker-profile .profile-main .profile-section,
+  .worker-profile .profile-main #identite,
+  .worker-profile .profile-main #metier,
+  .worker-profile .profile-main #recherche,
+  .worker-profile .profile-main #mobilite,
+  .worker-profile .profile-main > .profile-availability,
+  .worker-profile .profile-main #experiences,
+  .worker-profile .profile-main #diplomes {
+    grid-column: 1 / -1;
+  }
+}
+
+/* ---------- Ville ⇄ code postal : propositions ---------- */
+.commune-sync {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: calc(var(--space-1) * -1);
+}
+
+.commune-sync__message {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--text-sm);
+}
+
+.commune-sync__choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.commune-sync__choice {
+  min-height: 36px;
+  padding: 6px 14px;
+  border: 1px solid color-mix(in oklch, var(--forest) 30%, var(--border));
+  border-radius: var(--radius-pill);
+  color: var(--forest);
+  background: var(--surface);
+  font-size: var(--text-sm);
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: background var(--fast) var(--ease-out);
+}
+
+.commune-sync__choice:hover {
+  background: var(--tint);
+}
+
+.commune-sync__choice:focus-visible {
+  outline: 3px solid color-mix(in oklch, var(--orange) 55%, transparent);
+  outline-offset: 2px;
 }

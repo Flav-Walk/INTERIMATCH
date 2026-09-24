@@ -1,19 +1,10 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import {
-  ArrowLeft,
-  Briefcase,
-  Building2,
-  Clock,
-  Coins,
-  ExternalLink,
-  GraduationCap,
-  Info,
-  MapPin,
-  Sparkles,
-  Users,
-  Wrench,
-} from "lucide-react";
+import { motion, useReducedMotion } from "motion/react";
+import { cascade, revealOnScroll, rise } from "../lib/motion";
+import { offerIllustrationFor } from "../lib/job-photos";
+import { UnsplashCredit } from "../components/mission/MissionPhotoField";
+import { ArrowLeft, ExternalLink } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { errorMessage } from "../services/session";
 import {
@@ -21,6 +12,7 @@ import {
   safeExternalUrl,
   type PublicJobOffer,
 } from "../services/publicOffers";
+import { usePageSeo } from "../hooks/usePageSeo";
 
 function DetailSkeleton() {
   return (
@@ -40,10 +32,18 @@ function DetailSkeleton() {
 export function WorkerPublicOfferDetail() {
   const { id = "" } = useParams();
   const { user } = useAuth();
+  // Avant les « return » anticipés : un hook est toujours appelé.
+  const reduceMotion = useReducedMotion();
   const [offer, setOffer] = useState<PublicJobOffer | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  // Titre d'onglet propre à la page (RGAA 8.6) ; espace privé non indexé.
+  usePageSeo({
+    title: `${offer?.title ?? "Offre"} · Offre France Travail · InteriMatch`,
+    description: "Détail d’une offre publique France Travail.",
+    robots: "noindex,nofollow",
+  });
   useEffect(() => {
     let live = true;
     setLoading(true);
@@ -98,17 +98,48 @@ export function WorkerPublicOfferDetail() {
   const requiredSkills = offer.skills.filter((s) => s.required);
   const desiredSkills = offer.skills.filter((s) => !s.required);
   const sourceUrl = safeExternalUrl(offer.source_url);
+  // France Travail ne fournit pas d'image : photo d'OBJETS du métier, jamais
+  // un lieu ni une personne, toujours signalée « Photo d'illustration » et
+  // créditée (voir lib/job-photos, offerIllustrationFor).
+  const media = offerIllustrationFor(offer.title, offer.id);
+  // « Réduire les animations » : tout s'affiche directement.
+  const reveal = reduceMotion ? {} : revealOnScroll;
 
   return (
     <div className="detail-page">
-      <div className="detail-hero">
-        <div className="detail-hero__inner">
-          <Link className="detail-back" to="/worker/public-offers">
-            <ArrowLeft size={15} aria-hidden="true" />
-            Offres France Travail
-          </Link>
+      <div className="detail-hero detail-hero--offer">
+        {/* Photo d'objets du métier en fond, avec un zoom lent à l'arrivée. */}
+        <figure className="detail-hero__photo">
+          <motion.img
+            src={media.url}
+            alt=""
+            decoding="async"
+            initial={reduceMotion ? false : { scale: 1.1 }}
+            animate={{ scale: 1 }}
+            transition={{ duration: 14, ease: "easeOut" }}
+          />
+          <figcaption>
+            <span className="photo-illustration-tag is-inline">
+              Photo d’illustration
+            </span>
+            <UnsplashCredit media={media} />
+          </figcaption>
+        </figure>
+        {/* Le contenu arrive en cascade : retour, titre, infos. */}
+        <motion.div
+          className="detail-hero__inner"
+          variants={cascade}
+          initial={reduceMotion ? false : "hidden"}
+          animate="visible"
+        >
+          <motion.div variants={rise}>
+            <Link className="detail-back" to="/worker/public-offers">
+              <ArrowLeft size={15} aria-hidden="true" />
+              Offres France Travail
+            </Link>
+          </motion.div>
 
-          <div className="detail-hero__head">
+          <motion.div className="detail-hero__head" variants={rise}>
             <div className="detail-hero__title-wrap">
               <div className="public-offer-external-banner">
                 <ExternalLink size={14} aria-hidden="true" />
@@ -116,7 +147,6 @@ export function WorkerPublicOfferDetail() {
               </div>
               <h1 className="detail-hero__title">{offer.title}</h1>
               <p className="detail-hero__company">
-                <Building2 size={14} aria-hidden="true" />
                 <span>
                   {offer.company_name || "Établissement non communiqué"}
                 </span>
@@ -126,63 +156,53 @@ export function WorkerPublicOfferDetail() {
                 </span>
               </p>
             </div>
-          </div>
+          </motion.div>
 
-          <div className="detail-hero__meta detail-grid">
+          <motion.div className="detail-hero__meta detail-grid" variants={rise}>
             <span className="detail-meta-chip">
-              <MapPin size={13} aria-hidden="true" />
               {offer.postal_code ? `${offer.postal_code} ` : ""}
               {offer.city}
             </span>
-            <span className="detail-meta-chip">
-              <Briefcase size={13} aria-hidden="true" />
-              {offer.contract_label}
-            </span>
+            <span className="detail-meta-chip">{offer.contract_label}</span>
             {offer.working_time && (
-              <span className="detail-meta-chip">
-                <Clock size={13} aria-hidden="true" />
-                {offer.working_time}
-              </span>
+              <span className="detail-meta-chip">{offer.working_time}</span>
             )}
             {offer.salary_label && (
               <span className="detail-meta-chip detail-meta-chip--pay">
-                <Coins size={13} aria-hidden="true" />
                 {offer.salary_label}
               </span>
             )}
             {offer.experience_label && (
-              <span className="detail-meta-chip">
-                <GraduationCap size={13} aria-hidden="true" />
-                {offer.experience_label}
-              </span>
+              <span className="detail-meta-chip">{offer.experience_label}</span>
             )}
             {offer.positions > 1 && (
-              <span className="detail-meta-chip">
-                <Users size={13} aria-hidden="true" />
-                {offer.positions} postes à pourvoir
-              </span>
+              <span className="detail-meta-chip">{offer.positions} postes</span>
             )}
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       </div>
 
       <div className="detail-body">
         <div className="detail-layout">
           <div className="detail-main">
             {offer.description && (
-              <section className="detail-card" aria-labelledby="desc-title">
+              <motion.section
+                className="detail-card"
+                aria-labelledby="desc-title"
+                variants={rise}
+                {...reveal}
+              >
                 <h2 id="desc-title" className="detail-card__title">
                   Description du poste
                 </h2>
                 <div className="public-offer-description-text">
                   {offer.description}
                 </div>
-              </section>
+              </motion.section>
             )}
 
             <section className="detail-card" aria-labelledby="skills-title">
               <h2 id="skills-title" className="detail-card__title">
-                <Wrench size={16} aria-hidden="true" />
                 Compétences mentionnées
               </h2>
 
@@ -238,7 +258,6 @@ export function WorkerPublicOfferDetail() {
                   aria-labelledby="qualities-title"
                 >
                   <h2 id="qualities-title" className="detail-card__title">
-                    <Sparkles size={16} aria-hidden="true" />
                     Qualités professionnelles recherchées
                   </h2>
                   <div className="steps-list">
@@ -266,7 +285,6 @@ export function WorkerPublicOfferDetail() {
           <aside className="detail-rail" aria-label="Origine de l'offre">
             <section className="detail-card" aria-labelledby="origin-title">
               <h2 id="origin-title" className="detail-card__title">
-                <Info size={16} aria-hidden="true" />
                 Origine de l'offre
               </h2>
 
