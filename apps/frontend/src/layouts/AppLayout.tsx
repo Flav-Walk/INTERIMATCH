@@ -332,6 +332,10 @@ export function AppLayout() {
         <span className="shell-brand">
           <Logo variant="forest" />
         </span>
+        {/* Signature de marque : texte réel, lu une seule fois. */}
+        <span className="shell-footer__tagline">
+          Les bonnes personnes, au bon moment.
+        </span>
         <nav aria-label="Informations légales" className="footer-links">
           <NavLink to="/mentions-legales">Mentions légales</NavLink>
           <NavLink to="/politique-confidentialite">
@@ -339,7 +343,9 @@ export function AppLayout() {
           </NavLink>
           <NavLink to="/accessibilite">Accessibilité : non conforme</NavLink>
         </nav>
-        <span>Prototype · Hôtellerie &amp; restauration</span>
+        <span className="shell-footer__meta">
+          Prototype · Hôtellerie &amp; restauration
+        </span>
       </footer>
       {runTour && user && (
         <GuidedTour

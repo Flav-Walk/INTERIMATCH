@@ -1,0 +1,300 @@
+/*
+ * Coque de l'application : en-tête clair et pied de page.
+ *
+ * Référence : image.png. Barre blanche d'environ 64 px, wordmark vert à
+ * gauche, liens métier en texte seul, recherche en pilule et compte à droite.
+ * L'onglet actif s'encre et reçoit un point orange, rien de plus.
+ */
+
+/* ---------- En-tête ---------- */
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  background: oklch(1 0 0 / 0.86);
+  border-bottom: 1px solid var(--border);
+  backdrop-filter: saturate(1.4) blur(14px);
+  -webkit-backdrop-filter: saturate(1.4) blur(14px);
+}
+
+.app-header__inner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  max-width: var(--page-max);
+  min-height: var(--header-h);
+  margin-inline: auto;
+  padding-inline: var(--page-gutter);
+}
+
+.app-header__logo {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  text-decoration: none;
+}
+.app-header__logo .brand-wordmark {
+  color: var(--forest);
+  font-size: 1.4rem;
+}
+
+/* La règle générique `nav { gap: 24px }` et `nav a { border-bottom }` de
+   global.css visent l'ancien en-tête : on les neutralise ici. */
+.app-header__nav {
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-1);
+  flex: 1 1 auto;
+  justify-content: center;
+  min-width: 0;
+  align-self: stretch;
+}
+
+.app-header__nav-link {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-3);
+  border: 0;
+  border-radius: 0;
+  color: var(--muted);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color var(--fast) var(--ease-out);
+}
+/* Les pictos restent dans le DOM mais la maquette n'affiche que le texte en
+   grand format. Ils reviennent sur petits écrans, où le libellé se masque. */
+.app-header__nav-link > svg {
+  display: none;
+}
+.app-header__nav-link:hover {
+  color: var(--ink);
+}
+.app-header__nav-link.is-active {
+  color: var(--ink);
+  font-weight: 600;
+}
+.app-header__nav-link.is-active::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 10px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--orange);
+  transform: translateX(-50%);
+}
+.app-header__nav-link:focus-visible {
+  outline-offset: -3px;
+}
+
+.app-header__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex: none;
+  margin-left: auto;
+}
+
+/* Recherche : pilule claire, comme la maquette. */
+.app-header .shell-search {
+  width: clamp(180px, 20vw, 280px);
+  padding: 0 var(--space-4);
+  min-height: 40px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--background);
+  color: var(--muted);
+}
+.app-header .shell-search input {
+  min-height: 38px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  font-size: var(--text-sm);
+}
+.app-header .shell-search:focus-within {
+  border-color: var(--forest);
+  outline: none;
+  box-shadow: 0 0 0 3px oklch(0.32 0.065 165 / 0.18);
+}
+
+/* Compte : avatar vert et identité sur deux lignes. */
+.app-header .shell-account > summary {
+  padding: 4px 8px 4px 4px;
+  border-radius: var(--radius-pill);
+  color: var(--ink);
+  transition: background var(--fast) var(--ease-out);
+}
+.app-header .shell-account > summary:hover,
+.app-header .shell-account[open] > summary {
+  background: var(--background);
+}
+.app-header .shell-account > summary > svg {
+  color: var(--muted);
+  transition: transform var(--normal) var(--ease-out);
+}
+.app-header .shell-account[open] > summary > svg {
+  transform: rotate(180deg);
+}
+.app-header .avatar {
+  width: 36px;
+  height: 36px;
+  font-size: var(--text-xs);
+}
+.app-header .account-menu {
+  z-index: var(--z-dropdown);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-3);
+}
+.app-header .shell-account:not([open]) .account-menu {
+  display: none;
+}
+
+/* Visiteur : lien texte + bouton contour vert. L'orange reste réservé à
+   l'action principale de la page. */
+.app-header .account-link {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: auto;
+}
+.app-header .account-link a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 var(--space-4);
+  border: 0;
+  border-radius: var(--radius-pill);
+  color: var(--ink);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  text-decoration: none;
+  transition: background var(--fast) var(--ease-out);
+}
+.app-header .account-link a:hover {
+  background: var(--background);
+}
+.app-header .account-link a:last-child {
+  border: 1px solid var(--forest);
+  color: var(--forest);
+}
+.app-header .account-link a:last-child:hover {
+  background: var(--tint);
+}
+.app-header .account-link a.active {
+  font-weight: 600;
+}
+
+/* ---------- En-tête : deux rangs sous 1240 px ----------
+   Les six libellés de l'espace intérimaire, la recherche et le compte ne
+   tiennent plus sur une ligne. La navigation passe dessous et défile
+   horizontalement dans sa propre bande, jamais la page. */
+@media (width < 1240px) {
+  .app-header__inner {
+    flex-wrap: wrap;
+    row-gap: 0;
+    padding-top: var(--space-2);
+  }
+  .app-header__nav {
+    order: 3;
+    flex-basis: 100%;
+    justify-content: flex-start;
+    min-height: 46px;
+    margin-inline: calc(var(--space-3) * -1);
+    overflow-x: auto;
+    scrollbar-width: none;
+    border-top: 1px solid var(--border);
+  }
+  .app-header__nav::-webkit-scrollbar {
+    display: none;
+  }
+  .app-header__nav-link.is-active::after {
+    bottom: 4px;
+  }
+}
+
+@media (width < 720px) {
+  .app-header__inner {
+    padding-inline: var(--space-4);
+    gap: var(--space-3);
+  }
+  .app-header__logo .brand-wordmark {
+    font-size: 1.2rem;
+  }
+  .app-header .account-identity {
+    display: none;
+  }
+  .app-header .shell-search {
+    width: min(200px, 42vw);
+  }
+  .app-header__nav {
+    margin-inline: calc(var(--space-4) * -1);
+    padding-inline: var(--space-2);
+  }
+  .app-header__nav-link > svg {
+    display: inline;
+  }
+  .app-header .account-menu {
+    min-width: 0;
+    width: max-content;
+    max-width: calc(100vw - 2rem);
+  }
+  .app-header .account-link a:first-child {
+    padding-inline: var(--space-2);
+  }
+}
+
+/* ---------- Pied de page ---------- */
+.shell-footer {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: var(--space-2) var(--space-6);
+  max-width: none;
+  margin-top: var(--space-12);
+  padding-block: var(--space-6);
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--muted);
+  font-size: var(--text-sm);
+}
+.shell-footer .shell-brand .brand-wordmark {
+  font-size: 1.15rem;
+}
+.shell-footer__tagline {
+  font-family: var(--font-display);
+  font-style: italic;
+  color: var(--muted);
+}
+.shell-footer .footer-links {
+  gap: var(--space-5);
+  margin: 0;
+}
+.shell-footer .footer-links a {
+  font-size: var(--text-sm);
+}
+.shell-footer__meta {
+  grid-column: 1 / -1;
+  padding-top: var(--space-3);
+  border-top: 1px dashed var(--border);
+  font-size: var(--text-xs);
+}
+
+@media (width < 900px) {
+  .shell-footer {
+    grid-template-columns: 1fr;
+    padding-inline: var(--space-4);
+  }
+}
+/* `footer > span:last-child { margin-left: auto }` (global.css) pousserait la
+   mention à droite : on la garde alignée sur la gouttière. */
+.shell-footer > .shell-footer__meta {
+  margin-left: 0;
+}

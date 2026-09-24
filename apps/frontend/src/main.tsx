@@ -11,7 +11,17 @@ import { MentionsLegales } from "./pages/MentionsLegales";
 import { PolitiqueConfidentialite } from "./pages/PolitiqueConfidentialite";
 import { Accessibilite } from "./pages/Accessibilite";
 import { usePageSeo } from "./hooks/usePageSeo";
+// Polices de marque servies avec le site (Fontsource) : aucune requête vers
+// Google Fonts, donc aucune adresse IP transmise à un tiers (RGPD, RGESN).
+// Fraunces « opsz » ajuste le dessin à la taille : fin en titre, robuste en
+// petit. L'italique sert au slogan manuscrit des bandeaux.
+import "@fontsource-variable/fraunces/opsz.css";
+import "@fontsource-variable/fraunces/opsz-italic.css";
+import "@fontsource-variable/geist/index.css";
 import "./styles/global.css";
+// Couche de la refonte des pages : chargée après global.css pour primer à
+// spécificité égale, sans toucher aux feuilles historiques page par page.
+import "./styles/refonte/index.css";
 
 function NotFound() {
   usePageSeo({

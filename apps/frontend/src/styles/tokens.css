@@ -60,6 +60,14 @@
   --fast: 120ms;
   --normal: 220ms;
 
+  /* --- Familles. Fraunces pour les titres et les chiffres mis en avant,
+     Geist pour le texte et l'interface. Les replis gardent le même rôle. --- */
+  --font-display: "Fraunces Variable", Georgia, "Times New Roman", serif;
+  --font-body: "Geist Variable", system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  /* --- Gabarit de l'en-tête clair (maquette : ~54 px + marge). --- */
+  --header-h: 64px;
+
   /* --- Plans. Une échelle nommée, jamais de 9999. --- */
   --z-sticky: 10;
   --z-dropdown: 20;

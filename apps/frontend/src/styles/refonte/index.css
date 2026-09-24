@@ -1,0 +1,13 @@
+/*
+ * Refonte des pages — point d'entrée.
+ *
+ * Chargé après global.css (voir main.tsx). Chaque fichier couvre une zone et
+ * ne s'appuie que sur les tokens de tokens.css. Règles de marque appliquées :
+ * vert forêt pour le sérieux, orange pour l'action (un seul bouton orange par
+ * écran), texte orange en --orange-ink, jamais de bleu.
+ */
+@import "./base.css";
+@import "./shell.css";
+@import "./bandeau.css";
+@import "./landing.css";
+@import "./auth.css";
