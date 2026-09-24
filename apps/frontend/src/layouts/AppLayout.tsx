@@ -169,7 +169,7 @@ export function AppLayout() {
   // lorsque la valeur de scroll change, sans écouteur à nettoyer à la main.
   const { scrollY } = useScroll();
   const [scrolled, setScrolled] = useState(false);
-  useMotionValueEvent(scrollY, "change", (y) => setScrolled(y > 8));
+  useMotionValueEvent(scrollY, "change", (y: number) => setScrolled(y > 8));
   const pending = user?.role === "company" ? counts.pending : 0;
 
   async function logout() {

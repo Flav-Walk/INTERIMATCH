@@ -174,7 +174,7 @@ export function Login({ register = false }: { register?: boolean }) {
             <span>ou avec votre email</span>
           </div>
         </motion.div>
-        <motion.form onSubmit={(e) => void submit(e)} variants={rise}>
+        <motion.form onSubmit={(e: any) => void submit(e)} variants={rise}>
           <label htmlFor="login-email">
             Email
             <input
