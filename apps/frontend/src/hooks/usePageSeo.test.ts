@@ -218,4 +218,3 @@ describe("applyPublicTags (pages publiques)", () => {
     expect(doc.nodes).toHaveLength(0);
   });
 });
-
