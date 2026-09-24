@@ -13,7 +13,6 @@ export type Role = "worker" | "company" | "admin";
 /** Règles de complétion calculées par le serveur ; jamais décidées ici. */
 export type CompletionRule =
   | "identity"
-  | "photo"
   | "location"
   | "mobility_radius"
   | "main_job"
@@ -40,14 +39,6 @@ export interface Certification {
 }
 
 export interface WorkerProfileData {
-  /**
-   * Portrait du compte, tel que le serveur le sert.
-   *
-   * L'URL vient du stockage, jamais de la requête : le client dépose des
-   * octets, le serveur décide du chemin et en dérive l'adresse publique. Voir
-   * `docs/DECISIONS.md` et la migration 012.
-   */
-  avatar_url?: string | null;
   city?: string | null;
   postal_code?: string | null;
   // Dérivées du géocodage serveur : jamais saisies, jamais envoyées.

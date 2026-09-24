@@ -97,7 +97,7 @@ export function CompanyDashboard() {
           subtitle="Publiez une mission en quelques minutes et suivez les candidatures qualifiées près de chez vous."
           mascotPose="dashboard"
           action={
-            <Link className="im-btn im-btn--primary" to="/company/missions/new">
+            <Link className="brand-hero__link" to="/company/missions/new">
               <Plus size={18} aria-hidden="true" />
               Créer une mission
             </Link>

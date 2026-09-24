@@ -1,13 +1,12 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
-  ArrowRight,
-  BriefcaseBusiness,
   CalendarDays,
-  Check,
-  ClipboardList,
   MapPin,
-  PencilLine,
+  Check,
+  BriefcaseBusiness,
+  Users,
+  ArrowRight,
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { usePageSeo } from "../hooks/usePageSeo";
@@ -16,7 +15,7 @@ import {
   requirementLabels,
   upcomingAvailabilities,
 } from "../services/profile";
-import { errorMessage, type CompletionRule } from "../services/session";
+import { errorMessage } from "../services/session";
 import { MissionCard } from "../components/mission/MissionCard";
 import {
   explainEmpty,
@@ -32,78 +31,40 @@ import {
   type WorkerApplication,
 } from "../services/applications";
 import { ConfirmedMissions } from "../components/applications/ConfirmedMissions";
-import {
-  EmptyState,
-  PageBody,
-  PageHeader,
-} from "../components/ui/PageHeader";
-import { RuleRing } from "../components/ui/RuleRing";
-import { Reveal } from "../components/ui/Reveal";
-import { cn } from "../lib/cn";
+import { HeroBanner } from "../components/HeroBanner";
+import { CircularGauge } from "../components/CircularGauge";
+import { workerRequirementProgress } from "../services/completion";
 
 /**
- * Tableau de bord intérimaire.
- *
- * CE QUI N'ALLAIT PAS. Un bandeau à mascotte, puis une succession de blocs
- * blancs de même poids : « complétez votre profil », « vos prochaines
- * missions », « missions disponibles », et une colonne latérale de trois
- * panneaux identiques. Rien ne disait quoi regarder en premier. Un tableau de
- * bord qui traite tout à égalité ne hiérarchise rien — il fait juste une liste
- * verticale de tout ce que le produit sait faire.
- *
- * CE QUI LE REMPLACE. Une seule question gouverne la page : « suis-je prêt à
- * recevoir des missions ? »
- *
- *  — Si NON, c'est la seule chose qui compte. L'anneau de complétion passe en
- *    tête, avec la liste exacte de ce qui manque et un lien par règle. Tout le
- *    reste descend.
- *  — Si OUI, l'anneau se réduit à une confirmation discrète dans l'en-tête, et
- *    la page donne la priorité à ce qui appelle une action : les missions
- *    confirmées à venir, puis les propositions.
- *
- * La colonne latérale ne porte plus que des RAPPELS — disponibilités,
- * mobilité, candidatures en attente — et le dit par sa forme : pas de cartes
- * blanches empilées, mais des blocs séparés par des filets, comme une fiche.
- *
- * LES REPÈRES DE VISITE GUIDÉE (`data-tour`) sont conservés à l'identique :
- * `profile-status`, `missions`, `availability`. La visite pointe des zones de
- * cet écran, et les déplacer sans les renommer casserait le pointage.
+ * Rappel de complétion. Il n'apparaît que tant qu'il reste quelque chose à
+ * faire : une fois le profil complet, l'information devient secondaire et cède
+ * la place aux disponibilités, à la mobilité et aux propositions. Le lien vers
+ * le profil reste accessible depuis l'accueil et la navigation.
  */
-
-/** Règles de complétion, dans l'ordre du parcours, telles que le serveur les nomme. */
-const RULES = (Object.keys(requirementLabels) as CompletionRule[]).map(
-  (key) => ({ key, label: requirementLabels[key] }),
-);
-
-/** Un bloc de la colonne latérale. Filet haut, pas de carte. */
-function RailBlock({
-  icon,
-  title,
-  children,
-  tour,
+function ProfileStatus({
+  to,
+  todo,
+  missing = [],
 }: {
-  icon: ReactNode;
-  title: string;
-  children: ReactNode;
-  tour?: string;
+  to: string;
+  todo: string;
+  missing?: (keyof typeof requirementLabels)[];
 }) {
   return (
-    <section
-      data-tour={tour}
-      className="border-rule border-t pt-5 first:border-t-0 first:pt-0"
-    >
-      {/* PAS DE `uppercase` ICI. Le titre de ce bloc peut être un nom propre —
-          la ville de l'utilisateur — et les navigateurs appliquent
-          `text-transform` au calcul du nom accessible. « Lyon » deviendrait
-          « LYON » pour une synthèse vocale comme pour la recette. L'effet de
-          titre courant passe donc par la graisse et l'interlettrage. */}
-      <h2 className="flex items-center gap-2 font-sans font-semibold text-[0.8125rem] text-ink tracking-[0.01em]">
-        <span aria-hidden="true" className="text-sage-deep">
-          {icon}
-        </span>
-        {title}
-      </h2>
-      <div className="mt-3">{children}</div>
+    <section className="section side-panel" data-tour="profile-status">
+      <h2>Complétez votre profil</h2>
+      <p>{todo}</p>
+      {missing.length > 0 && (
+        <ul className="steps-list">
+          {missing.map((rule) => (
+            <li key={rule}>{requirementLabels[rule]}</li>
+          ))}
+        </ul>
+      )}
+      <Link className="button" to={to}>
+        Compléter mon profil
+        <ArrowRight size={16} aria-hidden="true" />
+      </Link>
     </section>
   );
 }
@@ -128,6 +89,8 @@ export function Dashboard() {
   const [missionsLoading, setMissionsLoading] = useState(true);
   const [applicationsLoading, setApplicationsLoading] = useState(true);
 
+  // Un aperçu des missions réellement offertes. Le tableau de bord annonçait
+  // jusqu'ici une fonctionnalité à venir : elle existe maintenant.
   useEffect(() => {
     if (!isWorker) return;
     let live = true;
@@ -162,127 +125,113 @@ export function Dashboard() {
     };
   }, [isWorker, revision]);
 
-  if (!user || user.role !== "worker") return null;
-  const p = user.profile,
+  if (!user || user.role === "admin") return null;
+  const worker = user.role === "worker",
+    p = user.profile,
+    complete = user.onboarding_completed,
     upcoming = upcomingAvailabilities(p.availabilities);
-  const reason = explainEmpty(excluded);
+  const name = user.first_name || (worker ? "à vous" : "à votre équipe");
+  // Une seule phrase ici : l'explication complète et son action vivent sur
+  // l'écran des missions, que le lien « Tout voir » atteint déjà.
+  const reason = worker ? explainEmpty(excluded) : null;
   const engagements = upcomingEngagements(mine);
   const hasRunningEngagement = engagements.some(
     (application) => missionTemporalState(application.mission) === "running",
   );
   const waiting = awaitingReply(mine);
-  const missing = user.missing_requirements ?? [];
-  const ready = missing.length === 0;
+  const requirementProgress = worker
+    ? workerRequirementProgress(user.missing_requirements)
+    : null;
+  const readyForMissions = worker
+    ? user.missing_requirements?.length === 0
+    : complete;
 
   return (
     <>
       {user.demo && (
-        <p className="demo-label im-page">
-          DEVELOPMENT / DEMO DATA · Profil fictif
-        </p>
+        <p className="demo-label">DEVELOPMENT / DEMO DATA · Profil fictif</p>
       )}
-
-      <PageHeader
-        eyebrow="Espace intérimaire"
-        title={user.first_name ? `Bonjour ${user.first_name},` : "Bienvenue,"}
-        lead={
-          ready
-            ? "Vos prérequis sont réunis : les missions compatibles avec vos disponibilités vous sont proposées ci-dessous."
-            : "Il reste quelques informations à renseigner avant que des missions puissent vous être proposées."
-        }
-        actions={
-          ready && (
-            <Link
-              className="im-btn im-btn--outline im-btn--sm"
-              to="/worker/profile"
-              data-tour="profile-status"
-            >
-              <Check size={15} aria-hidden="true" />
-              Prérequis réunis · Modifier
-            </Link>
-          )
-        }
-        aside={
-          // Profil complet : l'anneau n'est qu'une confirmation, il tient dans
-          // l'en-tête. Profil incomplet : il devient le sujet de la page et
-          // descend dans le corps, accompagné de ce qui manque.
-          ready && (
-            <RuleRing rules={RULES} missing={missing} size={92} />
-          )
-        }
-      />
-
-      <PageBody className="space-y-10">
-        {!ready && (
-          <Reveal>
-            <section
-              data-tour="profile-status"
-              aria-labelledby="completion-title"
-              className="flex flex-col gap-7 rounded-panel border border-sage bg-sage-tint/50 p-6 sm:flex-row sm:items-center lg:p-8"
-            >
-              <RuleRing rules={RULES} missing={missing} size={128} />
-              <div className="min-w-0 flex-1">
-                <h2 id="completion-title" className="text-ink">
-                  Il reste {missing.length} information
-                  {missing.length > 1 ? "s" : ""} à renseigner
-                </h2>
-                <p className="mt-2 max-w-xl text-[0.9375rem] text-ink-soft leading-relaxed">
-                  Ces informations décident des missions qui vous seront
-                  proposées. Sans elles, aucune proposition ne peut vous
-                  parvenir.
-                </p>
-                {/* Chaque règle manquante mène à SA section du profil. La liste
-                    disait jusqu'ici quoi faire, sans dire où : il fallait
-                    parcourir six blocs pour retrouver le bon. */}
-                <ul className="im-bare mt-5 flex flex-wrap gap-2">
-                  {missing.map((rule) => (
-                    <li key={rule}>
-                      <Link
-                        to={`/worker/profile#${rule}`}
-                        className="inline-flex items-center gap-1.5 rounded-[7px] border border-rule-strong border-dashed bg-surface px-2.5 py-1.5 font-medium text-[0.8125rem] text-ink no-underline transition-colors hover:border-forest hover:text-forest"
-                      >
-                        <PencilLine
-                          size={12}
-                          aria-hidden="true"
-                          className="text-ink-faint"
-                        />
-                        {requirementLabels[rule]}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
+      <div className="workspace">
+        <section className="primary">
+          <HeroBanner
+            eyeline={
+              worker
+                ? "Espace intérimaire"
+                : (p.establishment_name ?? "Espace entreprise")
+            }
+            title={
+              user.first_name ? `Bonjour ${user.first_name},` : "Bienvenue,"
+            }
+            subtitle={
+              worker
+                ? readyForMissions
+                  ? "Vos prérequis sont réunis : découvrez les missions compatibles avec vos disponibilités."
+                  : "Complétez les prérequis nécessaires pour recevoir des missions adaptées."
+                : complete
+                  ? "Votre établissement est prêt pour ses prochains recrutements."
+                  : "Présentez votre établissement pour préparer vos premiers recrutements."
+            }
+            mascotPose="dashboard"
+            gauge={
+              requirementProgress !== null ? (
+                <CircularGauge
+                  value={requirementProgress}
+                  label="Prérequis missions"
+                  subtitle={
+                    readyForMissions
+                      ? "Tous réunis"
+                      : `${user.missing_requirements?.length ?? 0} à compléter`
+                  }
+                  variant="on-dark"
+                />
+              ) : undefined
+            }
+            action={
+              readyForMissions ? (
                 <Link
-                  className="im-btn im-btn--primary mt-6"
-                  to="/worker/profile"
+                  className="brand-hero__link"
+                  to={`/${user.role}/profile`}
+                  data-tour="profile-status"
                 >
-                  Compléter mon profil
-                  <ArrowRight size={16} aria-hidden="true" />
+                  <Check size={15} aria-hidden="true" />
+                  {worker ? "Prérequis réunis" : "Profil renseigné"} · Modifier
                 </Link>
-              </div>
-            </section>
-          </Reveal>
-        )}
+              ) : undefined
+            }
+          />
 
-        <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_300px] lg:gap-12">
-          {/* ── Colonne principale ───────────────────────────────────── */}
-          <div className="min-w-0 space-y-10">
-            {(applicationsLoading ||
+          {!readyForMissions && (
+            <ProfileStatus
+              missing={user.missing_requirements}
+              to={"/" + user.role + "/profile"}
+              todo={
+                worker
+                  ? `Ces informations décident des missions qui vous seront proposées : sans elles, ${name} ne recevrez rien.`
+                  : "Secteur, adresse et description : les intérimaires verront ces informations avant de répondre à vos missions."
+              }
+            />
+          )}
+
+          {worker &&
+            (applicationsLoading ||
               applicationsError ||
               engagements.length > 0) && (
               <section
+                className="section confirmed-missions"
                 aria-labelledby="confirmed-missions-title"
-                className="rounded-panel border border-sage bg-sage-tint/30 p-5 lg:p-6"
               >
-                <h2
-                  id="confirmed-missions-title"
-                  className="im-rule mb-4 text-ink"
-                >
-                  {hasRunningEngagement
-                    ? "En cours et à venir"
-                    : "Vos prochaines missions"}
-                </h2>
+                <div className="section-heading">
+                  <div>
+                    <span className="eyeline">Votre planning</span>
+                    <h2 id="confirmed-missions-title">
+                      {hasRunningEngagement
+                        ? "En cours et à venir"
+                        : "Vos prochaines missions"}
+                    </h2>
+                  </div>
+                </div>
                 {applicationsLoading ? (
-                  <p className="text-[0.875rem] text-ink-faint" role="status">
+                  <p className="quiet" role="status">
                     Chargement de vos missions confirmées…
                   </p>
                 ) : applicationsError ? (
@@ -290,196 +239,178 @@ export function Dashboard() {
                     {applicationsError}
                   </p>
                 ) : (
-                  <>
-                    <ConfirmedMissions applications={engagements} />
-                    {engagements.length > 0 && (
-                      <p className="mt-3 text-[0.8125rem] text-ink-faint leading-relaxed">
-                        Les offres sur ces créneaux ne vous sont plus proposées.
-                        Vos disponibilités déclarées restent inchangées.
-                      </p>
-                    )}
-                  </>
+                  <ConfirmedMissions applications={engagements} />
+                )}
+                {engagements.length > 0 && (
+                  <p className="confirmed-missions-note">
+                    Les offres sur ces créneaux ne vous sont plus proposées. Vos
+                    disponibilités déclarées restent inchangées.
+                  </p>
                 )}
               </section>
             )}
 
-            <section data-tour="missions" aria-labelledby="open-missions-title">
-              <div className="mb-4 flex items-center justify-between gap-4">
-                <h2 id="open-missions-title" className="im-rule flex-1 text-ink">
-                  Missions disponibles
-                </h2>
-                <Link
-                  className="shrink-0 font-semibold text-[0.8125rem] text-forest no-underline hover:underline"
-                  to="/worker/missions"
-                >
-                  Tout voir
-                </Link>
-              </div>
-
-              {missionsError && (
-                <p className="form-error" role="alert">
-                  {missionsError}
-                </p>
-              )}
-              {!missionsError &&
-                (missionsLoading ? (
-                  <p className="text-[0.875rem] text-ink-faint" role="status">
-                    Chargement des missions disponibles…
-                  </p>
-                ) : open.length > 0 ? (
-                  <div className="grid gap-5 sm:grid-cols-2">
-                    {open.slice(0, 2).map((mission, index) => (
-                      <Reveal
-                        key={mission.id}
-                        delay={index * 0.05}
-                        className="h-full"
-                      >
-                        <MissionCard
-                          mission={mission}
-                          basePath="/worker/missions"
-                          establishment={mission.company.establishment_name}
-                          score={mission.match.score}
-                          band={mission.match.band}
-                          bandLabel={mission.match.band_label}
-                        />
-                      </Reveal>
-                    ))}
-                  </div>
-                ) : (
-                  <EmptyState
-                    icon={<BriefcaseBusiness size={20} />}
-                    title={
-                      reason?.title ?? "Aucune mission disponible pour le moment"
-                    }
-                  >
-                    {reason?.detail ??
-                      "Dès qu’un établissement publie une mission qui vous correspond, elle apparaît ici."}
-                  </EmptyState>
-                ))}
-            </section>
-          </div>
-
-          {/* ── Rappels ──────────────────────────────────────────────── */}
-          <aside className="space-y-5 lg:border-rule lg:border-l lg:pl-8">
-            {waiting.length > 0 && (
-              <RailBlock
-                icon={<ClipboardList size={14} />}
-                title="En attente de réponse"
-              >
-                <p className="font-display font-semibold text-[1.75rem] text-ink leading-none tabular-nums">
-                  {waiting.length}
-                </p>
-                <p className="mt-1.5 text-[0.8125rem] text-ink-faint leading-relaxed">
-                  {waiting.length > 1
-                    ? "Les établissements doivent encore vous répondre."
-                    : "L’établissement doit encore vous répondre."}
-                </p>
-                <Link
-                  className="mt-2.5 inline-block font-semibold text-[0.8125rem] text-forest no-underline hover:underline"
-                  to="/worker/applications"
-                >
-                  Voir mes candidatures
-                </Link>
-              </RailBlock>
+          <section className="section" data-tour="missions">
+            <div className="section-heading">
+              <h2>{worker ? "Missions disponibles" : "Vos missions"}</h2>
+              <Link className="quiet" to={"/" + user.role + "/missions"}>
+                Tout voir
+              </Link>
+            </div>
+            {missionsError && (
+              <p className="form-error" role="alert">
+                {missionsError}
+              </p>
             )}
-
-            <RailBlock
-              icon={<CalendarDays size={14} />}
-              title="Vos disponibilités"
-              tour="availability"
-            >
-              {upcoming.length ? (
-                <>
-                  <p className="font-display font-semibold text-[1.75rem] text-ink leading-none tabular-nums">
-                    {/* L'espace est explicite : sans lui, les deux nœuds de
-                        texte se touchent et la phrase devient « 1créneau ». */}
-                    {upcoming.length}{" "}
-                    <span className="font-sans font-medium text-[0.8125rem] text-ink-faint">
-                      créneau{upcoming.length > 1 ? "x" : ""} à venir
-                    </span>
-                  </p>
-                  <ul className="im-bare mt-3 space-y-1.5">
-                    {upcoming.slice(0, 3).map((slot) => (
-                      <li
-                        key={slot.id}
-                        className="flex gap-2 text-[0.8125rem] text-ink-soft"
-                      >
-                        <span
-                          aria-hidden="true"
-                          className="mt-1.5 size-1.5 shrink-0 rounded-full bg-sage"
-                        />
-                        {formatSlot(slot)}
-                      </li>
-                    ))}
-                  </ul>
-                  {/* Un profil complet n'exige qu'un créneau à venir ; une
-                      mission, elle, doit tenir entièrement dans l'un d'eux. Le
-                      dire ici évite de lire « profil complété » comme une
-                      promesse de propositions. */}
-                  <p className="mt-3 text-[0.8125rem] text-ink-faint leading-relaxed">
-                    Une mission ne vous est proposée que si l’un de ces créneaux
-                    la couvre entièrement.
-                  </p>
-                  <Link
-                    className="mt-2.5 inline-block font-semibold text-[0.8125rem] text-forest no-underline hover:underline"
-                    to="/worker/profile#disponibilites"
-                  >
-                    {upcoming.length > 3
-                      ? `Voir et modifier les ${upcoming.length} créneaux`
-                      : "Modifier mes disponibilités"}
-                  </Link>
-                </>
-              ) : (
-                <>
-                  <p className="text-[0.875rem] text-ink-soft leading-relaxed">
-                    Aucun créneau enregistré. Sans disponibilité, aucune mission
-                    ne peut vous être proposée.
-                  </p>
-                  <Link
-                    className="mt-2.5 inline-block font-semibold text-[0.8125rem] text-forest no-underline hover:underline"
-                    to="/worker/profile#disponibilites"
-                  >
-                    Ajouter un créneau
-                  </Link>
-                </>
-              )}
-            </RailBlock>
-
-            <RailBlock
-              icon={<MapPin size={14} />}
-              title={p.city ?? "Votre mobilité"}
-            >
-              {p.city && p.mobility_radius_km != null ? (
-                <>
-                  <p className="text-[0.8125rem] text-ink-soft">
-                    {p.postal_code} · jusqu’à {p.mobility_radius_km} km autour de
-                    chez vous
-                  </p>
-                  <p
-                    className={cn(
-                      "mt-2 text-[0.8125rem]",
-                      p.open_to_missions === false
-                        ? "font-medium text-clay-ink"
-                        : "text-ink-faint",
-                    )}
-                  >
-                    {p.has_vehicle
-                      ? "Permis et véhicule"
-                      : p.has_driving_licence
-                        ? "Permis, sans véhicule"
-                        : "Sans permis"}
-                    {p.open_to_missions === false && " · recherche en pause"}
-                  </p>
-                </>
-              ) : (
-                <p className="text-[0.875rem] text-ink-soft leading-relaxed">
-                  Votre ville et votre rayon de mobilité restent à renseigner.
+            {!missionsError &&
+              (worker && missionsLoading ? (
+                <p className="quiet" role="status">
+                  Chargement des missions disponibles…
                 </p>
+              ) : worker && open.length > 0 ? (
+                <div className="mission-grid">
+                  {open.slice(0, 2).map((mission) => (
+                    <MissionCard
+                      key={mission.id}
+                      mission={mission}
+                      basePath="/worker/missions"
+                      score={mission.match.score}
+                      band={mission.match.band}
+                      bandLabel={mission.match.band_label}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="empty">
+                  <BriefcaseBusiness aria-hidden="true" />
+                  <h3>
+                    {worker
+                      ? (reason?.title ??
+                        "Aucune mission disponible pour le moment")
+                      : "Votre première mission commence ici"}
+                  </h3>
+                  <p>
+                    {worker
+                      ? (reason?.detail ??
+                        "Dès qu’un établissement publie une mission qui vous correspond, elle apparaît ici.")
+                      : "La création et la gestion des missions seront disponibles au prochain lot."}
+                  </p>
+                </div>
+              ))}
+          </section>
+        </section>
+
+        <aside className="secondary">
+          {worker ? (
+            <>
+              {waiting.length > 0 && (
+                <section className="side-panel">
+                  <h2>Candidatures en attente</h2>
+                  <p className="lead-figure">
+                    {waiting.length} candidature{waiting.length > 1 ? "s" : ""}
+                  </p>
+                  <p className="quiet">
+                    {waiting.length > 1
+                      ? "Les entreprises doivent encore vous répondre."
+                      : "L’entreprise doit encore vous répondre."}
+                  </p>
+                  <Link className="quiet" to="/worker/applications">
+                    Voir mes candidatures
+                  </Link>
+                </section>
               )}
-            </RailBlock>
-          </aside>
-        </div>
-      </PageBody>
+              <section className="side-panel" data-tour="availability">
+                <CalendarDays aria-hidden="true" />
+                <h2>Vos disponibilités</h2>
+                {upcoming.length ? (
+                  <>
+                    <p className="lead-figure">
+                      {upcoming.length} créneau{upcoming.length > 1 ? "x" : ""}{" "}
+                      à venir
+                    </p>
+                    <ul className="slot-list plain">
+                      {upcoming.slice(0, 3).map((slot) => (
+                        <li key={slot.id}>{formatSlot(slot)}</li>
+                      ))}
+                    </ul>
+                    {/* Un profil complet n'exige qu'un créneau à venir ;
+                        une mission, elle, doit tenir entièrement dans l'un
+                        d'eux. Le dire ici évite de lire « profil complété »
+                        comme une promesse de propositions. */}
+                    <p className="quiet">
+                      Une mission ne vous est proposée que si l’un de ces
+                      créneaux la couvre entièrement.
+                    </p>
+                    <Link className="quiet" to="/worker/profile#disponibilites">
+                      {upcoming.length > 3
+                        ? `Voir et modifier les ${upcoming.length} créneaux`
+                        : "Modifier mes disponibilités"}
+                    </Link>
+                  </>
+                ) : (
+                  <>
+                    <p>
+                      Aucun créneau enregistré. Sans disponibilité, aucune
+                      mission ne peut vous être proposée.
+                    </p>
+                    <Link className="quiet" to="/worker/profile#disponibilites">
+                      Ajouter un créneau
+                    </Link>
+                  </>
+                )}
+              </section>
+              <section className="side-panel pale">
+                <MapPin aria-hidden="true" />
+                <h2>{p.city ?? "Votre mobilité"}</h2>
+                {p.city && p.mobility_radius_km != null ? (
+                  <>
+                    <p>
+                      {p.postal_code} · jusqu’à {p.mobility_radius_km} km autour
+                      de chez vous
+                    </p>
+                    <p className="quiet">
+                      {p.has_vehicle
+                        ? "Permis et véhicule"
+                        : p.has_driving_licence
+                          ? "Permis, sans véhicule"
+                          : "Sans permis"}
+                      {p.open_to_missions === false && " · recherche en pause"}
+                    </p>
+                  </>
+                ) : (
+                  <p>
+                    Votre ville et votre rayon de mobilité restent à renseigner.
+                  </p>
+                )}
+              </section>
+            </>
+          ) : (
+            <>
+              <section className="side-panel" data-tour="candidates">
+                <Users aria-hidden="true" />
+                <h2>Candidats compatibles</h2>
+                <p>
+                  Les profils seront classés par score de compatibilité, avec le
+                  détail des critères et la possibilité d’élargir au-delà de
+                  votre zone.
+                </p>
+                <Link className="quiet" to="/company/candidates">
+                  Ouvrir les candidats
+                </Link>
+              </section>
+              <section className="side-panel pale">
+                <MapPin aria-hidden="true" />
+                <h2>{p.city ?? "Votre établissement"}</h2>
+                <p>
+                  {p.address
+                    ? `${p.address}, ${p.postal_code} ${p.city}`
+                    : "L’adresse de votre établissement reste à renseigner."}
+                </p>
+              </section>
+            </>
+          )}
+        </aside>
+      </div>
     </>
   );
 }

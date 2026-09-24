@@ -20,7 +20,6 @@ import {
   signDocument,
   type ContractDetail,
 } from "../services/documents";
-import { DocumentStatusMark } from "../components/ui/Status";
 import { errorMessage } from "../services/session";
 
 const when = new Intl.DateTimeFormat("fr-FR", {
@@ -135,10 +134,7 @@ export function DocumentDetailPage({ role }: { role: "worker" | "company" }) {
           </p>
         </div>
         <span className={`document-status is-${document.status}`}>
-          <DocumentStatusMark
-            status={document.status}
-            label={documentStatus(document.status, role)}
-          />
+          {documentStatus(document.status, role)}
         </span>
       </header>
 

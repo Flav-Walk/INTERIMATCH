@@ -10,11 +10,3 @@ la bibliothèque Unsplash. Aucun écran ne va chercher ce fichier de lui-même.
 Elle existe parce que les jeux de recette écrivent `status='open'` en SQL direct
 et doivent donc satisfaire la contrainte de photo sans passer par un stockage
 distant. Voir `localFixtureMediaStore` dans le backend.
-
-`avatar.svg` joue le même rôle pour la photo de PROFIL, devenue obligatoire avec
-la migration 012 : les jeux de recette créent des intérimaires complets, et un
-profil sans photo ne peut plus postuler.
-
-Il est volontairement abstrait. Un visage photographique laisserait entendre que
-le produit connaît cette personne, alors qu'aucun compte de recette ne
-correspond à quiconque. Voir `localFixtureAvatarStore` dans le backend.

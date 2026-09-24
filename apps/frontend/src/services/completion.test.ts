@@ -15,8 +15,7 @@ describe("WORKER_REQUIREMENT_COUNT", () => {
     expect(WORKER_REQUIREMENT_COUNT).toBe(
       Object.keys(requirementLabels).length,
     );
-    // Sept depuis la migration 012, qui ajoute la photo de profil.
-    expect(WORKER_REQUIREMENT_COUNT).toBe(7);
+    expect(WORKER_REQUIREMENT_COUNT).toBe(6);
   });
 });
 
@@ -29,7 +28,6 @@ describe("workerRequirementProgress", () => {
     expect(
       workerRequirementProgress([
         "identity",
-        "photo",
         "location",
         "mobility_radius",
         "main_job",
@@ -37,7 +35,7 @@ describe("workerRequirementProgress", () => {
         "availability",
       ]),
     ).toBe(0);
-    expect(workerRequirementProgress(["skills", "availability"])).toBe(71);
+    expect(workerRequirementProgress(["skills", "availability"])).toBe(67);
   });
 
   it("reflète un profil satisfaisant toutes les exigences backend", () => {
@@ -46,7 +44,7 @@ describe("workerRequirementProgress", () => {
 
   it("ne compte pas deux fois une exigence répétée", () => {
     expect(workerRequirementProgress(["availability", "availability"])).toBe(
-      86,
+      83,
     );
   });
 });

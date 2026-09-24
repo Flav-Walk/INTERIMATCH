@@ -56,7 +56,6 @@ const candidate: MissionApplication = {
     last_name: "Martin",
     city: "Lyon",
     main_job: "serveur",
-    avatar_url: "https://storage.test/avatar.jpg",
   },
 };
 const workerApplication: WorkerApplication = {

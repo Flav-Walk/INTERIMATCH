@@ -10,52 +10,6 @@ import {
  * recalculé par le serveur — y compris `onboarding_completed`, que l'interface
  * se contente d'afficher et n'envoie jamais.
  */
-/**
- * Photo de profil.
- *
- * Le corps EST l'image. Le client ne décrit ni chemin ni URL : le serveur
- * décide du nom de l'objet, en dérive l'adresse publique, et renvoie le profil
- * complet — donc la nouvelle URL et les règles de complétion recalculées. Rien
- * n'est à recomposer ici, et rien ne peut donc diverger.
- *
- * Les deux appels renvoient l'utilisateur à jour : l'écran n'a pas de seconde
- * lecture à faire, ni d'état local à réconcilier.
- */
-export const uploadAvatar = async (file: File) =>
-  api<User>("/workers/me/avatar", {
-    method: "POST",
-    headers: { "Content-Type": file.type },
-    body: await file.arrayBuffer(),
-  });
-
-export const removeAvatar = () =>
-  api<User>("/workers/me/avatar", { method: "DELETE" });
-
-/** 2 Mio, comme le serveur. Le dire ici évite un aller-retour pour rien. */
-export const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
-
-export const ACCEPTED_AVATAR_TYPES = [
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-] as const;
-
-/**
- * Contrôles tenus avant d'envoyer quoi que ce soit.
- *
- * Le serveur revérifie tout, et sur les OCTETS plutôt que sur le type déclaré :
- * ce qui est fait ici ne protège de rien, cela évite seulement de téléverser
- * deux méga-octets pour s'entendre répondre non.
- */
-export function avatarRejectionReason(file: File): string | null {
-  if (!(ACCEPTED_AVATAR_TYPES as readonly string[]).includes(file.type))
-    return "Formats acceptés : JPEG, PNG ou WebP.";
-  if (file.size > MAX_AVATAR_BYTES)
-    return "La photo ne doit pas dépasser 2 Mo.";
-  if (file.size === 0) return "Ce fichier est vide.";
-  return null;
-}
-
 export const patchWorker = (body: Record<string, unknown>) =>
   api<User>("/workers/me", { method: "PATCH", body: JSON.stringify(body) });
 
@@ -169,7 +123,6 @@ export function humaniseError(message: string) {
 /** Libellés des règles de complétion, alignés sur completion.ts côté serveur. */
 export const requirementLabels: Record<CompletionRule, string> = {
   identity: "Votre prénom et votre nom",
-  photo: "Une photo de profil",
   location: "Votre ville et votre code postal",
   mobility_radius: "Votre rayon de mobilité",
   main_job: "Votre métier principal",
@@ -186,7 +139,6 @@ export const requirementLabels: Record<CompletionRule, string> = {
  */
 export const requirementSections: Record<CompletionRule, string> = {
   identity: "Votre identité",
-  photo: "Votre photo",
   location: "Votre mobilité",
   mobility_radius: "Votre mobilité",
   main_job: "Votre métier",
@@ -209,67 +161,6 @@ const timeFormat = new Intl.DateTimeFormat("fr-FR", {
   hour: "2-digit",
   minute: "2-digit",
 });
-
-/**
- * Couverture d'un mois par les créneaux déclarés.
- *
- * Un créneau InteriMatch n'est pas une case de calendrier : c'est un INTERVALLE
- * daté, qui peut couvrir trois heures comme trois mois. Pour peindre un
- * calendrier, il faut donc savoir, pour chaque jour, ce que les intervalles
- * disent de lui — et ils peuvent se contredire : une disponibilité longue et
- * une indisponibilité ponctuelle le même jour.
- *
- * Trois réponses possibles, et la troisième est la seule honnête quand les deux
- * autres cohabitent :
- *   `available`   — le jour n'est couvert que par des créneaux disponibles ;
- *   `unavailable` — il n'est couvert que par des indisponibilités ;
- *   `mixed`       — les deux, et le calendrier doit le montrer plutôt que de
- *                   choisir.
- *
- * AUCUNE RÈGLE MÉTIER N'EST REJOUÉE. Le serveur reste seul juge de ce qui rend
- * un profil éligible ; cette fonction ne fait que projeter des intervalles sur
- * des jours, pour les donner à voir.
- */
-export type DayCoverage = "available" | "unavailable" | "mixed";
-
-export function coverageByDay(
-  slots: Availability[] | undefined,
-  year: number,
-  month: number,
-): Map<number, DayCoverage> {
-  const days = new Map<number, DayCoverage>();
-  if (!slots) return days;
-  const monthStart = new Date(year, month, 1).getTime();
-  const monthEnd = new Date(year, month + 1, 1).getTime();
-
-  for (const slot of slots) {
-    const from = Date.parse(slot.starts_at);
-    const to = Date.parse(slot.ends_at);
-    if (!Number.isFinite(from) || !Number.isFinite(to)) continue;
-    // Hors du mois affiché : rien à peindre.
-    if (to <= monthStart || from >= monthEnd) continue;
-
-    // On parcourt les jours civils locaux touchés par l'intervalle. La borne de
-    // fin est EXCLUSIVE : un créneau qui s'arrête à minuit pile ne colore pas
-    // le jour suivant, exactement comme il n'engage personne ce jour-là.
-    const first = new Date(Math.max(from, monthStart));
-    first.setHours(0, 0, 0, 0);
-    for (
-      const cursor = new Date(first);
-      cursor.getTime() < Math.min(to, monthEnd);
-      cursor.setDate(cursor.getDate() + 1)
-    ) {
-      if (cursor.getMonth() !== month || cursor.getFullYear() !== year)
-        continue;
-      const day = cursor.getDate();
-      const previous = days.get(day);
-      const current: DayCoverage =
-        slot.status === "available" ? "available" : "unavailable";
-      days.set(day, !previous || previous === current ? current : "mixed");
-    }
-  }
-  return days;
-}
 
 /** « lun. 12 janv. · 16:00 – 22:00 » */
 export function formatSlot(slot: Availability) {

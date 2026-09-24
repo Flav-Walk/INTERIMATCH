@@ -6,7 +6,6 @@ import {
   FileText,
 } from "lucide-react";
 import { HeroBanner } from "../components/HeroBanner";
-import { DocumentStatusMark } from "../components/ui/Status";
 import { useAuth } from "../hooks/useAuth";
 import { usePageSeo } from "../hooks/usePageSeo";
 import {
@@ -135,10 +134,7 @@ export function DocumentsPage({ role }: { role: "worker" | "company" }) {
                 )}
               </div>
               <span className={`document-status is-${document.status}`}>
-                <DocumentStatusMark
-                  status={document.status}
-                  label={documentStatus(document.status, role)}
-                />
+                {documentStatus(document.status, role)}
               </span>
               <Link className="link-more" to={`${base}/${document.id}`}>
                 Voir
