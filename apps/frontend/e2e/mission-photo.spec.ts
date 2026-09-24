@@ -205,9 +205,8 @@ test("une mission ne se publie pas sans photo, et l'entreprise en choisit une", 
     .getByRole("dialog")
     .getByRole("button", { name: "Publier" })
     .click();
-  await expect(page.locator(".mission-status").first()).toHaveText(
-    "À pourvoir",
-  );
+  // Mission ouverte = état normal : le badge « Brouillon » disparaît.
+  await expect(page.locator(".mission-status")).toHaveCount(0);
 
   // ---- Même photo côté intérimaire ---------------------------------------
   await page.locator('summary[aria-label="Mon compte"]').click();

@@ -11,7 +11,19 @@ import { MentionsLegales } from "./pages/MentionsLegales";
 import { PolitiqueConfidentialite } from "./pages/PolitiqueConfidentialite";
 import { Accessibilite } from "./pages/Accessibilite";
 import { usePageSeo } from "./hooks/usePageSeo";
+// Polices auto-hébergées (Fontsource) : Fraunces pour les titres, Geist
+// pour le texte. Voir --font-display et --font-body dans tokens.css.
+import "@fontsource-variable/fraunces";
+import "@fontsource-variable/geist";
 import "./styles/global.css";
+// Tailwind : uniquement pour les composants copiés depuis Magic UI, Aceternity
+// et SmoothUI (dossier components/ui). Il ne touche pas au reste du site.
+import "./styles/tailwind.css";
+// Mes réglages CSS pour les animations (cartes, champs, badges, menu…).
+import "./styles/motion.css";
+// Nouvelle direction artistique (navigation, cartes, fiches mission). Chargée
+// en dernier : elle ajuste les styles d'origine sans les réécrire.
+import "./styles/da.css";
 
 function NotFound() {
   usePageSeo({

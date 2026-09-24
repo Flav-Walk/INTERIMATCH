@@ -11,6 +11,7 @@ import {
 } from "../services/applications";
 import { ApplicationStatus as StatusBadge } from "../components/applications/ApplicationStatus";
 import { HeroBanner } from "../components/HeroBanner";
+import { EmptyState } from "../components/da/EmptyState";
 
 const when = new Intl.DateTimeFormat("fr-FR", {
   weekday: "short",
@@ -152,8 +153,7 @@ export function CompanyApplicationsPage() {
           ))}
         </ul>
       ) : (
-        <div className="empty">
-          <Users aria-hidden="true" />
+        <EmptyState icon={Users}>
           <h2>
             {counts.total === 0
               ? "Aucune candidature reçue"
@@ -169,7 +169,7 @@ export function CompanyApplicationsPage() {
               Créer une mission
             </Link>
           )}
-        </div>
+        </EmptyState>
       )}
     </section>
   );

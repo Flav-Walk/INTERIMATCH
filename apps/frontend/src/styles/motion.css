@@ -1,0 +1,315 @@
+/*
+ * motion.css — mes réglages CSS pour les composants animés.
+ *
+ * Chargé dans main.tsx juste après global.css. Pour chaque bloc, j'indique
+ * s'il accompagne un composant copié (Magic UI, Aceternity, SmoothUI) ou si
+ * c'est un réglage à moi.
+ */
+
+/* ------------------------------------------------------------------
+ * 1. Menu : la pastille sous le lien actif
+ * La pastille elle-même est créée par Motion dans AppLayout.tsx (idée reprise
+ * de l'« Animated Tabs » de SmoothUI). Ici je règle juste son apparence.
+ * ------------------------------------------------------------------ */
+
+.app-header__nav-link {
+  position: relative;
+  /* isolation: isolate crée une « couche » propre au lien. Grâce à ça, la
+     pastille (z-index -1) passe derrière l'icône et le texte du lien, mais
+     reste visible au-dessus du bandeau vert. */
+  isolation: isolate;
+}
+
+/* Avant, c'est le lien actif qui avait un fond. Maintenant c'est la pastille
+   qui glisse, donc j'enlève le fond du lien pour ne pas l'avoir en double. */
+.app-header__nav-link.is-active {
+  background: transparent;
+}
+
+.nav-indicator {
+  position: absolute;
+  inset: 0; /* prend toute la taille du lien */
+  z-index: -1;
+  border-radius: var(--radius);
+  background: oklch(1 0 0 / 0.12); /* blanc à 12 % sur le vert */
+  pointer-events: none; /* ne bloque pas le clic sur le lien */
+}
+
+/* Le petit point orange sous le lien actif, comme sur la maquette. */
+.nav-indicator::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 3px;
+  width: 4px;
+  height: 4px;
+  margin-left: -2px; /* moitié de la largeur, pour bien centrer le point */
+  border-radius: 50%;
+  background: var(--orange);
+}
+
+/* ------------------------------------------------------------------
+ * 2. Cartes missions et offres : Magic Card (Magic UI)
+ * ------------------------------------------------------------------ */
+
+/* La Magic Card dessine sa propre bordure (celle qui s'allume au survol).
+   J'enlève donc la bordure d'origine de la carte, sinon on en aurait deux. */
+:is(.mission-card, .public-offer-card):has(> .card-surface) {
+  border: 0;
+  padding: 0;
+}
+
+/* La Magic Card doit remplir toute la carte, et ranger le contenu en
+   colonne comme avant : image, texte, puis le pied collé en bas. */
+.card-surface {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Le dernier enfant de la Magic Card, c'est la boîte qui contient notre
+   contenu : elle doit elle aussi s'étirer en colonne. */
+.card-surface > :last-child {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Réglage à moi : au survol, la carte monte de 3 px et la photo zoome un
+   peu. Ça donne l'impression qu'on peut « attraper » la carte. */
+:is(.mission-card, .public-offer-card) {
+  transition:
+    transform var(--normal) var(--ease-out),
+    box-shadow var(--normal) var(--ease-out);
+}
+
+:is(.mission-card, .public-offer-card):hover {
+  transform: translateY(-3px);
+}
+
+.mission-card .job-visual {
+  transition: transform 700ms var(--ease-out);
+}
+
+.mission-card:hover .job-visual {
+  transform: scale(1.05);
+}
+
+/* Une mission terminée ou annulée ne bouge pas : il n'y a plus rien à faire
+   dessus, pas la peine d'attirer l'œil. */
+.mission-card.is-closed:hover,
+.mission-card.is-closed:hover .job-visual {
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :is(.mission-card, .public-offer-card):hover,
+  .mission-card:hover .job-visual {
+    transform: none;
+  }
+}
+
+/* ------------------------------------------------------------------
+ * 3. Champs : Input d'Aceternity UI
+ * Le composant met un cadre de 2 px autour du champ, et c'est dans ce cadre
+ * que le halo orange suit la souris. Le champ garde notre style à nous
+ * (bordure, fond, arrondi, police).
+ * ------------------------------------------------------------------ */
+
+/* L'Input d'Aceternity impose une hauteur de 40 px (classe h-10). Je la
+   retire pour garder la hauteur normale de nos champs. */
+.group\/input > input {
+  height: auto;
+}
+
+/* Au focus, on garde seulement notre contour vert, pas l'anneau gris
+   d'Aceternity en plus. */
+.group\/input > input:focus-visible {
+  box-shadow: none;
+}
+
+/* Field peut aussi contenir une case à cocher ou un groupe de choix. Dans ce
+   cas le cadre n'a pas de sens : je le rends invisible. */
+.group\/input:not(:has(> :is(input, select, textarea))) {
+  padding: 0;
+  background: none !important;
+}
+
+.group\/input > :is(select, textarea) {
+  display: block;
+}
+
+/* ------------------------------------------------------------------
+ * 4. Badges de statut (réglage à moi, animés avec Motion)
+ * ------------------------------------------------------------------ */
+
+/* Coins de 6 px au lieu de la « pilule » toute ronde (999px).
+   Le « html » devant sert juste à gagner en priorité : certaines feuilles
+   CSS (profil, candidatures) se chargent APRÈS celle-ci avec leur page et
+   remettraient sinon leur arrondi. */
+html
+  :is(
+    .mission-status,
+    .application-status,
+    .mission-context-status,
+    .document-status,
+    .profile-slot-status,
+    .match-badge,
+    .badge
+  ) {
+  border-radius: 6px;
+}
+
+html :is(.mission-status, .profile-slot-status) {
+  display: inline-flex;
+  align-items: center;
+}
+
+/* Le point de couleur devant le texte du badge. currentColor = la couleur
+   du texte du badge : le point est donc toujours assorti. */
+:is(
+    .mission-status,
+    .mission-context-status,
+    .document-status,
+    .profile-slot-status
+  )::before,
+.status-dot {
+  content: "";
+  display: inline-block;
+  flex: none;
+  width: 6px;
+  height: 6px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.application-status .status-dot {
+  margin-right: 0; /* le badge a déjà un espace (gap) entre ses éléments */
+}
+
+/* Le point pulse seulement quand on attend quelque chose : candidature en
+   attente, signature à faire, mission à pourvoir ou en cours. Les états
+   finis (acceptée, terminée…) restent fixes. */
+.application-status.is-pending .status-dot,
+.mission-status.is-open::before,
+.mission-status.is-running::before,
+.mission-context-status:is(.is-pending, .is-running)::before,
+.document-status:is(
+    .is-awaiting_worker_signature,
+    .is-awaiting_company_signature,
+    .is-awaiting_finalization
+  )::before {
+  animation: status-pulse 1.8s ease-out infinite;
+}
+
+/* L'effet « radar » : un anneau part du point, grandit et s'efface. */
+@keyframes status-pulse {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in oklch, currentColor 55%, transparent);
+  }
+  70%,
+  100% {
+    box-shadow: 0 0 0 6px transparent;
+  }
+}
+
+/* ------------------------------------------------------------------
+ * 5. Jauge de profil : Animated Circular Progress Bar (Magic UI)
+ * ------------------------------------------------------------------ */
+
+/* --gauge-size est donné par CircularGauge.tsx (78 px par défaut). */
+.completion-gauge__magic {
+  flex: none;
+  width: var(--gauge-size, 78px);
+  height: var(--gauge-size, 78px);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums; /* chiffres de même largeur */
+}
+
+/* Le composant affiche « 72 » : j'ajoute le « % » derrière en CSS. */
+.completion-gauge__magic [data-current-value]::after {
+  content: "%";
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .status-dot,
+  :is(
+      .mission-status,
+      .mission-context-status,
+      .document-status,
+      .profile-slot-status
+    )::before {
+    animation: none;
+  }
+
+  /* Le composant écrit ses transitions directement dans le HTML (style="…"),
+     d'où le !important pour pouvoir les couper. */
+  .completion-gauge__magic circle {
+    transition: none !important;
+  }
+}
+
+/* ------------------------------------------------------------------
+ * 6. Boutons : effet au clic (réglage à moi)
+ * Nos boutons sont des classes CSS utilisées dans toutes les pages. Je règle
+ * donc l'effet ici, une seule fois, sans toucher aux pages.
+ * ------------------------------------------------------------------ */
+
+:is(.button, .secondary-button, .button-ghost, .icon-button) {
+  transition:
+    transform 120ms ease-out,
+    background-color 220ms ease-out,
+    border-color 220ms ease-out,
+    color 220ms ease-out,
+    box-shadow 220ms ease-out;
+}
+
+/* Quand on appuie, le bouton rétrécit à 97 % : on « sent » le clic. */
+:is(.button, .secondary-button, .button-ghost, .icon-button):active:not(
+    :disabled
+  ) {
+  transform: scale(0.97);
+}
+
+/* Le bouton orange principal prend une ombre orange au survol. */
+.button:not(:disabled):hover {
+  box-shadow: 0 6px 18px oklch(0.75 0.17 43 / 0.28);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :is(.button, .secondary-button, .button-ghost, .icon-button):active {
+    transform: none;
+  }
+}
+
+/* ── CTA secondaires de l'accueil : fond qui glisse (ui/slide-fill-button) ───
+ * Le fond glisse de gauche à droite. On neutralise donc le changement de
+ * fond instantané de shell.css, et on fait suivre la couleur du texte.
+ */
+.home-cta.slide-fill {
+  transition:
+    color 0.3s ease,
+    transform 0.1s ease;
+}
+
+/* Sections claires : remplissage vert, texte blanc. */
+.home-cta--outline.slide-fill:hover,
+.home-cta--outline.slide-fill:focus-visible {
+  background: transparent;
+  color: var(--surface);
+}
+
+/* Hero sombre : remplissage blanc, texte vert. */
+.home-cta--ghost.slide-fill:hover,
+.home-cta--ghost.slide-fill:focus-visible {
+  background: oklch(1 0 0 / 0.1);
+  color: var(--forest);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .slide-fill__bg {
+    transition: none;
+  }
+}

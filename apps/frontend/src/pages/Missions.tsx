@@ -6,7 +6,6 @@ import {
   Check,
   ChevronDown,
   Globe,
-  Sparkles,
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { usePageSeo } from "../hooks/usePageSeo";
@@ -19,6 +18,9 @@ import {
   type Exclusions,
   type OpenMission,
 } from "../services/missions";
+import { EmptyState } from "../components/da/EmptyState";
+import { BlurFade } from "../components/ui/blur-fade";
+import { NumberTicker } from "../components/ui/number-ticker";
 
 /** Rappel de ce qui se passera ensuite, pour l'écran resté vide. */
 const steps = [
@@ -133,8 +135,11 @@ export function Missions() {
             <>
               <div className="missions-toolbar">
                 <p className="missions-toolbar__count" role="status">
-                  <Sparkles size={15} aria-hidden="true" />
-                  <strong>{shown.length}</strong> mission
+                  {/* Le chiffre défile jusqu'à sa valeur (Number Ticker, Magic UI). */}
+                  <strong className="missions-toolbar__figure">
+                    <NumberTicker value={shown.length} />
+                  </strong>{" "}
+                  mission
                   {shown.length > 1 ? "s" : ""} compatible
                   {shown.length > 1 ? "s" : ""}
                   {filterCity ? ` à ${filterCity}` : " avec votre profil"}
@@ -170,21 +175,26 @@ export function Missions() {
                     Liste des missions disponibles
                   </h2>
                   <div className="mission-grid is-wide">
-                    {shown.map((mission) => (
-                      <MissionCard
+                    {/* Les cartes arrivent en cascade (Blur Fade, Magic UI). */}
+                    {shown.map((mission, index) => (
+                      <BlurFade
                         key={mission.id}
-                        mission={mission}
-                        basePath="/worker/missions"
-                        score={mission.match.score}
-                        band={mission.match.band}
-                        bandLabel={mission.match.band_label}
-                      />
+                        delay={Math.min(index, 8) * 0.06}
+                        inView
+                      >
+                        <MissionCard
+                          mission={mission}
+                          basePath="/worker/missions"
+                          score={mission.match.score}
+                          band={mission.match.band}
+                          bandLabel={mission.match.band_label}
+                        />
+                      </BlurFade>
                     ))}
                   </div>
                 </section>
               ) : (
-                <div className="empty">
-                  <BriefcaseBusiness aria-hidden="true" />
+                <EmptyState icon={BriefcaseBusiness}>
                   <h2>Aucune mission à {filterCity}</h2>
                   <p>
                     Essayez une autre ville ou revenez à l’ensemble des
@@ -197,13 +207,12 @@ export function Missions() {
                   >
                     Voir toutes les missions
                   </button>
-                </div>
+                </EmptyState>
               )}
             </>
           ) : (
             <>
-              <div className="empty">
-                <BriefcaseBusiness aria-hidden="true" />
+              <EmptyState icon={BriefcaseBusiness}>
                 <h2>
                   {reason
                     ? reason.title
@@ -226,7 +235,7 @@ export function Missions() {
                     </Link>
                   )
                 )}
-              </div>
+              </EmptyState>
 
               <section className="how-it-works" aria-labelledby="how-title">
                 <h2 id="how-title">Comment cela fonctionnera</h2>

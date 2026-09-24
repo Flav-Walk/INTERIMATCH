@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { CalendarX2, MapPin, UserRoundCheck, Utensils } from "lucide-react";
+
 import { ApiError } from "../../services/api";
 import { errorMessage } from "../../services/session";
 import type { MissionCapacity } from "../../services/missions";
@@ -137,16 +137,10 @@ export function MissionApplicationList({
             <strong>{applicationCandidateName(application)}</strong>
             <span className="application-meta">
               {application.worker.main_job && (
-                <span>
-                  <Utensils size={14} aria-hidden="true" />
-                  {application.worker.main_job}
-                </span>
+                <span>{application.worker.main_job}</span>
               )}
               {application.worker.city && (
-                <span>
-                  <MapPin size={14} aria-hidden="true" />
-                  {application.worker.city}
-                </span>
+                <span>{application.worker.city}</span>
               )}
               <span>
                 Reçue le {date.format(new Date(application.created_at))}
@@ -161,7 +155,6 @@ export function MissionApplicationList({
                   <p className="application-capacity-note">{decisionsClosed}</p>
                 ) : application.conflict ? (
                   <p className="application-conflict">
-                    <CalendarX2 size={14} aria-hidden="true" />
                     Cette personne a accepté une autre mission sur ce créneau.
                     Elle ne peut plus être retenue pour celle-ci.
                   </p>
@@ -306,7 +299,6 @@ export function MissionApplications({
       aria-labelledby="applications-title"
     >
       <div className="rail-head">
-        <UserRoundCheck size={18} aria-hidden="true" />
         <h2 id="applications-title">Candidatures reçues</h2>
       </div>
       <p className="mission-capacity" role="status">

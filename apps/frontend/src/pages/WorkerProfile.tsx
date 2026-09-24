@@ -46,11 +46,26 @@ import {
   toLocalInput,
   updateAvailability,
 } from "../services/profile";
-import { HeroBanner } from "../components/HeroBanner";
-import { CircularGauge } from "../components/CircularGauge";
+import { ProfileShowcase } from "../components/da/ProfileShowcase";
+import { MobilityMap } from "../components/da/MobilityMap";
+import { useCommuneSync, type EditedField } from "../hooks/useCommuneSync";
 import { useUnsavedChanges } from "../components/form/Field";
 import { workerRequirementProgress } from "../services/completion";
 import "../styles/profile.css";
+// Nouvelle DA du formulaire (retour de revue : « pas refait ») :
+// - champs texte : Animated Input (SmoothUI), le libellé remonte en orange ;
+// - métiers et compétences : Animated Tags (SmoothUI), les étiquettes
+//   glissent entre « sélection » et « disponibles » ;
+// - permis : segment d'Animated Tabs (SmoothUI) ;
+// - véhicule et recherche : Animated Toggle (SmoothUI).
+// Les vrais <input> sont gardés dessous : formulaire et tests inchangés.
+import AnimatedInput from "../components/ui/animated-input";
+import {
+  ChoiceGrid,
+  SegmentedChoice,
+  SwitchField,
+} from "../components/da/FormControls";
+import { usePageSeo } from "../hooks/usePageSeo";
 
 type DraftExperience = Omit<Experience, "id">;
 type DraftCertification = Omit<Certification, "id">;
@@ -136,6 +151,11 @@ export function workerProfileDraft(user: User | null): WorkerProfileDraft {
 }
 
 const stable = (value: unknown) => JSON.stringify(value);
+/** "12" → 12, "" → null : les champs numériques du brouillon sont des textes. */
+const toNumber = (value: string) => {
+  const number = Number(value.trim());
+  return value.trim() === "" || !Number.isFinite(number) ? null : number;
+};
 const sorted = (values: string[]) => [...values].sort();
 
 export function changedProfileGroups(
@@ -204,7 +224,6 @@ function workerPayload(draft: WorkerProfileDraft) {
 function ProfileSection({
   id,
   title,
-  icon,
   hint,
   missing = [],
   className = "",
@@ -212,7 +231,8 @@ function ProfileSection({
 }: {
   id?: string;
   title: string;
-  icon: ReactNode;
+  /** Plus affichée (nouvelle DA), gardée pour ne pas toucher aux appels. */
+  icon?: ReactNode;
   hint?: string;
   missing?: (keyof typeof requirementLabels)[];
   className?: string;
@@ -223,10 +243,9 @@ function ProfileSection({
       id={id}
       className={`profile-section ${className}`.trim()}
     >
+      {/* Plus d'icône dans un rond teinté : un numéro de rubrique en
+          Fraunces (compteur CSS, voir profile.css). */}
       <legend>
-        <span className="profile-section__icon" aria-hidden="true">
-          {icon}
-        </span>
         <span>{title}</span>
         {missing.length > 0 && (
           <span className="section-todo">À compléter</span>
@@ -258,6 +277,12 @@ function toggle(values: string[], value: string, checked: boolean) {
 }
 
 export function WorkerProfile() {
+  // Titre d'onglet propre à la page (RGAA 8.6) ; espace privé non indexé.
+  usePageSeo({
+    title: "Mon profil · InteriMatch",
+    description: "Votre profil professionnel, votre mobilité et vos disponibilités.",
+    robots: "noindex,nofollow",
+  });
   const { user, setUser } = useAuth();
   const { hash } = useLocation();
   const [skills, setSkills] = useState<Skill[]>([]);
@@ -307,6 +332,19 @@ export function WorkerProfile() {
   const dirty = dirtyGroups.length > 0;
   useUnsavedChanges(dirty && !busy);
 
+  // Ville ⇄ code postal : l'un complète l'autre (voir useCommuneSync).
+  const [placeEdited, setPlaceEdited] = useState<EditedField>(null);
+  const commune = useCommuneSync({
+    city: draft.city,
+    postalCode: draft.postal_code,
+    edited: placeEdited,
+    apply: (values, rerun) => {
+      setDraft((current) => ({ ...current, ...values }));
+      setSaved(false);
+      setPlaceEdited(rerun ?? null);
+    },
+  });
+
   if (!user) return null;
   const profile = user.profile;
   const missing = user.missing_requirements ?? [];
@@ -321,6 +359,26 @@ export function WorkerProfile() {
           ...jobs,
           { value: draft.main_job, label: draft.main_job },
         ];
+  // Le libellé du métier (« Serveur ») plutôt que sa valeur (« serveur »).
+  // Données de la vitrine du haut de page (ProfileShowcase).
+  const displayName =
+    draft.first_name || draft.last_name
+      ? `${draft.first_name} ${draft.last_name}`.trim()
+      : "Complétez vos informations";
+  const initials =
+    [draft.first_name, draft.last_name]
+      .map((part) => part.trim()[0]?.toUpperCase() ?? "")
+      .join("") || "?";
+  // Prochain créneau « Disponible » encore à venir.
+  const nextSlot = [...slots]
+    .filter(
+      (slot) =>
+        slot.status === "available" && Date.parse(slot.ends_at) > Date.now(),
+    )
+    .sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at))[0];
+  const jobLabel =
+    jobOptions.find((job) => job.value === draft.main_job)?.label ??
+    draft.main_job;
 
   function update<K extends keyof WorkerProfileDraft>(
     key: K,
@@ -440,58 +498,25 @@ export function WorkerProfile() {
 
   return (
     <section className="onboarding worker-profile">
-      <HeroBanner
-        compact
-        eyeline="Votre espace intérimaire"
-        title="Votre profil professionnel"
-        subtitle="Un profil clair aide InteriMatch à rapprocher vos compétences, votre mobilité et vos disponibilités des bonnes missions."
-        mascotPose="profile"
-        gauge={
-          requirementProgress !== null ? (
-            <CircularGauge
-              value={requirementProgress}
-              label="Prérequis missions"
-              subtitle={
-                missing.length === 0
-                  ? "Tous réunis"
-                  : `${missing.length} à compléter`
-              }
-              variant="on-dark"
-            />
-          ) : undefined
-        }
+      {/* Haut de page « waouh » : la carte pro + l'aperçu recruteur, qui se
+          mettent à jour EN DIRECT pendant la saisie (voir ProfileShowcase). */}
+      <ProfileShowcase
+        name={displayName}
+        initials={initials}
+        jobLabel={jobLabel}
+        city={draft.city}
+        radiusKm={toNumber(draft.mobility_radius_km)}
+        years={toNumber(draft.years_experience)}
+        skills={skills
+          .filter((skill) => draft.skill_ids.includes(skill.id))
+          .map((skill) => skill.name)}
+        secondaryJobs={jobs
+          .filter((job) => draft.secondary_jobs.includes(job.value))
+          .map((job) => job.label)}
+        nextSlot={nextSlot ? formatSlot(nextSlot) : null}
+        progress={requirementProgress}
+        missingCount={missing.length}
       />
-
-      <div className="profile-overview">
-        <div>
-          <p className="eyeline">Votre profil en un coup d’œil</p>
-          <h2>
-            {draft.first_name || draft.last_name
-              ? `${draft.first_name} ${draft.last_name}`.trim()
-              : "Complétez vos informations"}
-          </h2>
-          <p className="quiet">
-            {draft.main_job || "Métier principal à renseigner"}
-            {draft.city ? ` · ${draft.city}` : ""}
-          </p>
-        </div>
-        {user.missing_requirements === undefined ? null : missing.length > 0 ? (
-          <div className="profile-overview__todo" role="status">
-            <strong>{missing.length} prérequis à compléter</strong>
-            <span>Ils sont signalés dans les rubriques concernées.</span>
-            <div className="profile-overview__missing">
-              {missing.map((rule) => (
-                <span key={rule}>{requirementLabels[rule]}</span>
-              ))}
-            </div>
-          </div>
-        ) : (
-          <p className="profile-overview__ready" role="status">
-            <Check size={17} aria-hidden="true" />
-            Tous les prérequis pour recevoir des missions sont réunis.
-          </p>
-        )}
-      </div>
 
       {loadError && (
         <p className="form-error" role="alert">
@@ -499,512 +524,525 @@ export function WorkerProfile() {
         </p>
       )}
 
-      <form
-        className="profile-editor"
-        onSubmit={(event) => void saveProfile(event)}
-      >
-        <div className="profile-grid">
-          <ProfileSection
-            title="Votre identité"
-            icon={<UserRound size={18} />}
-            className="profile-section--identity"
-            missing={missingIn(user.missing_requirements, "Votre identité")}
+      {/* Mise en page : une seule colonne pleine largeur sous la vitrine.
+          Les rubriques s'enchaînent DANS L'ORDRE où le rapprochement en a
+          besoin, puis les facultatives. Ce qui manque est signalé dans
+          chaque rubrique (« À compléter ») et le % est dans la vitrine.
+          La barre d'enregistrement reste collée en bas de l'écran. */}
+      <div className="profile-layout">
+        <div className="profile-main">
+          {/* Formulaire 1 : les rubriques exigées par le rapprochement. */}
+          <form
+            id="worker-profile-form"
+            className="profile-editor"
+            onSubmit={(event) => void saveProfile(event)}
           >
-            <div className="form-grid">
-              <label>
-                Prénom
-                <input
-                  name="first_name"
-                  maxLength={120}
+            <ProfileSection
+              id="identite"
+              title="Votre identité"
+              icon={<UserRound size={18} />}
+              className="profile-section--identity"
+              missing={missingIn(user.missing_requirements, "Votre identité")}
+            >
+              <div className="form-grid profile-float-fields">
+                <AnimatedInput
+                  className="da-scope"
+                  inputClassName="profile-float-input"
+                  label="Prénom"
                   value={draft.first_name}
-                  onChange={(event) => update("first_name", event.target.value)}
+                  onChange={(value) => update("first_name", value)}
+                  inputProps={{ name: "first_name", maxLength: 120 }}
                 />
-              </label>
-              <label>
-                Nom
-                <input
-                  name="last_name"
-                  maxLength={120}
+                <AnimatedInput
+                  className="da-scope"
+                  inputClassName="profile-float-input"
+                  label="Nom"
                   value={draft.last_name}
-                  onChange={(event) => update("last_name", event.target.value)}
+                  onChange={(value) => update("last_name", value)}
+                  inputProps={{ name: "last_name", maxLength: 120 }}
                 />
-              </label>
-            </div>
-            <label>
-              Téléphone <span className="field-optional">(facultatif)</span>
-              <input
-                name="phone"
-                type="tel"
+              </div>
+              <AnimatedInput
+                className="da-scope profile-float-fields"
+                inputClassName="profile-float-input"
+                label="Téléphone (facultatif)"
                 value={draft.phone}
-                onChange={(event) => update("phone", event.target.value)}
+                onChange={(value) => update("phone", value)}
+                inputProps={{ name: "phone", type: "tel" }}
               />
-            </label>
-            <p className="quiet profile-account-email">
-              Email du compte · {user.email}
-            </p>
-          </ProfileSection>
+              <p className="quiet profile-account-email">
+                Email du compte · {user.email}
+              </p>
+            </ProfileSection>
 
-          <ProfileSection
-            title="Votre métier"
-            icon={<BriefcaseBusiness size={18} />}
-            className="profile-section--job"
-            missing={missingIn(user.missing_requirements, "Votre métier")}
-            hint="Le métier principal sert au rapprochement avec les missions."
-          >
-            <div className="profile-job-fields">
-              <label>
-                Métier principal
-                <select
-                  name="main_job"
-                  value={draft.main_job}
-                  onChange={(event) => update("main_job", event.target.value)}
-                >
-                  <option value="">Choisissez un métier</option>
-                  {jobOptions.map((job) => (
-                    <option key={job.value} value={job.value}>
-                      {job.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                Années d’expérience du métier{" "}
-                <span className="field-optional">(facultatif)</span>
-                <input
-                  name="years_experience"
-                  type="number"
-                  min={0}
-                  max={60}
-                  step="0.5"
-                  value={draft.years_experience}
-                  onChange={(event) =>
-                    update("years_experience", event.target.value)
-                  }
-                />
-              </label>
-            </div>
-            <span id="secondary-label" className="choice-label">
-              Autres métiers exercés{" "}
-              <span className="field-optional">(facultatif)</span>
-            </span>
-            <div
-              className="profile-chip-options"
-              role="group"
-              aria-labelledby="secondary-label"
+            <ProfileSection
+              id="metier"
+              title="Votre métier"
+              icon={<BriefcaseBusiness size={18} />}
+              className="profile-section--job"
+              missing={missingIn(user.missing_requirements, "Votre métier")}
+              hint="Le métier principal sert au rapprochement avec les missions."
             >
-              {jobs.map((job) => (
-                <label key={job.value}>
+              <div className="profile-job-fields">
+                <label>
+                  Métier principal
+                  <select
+                    name="main_job"
+                    value={draft.main_job}
+                    onChange={(event) => update("main_job", event.target.value)}
+                  >
+                    <option value="">Choisissez un métier</option>
+                    {jobOptions.map((job) => (
+                      <option key={job.value} value={job.value}>
+                        {job.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Années d’expérience du métier{" "}
+                  <span className="field-optional">(facultatif)</span>
                   <input
-                    type="checkbox"
-                    name="secondary_jobs"
-                    value={job.value}
-                    checked={draft.secondary_jobs.includes(job.value)}
+                    name="years_experience"
+                    type="number"
+                    min={0}
+                    max={60}
+                    step="0.5"
+                    value={draft.years_experience}
                     onChange={(event) =>
-                      update(
-                        "secondary_jobs",
-                        toggle(
-                          draft.secondary_jobs,
-                          job.value,
-                          event.target.checked,
-                        ),
-                      )
+                      update("years_experience", event.target.value)
                     }
                   />
-                  <span>{job.label}</span>
                 </label>
-              ))}
-            </div>
-          </ProfileSection>
+              </div>
+            </ProfileSection>
 
-          <ProfileSection
-            id="competences"
-            title="Vos compétences"
-            icon={<Sparkles size={18} />}
-            className="profile-section--wide"
-            missing={missingIn(user.missing_requirements, "Vos compétences")}
-            hint="Au moins une compétence est nécessaire : c’est le critère principal du rapprochement."
-          >
-            <div
-              className="profile-chip-options"
-              role="group"
-              aria-label="Compétences"
+            <ProfileSection
+              id="recherche"
+              title="Votre recherche"
+              icon={<Search size={18} />}
+              className="profile-section--wide profile-section--search"
+              hint="Mettez votre recherche en pause sans perdre votre profil."
             >
-              {skills.map((skill) => (
-                <label key={skill.id}>
-                  <input
-                    type="checkbox"
-                    name="skill_ids"
-                    value={skill.id}
-                    checked={draft.skill_ids.includes(skill.id)}
-                    onChange={(event) =>
-                      update(
-                        "skill_ids",
-                        toggle(
-                          draft.skill_ids,
-                          skill.id,
-                          event.target.checked,
-                        ),
-                      )
-                    }
-                  />
-                  <span>{skill.name}</span>
-                </label>
-              ))}
-            </div>
-          </ProfileSection>
+              {/* Carte étroite du bento : l'interrupteur seul porte l'état
+                  (plus de pastille « Recherche active », jugée « trop IA »).
+                  La description change avec l'état pour rester explicite. */}
+              <SwitchField
+                name="open_to_missions"
+                label="Je recherche des missions"
+                description={
+                  draft.open_to_missions
+                    ? "Votre profil est proposé aux établissements."
+                    : "En pause : votre profil n’est plus proposé."
+                }
+                checked={draft.open_to_missions}
+                onChange={(checked) => update("open_to_missions", checked)}
+              />
+            </ProfileSection>
 
-          <ProfileSection
-            title="Vos expériences"
-            icon={<BriefcaseBusiness size={18} />}
-            className="profile-section--records"
-            hint="Facultatif, mais une expérience détaillée renforce votre profil."
-          >
-            <div className="profile-repeat-list">
-              {draft.experiences.map((experience, index) => (
-                <div className="profile-repeat" key={index}>
-                  <div className="profile-repeat__head">
-                    <strong>Expérience {index + 1}</strong>
-                    <button
-                      type="button"
-                      className="icon-button"
-                      aria-label={`Retirer l’expérience ${index + 1}`}
-                      onClick={() =>
-                        update(
-                          "experiences",
-                          draft.experiences.filter((_, item) => item !== index),
-                        )
-                      }
-                    >
-                      <Trash2 size={16} aria-hidden="true" />
-                    </button>
-                  </div>
-                  <label className="profile-repeat__primary">
-                    Poste
-                    <input
-                      value={experience.job_title}
-                      maxLength={120}
-                      onChange={(event) =>
-                        update(
-                          "experiences",
-                          draft.experiences.map((item, itemIndex) =>
-                            itemIndex === index
-                              ? { ...item, job_title: event.target.value }
-                              : item,
-                          ),
-                        )
-                      }
-                    />
-                  </label>
-                  <label>
-                    Établissement
-                    <input
-                      value={experience.employer}
-                      maxLength={120}
-                      onChange={(event) =>
-                        update(
-                          "experiences",
-                          draft.experiences.map((item, itemIndex) =>
-                            itemIndex === index
-                              ? { ...item, employer: event.target.value }
-                              : item,
-                          ),
-                        )
-                      }
-                    />
-                  </label>
-                  <label>
-                    Années
-                    <input
-                      type="number"
-                      min={0}
-                      max={60}
-                      step="0.5"
-                      value={experience.years}
-                      onChange={(event) =>
-                        update(
-                          "experiences",
-                          draft.experiences.map((item, itemIndex) =>
-                            itemIndex === index
-                              ? { ...item, years: Number(event.target.value) }
-                              : item,
-                          ),
-                        )
-                      }
-                    />
-                  </label>
-                </div>
-              ))}
-            </div>
-            <button
-              type="button"
-              className="secondary-button compact-button"
-              onClick={() =>
-                update("experiences", [
-                  ...draft.experiences,
-                  { job_title: "", employer: "", years: 0 },
-                ])
-              }
+            {/* Carte Bento large « Compétences & Métiers » : toutes les
+                options visibles d'un coup d'œil, en grille régulière.
+                Compétences (exigées) puis métiers secondaires (facultatifs),
+                séparés par un fin divider plutôt que deux petits blocs. */}
+            <ProfileSection
+              id="competences"
+              title="Compétences & Métiers"
+              icon={<Sparkles size={18} />}
+              className="profile-section--wide profile-section--skills"
+              missing={missingIn(user.missing_requirements, "Vos compétences")}
             >
-              <Plus size={16} aria-hidden="true" /> Ajouter une expérience
-            </button>
-          </ProfileSection>
+              <ChoiceGrid
+                name="skill_ids"
+                legend="Vos compétences"
+                hint="Au moins une : c’est le critère principal du rapprochement."
+                options={skills.map((skill) => ({
+                  value: skill.id,
+                  label: skill.name,
+                }))}
+                selected={draft.skill_ids}
+                onToggle={(value, checked) =>
+                  update("skill_ids", toggle(draft.skill_ids, value, checked))
+                }
+              />
+              <hr className="profile-divider" />
+              <ChoiceGrid
+                name="secondary_jobs"
+                legend="Autres métiers exercés"
+                optional
+                options={jobs}
+                selected={draft.secondary_jobs}
+                onToggle={(value, checked) =>
+                  update(
+                    "secondary_jobs",
+                    toggle(draft.secondary_jobs, value, checked),
+                  )
+                }
+              />
+            </ProfileSection>
 
-          <ProfileSection
-            title="Vos diplômes et certifications"
-            icon={<Award size={18} />}
-            className="profile-section--records"
-            hint="Facultatif · HACCP, permis d’exploitation, mention complémentaire…"
-          >
-            <div className="profile-repeat-list">
-              {draft.certifications.map((certification, index) => (
-                <div className="profile-repeat" key={index}>
-                  <div className="profile-repeat__head">
-                    <strong>Certification {index + 1}</strong>
-                    <button
-                      type="button"
-                      className="icon-button"
-                      aria-label={`Retirer la certification ${index + 1}`}
-                      onClick={() =>
-                        update(
-                          "certifications",
-                          draft.certifications.filter(
-                            (_, item) => item !== index,
-                          ),
-                        )
-                      }
-                    >
-                      <Trash2 size={16} aria-hidden="true" />
-                    </button>
-                  </div>
-                  <label className="profile-repeat__primary">
-                    Intitulé
-                    <input
-                      value={certification.name}
-                      maxLength={120}
-                      onChange={(event) =>
-                        update(
-                          "certifications",
-                          draft.certifications.map((item, itemIndex) =>
-                            itemIndex === index
-                              ? { ...item, name: event.target.value }
-                              : item,
-                          ),
-                        )
-                      }
-                    />
-                  </label>
-                  <label>
-                    Organisme
-                    <input
-                      value={certification.issuer}
-                      maxLength={120}
-                      onChange={(event) =>
-                        update(
-                          "certifications",
-                          draft.certifications.map((item, itemIndex) =>
-                            itemIndex === index
-                              ? { ...item, issuer: event.target.value }
-                              : item,
-                          ),
-                        )
-                      }
-                    />
-                  </label>
-                  <label>
-                    Obtenu le
-                    <input
-                      type="date"
-                      value={certification.obtained_on ?? ""}
-                      onChange={(event) =>
-                        update(
-                          "certifications",
-                          draft.certifications.map((item, itemIndex) =>
-                            itemIndex === index
-                              ? {
-                                  ...item,
-                                  obtained_on: event.target.value || null,
-                                }
-                              : item,
-                          ),
-                        )
-                      }
-                    />
-                  </label>
-                </div>
-              ))}
-            </div>
-            <button
-              type="button"
-              className="secondary-button compact-button"
-              onClick={() =>
-                update("certifications", [
-                  ...draft.certifications,
-                  { name: "", issuer: "", obtained_on: null },
-                ])
-              }
+            <ProfileSection
+              id="mobilite"
+              title="Votre mobilité"
+              icon={<MapPin size={18} />}
+              className="profile-section--wide profile-section--mobility"
+              missing={missingIn(user.missing_requirements, "Votre mobilité")}
+              hint="Votre ville et votre rayon servent à proposer des missions accessibles."
             >
-              <Plus size={16} aria-hidden="true" /> Ajouter une certification
-            </button>
-          </ProfileSection>
-
-          <ProfileSection
-            id="mobilite"
-            title="Votre mobilité"
-            icon={<MapPin size={18} />}
-            className="profile-section--wide profile-section--mobility"
-            missing={missingIn(user.missing_requirements, "Votre mobilité")}
-            hint="Votre ville et votre rayon servent à proposer des missions accessibles."
-          >
-            <div className="profile-mobility-fields">
-              <label>
-                Ville
-                <input
-                  name="city"
+              <div className="profile-mobility-fields profile-float-fields">
+                <AnimatedInput
+                  className="da-scope"
+                  inputClassName="profile-float-input"
+                  label="Ville"
                   value={draft.city}
-                  onChange={(event) => update("city", event.target.value)}
+                  onChange={(value) => {
+                    update("city", value);
+                    setPlaceEdited("city");
+                  }}
+                  inputProps={{ name: "city" }}
                 />
-              </label>
-              <label>
-                Code postal
-                <input
-                  name="postal_code"
-                  inputMode="numeric"
-                  pattern="[0-9]{5}"
-                  maxLength={5}
+                <AnimatedInput
+                  className="da-scope"
+                  inputClassName="profile-float-input"
+                  label="Code postal"
                   value={draft.postal_code}
-                  onChange={(event) =>
-                    update("postal_code", event.target.value)
-                  }
+                  onChange={(value) => {
+                    update("postal_code", value);
+                    setPlaceEdited("postal_code");
+                  }}
+                  inputProps={{
+                    name: "postal_code",
+                    inputMode: "numeric",
+                    pattern: "[0-9]{5}",
+                    maxLength: 5,
+                  }}
                 />
-              </label>
-              <label>
-                Rayon de mobilité (km)
-                <input
-                  name="mobility_radius_km"
-                  type="number"
-                  min={0}
-                  max={250}
+                <AnimatedInput
+                  className="da-scope"
+                  inputClassName="profile-float-input"
+                  label="Rayon de mobilité (km)"
                   value={draft.mobility_radius_km}
-                  onChange={(event) =>
-                    update("mobility_radius_km", event.target.value)
-                  }
+                  onChange={(value) => update("mobility_radius_km", value)}
+                  inputProps={{
+                    name: "mobility_radius_km",
+                    type: "number",
+                    min: 0,
+                    max: 250,
+                  }}
                 />
-              </label>
-            </div>
-            <div
-              className="choice-group"
-              role="radiogroup"
-              aria-labelledby="licence-label"
-            >
-              <span id="licence-label" className="choice-label">
-                Permis de conduire
-              </span>
-              <label>
-                <input
-                  type="radio"
-                  name="licence"
-                  checked={draft.has_driving_licence}
-                  onChange={() => update("has_driving_licence", true)}
-                />
-                J’ai le permis
-              </label>
-              <label>
-                <input
-                  type="radio"
-                  name="licence"
-                  checked={!draft.has_driving_licence}
-                  onChange={() =>
-                    setDraft((current) => ({
-                      ...current,
-                      has_driving_licence: false,
-                      has_vehicle: false,
-                    }))
-                  }
-                />
-                Je n’ai pas le permis
-              </label>
-            </div>
-            <label className="choice-single">
-              <input
-                type="checkbox"
+              </div>
+              {/* Ville ⇄ code postal : message + propositions en un clic. */}
+              {(commune.message || commune.choices.length > 0) && (
+                <div className="commune-sync" aria-live="polite">
+                  {commune.message && (
+                    <p className="commune-sync__message">{commune.message}</p>
+                  )}
+                  {commune.choices.length > 0 && (
+                    <div className="commune-sync__choices">
+                      {commune.choices.map((choice) => (
+                        <button
+                          key={`${choice.city}-${choice.postalCode}`}
+                          type="button"
+                          className="commune-sync__choice"
+                          onClick={() => commune.choose(choice)}
+                        >
+                          {choice.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+              {/* Vraie carte : le cercle suit le rayon et la ville, en direct. */}
+              <MobilityMap
+                city={draft.city}
+                postalCode={draft.postal_code}
+                radiusKm={toNumber(draft.mobility_radius_km)}
+                saved={
+                  profile.latitude != null && profile.longitude != null
+                    ? { lat: profile.latitude, lon: profile.longitude }
+                    : null
+                }
+              />
+              <SegmentedChoice
+                name="licence"
+                legend="Permis de conduire"
+                legendId="licence-label"
+                value={draft.has_driving_licence ? "yes" : "no"}
+                options={[
+                  { value: "yes", label: "J’ai le permis" },
+                  { value: "no", label: "Je n’ai pas le permis" },
+                ]}
+                onChange={(value) =>
+                  value === "yes"
+                    ? update("has_driving_licence", true)
+                    : setDraft((current) => ({
+                        ...current,
+                        has_driving_licence: false,
+                        has_vehicle: false,
+                      }))
+                }
+              />
+              <SwitchField
+                label="J’ai un véhicule"
+                description={
+                  draft.has_driving_licence
+                    ? undefined
+                    : "Disponible une fois le permis indiqué."
+                }
                 checked={draft.has_driving_licence && draft.has_vehicle}
                 disabled={!draft.has_driving_licence}
-                onChange={(event) =>
-                  update("has_vehicle", event.target.checked)
-                }
+                onChange={(checked) => update("has_vehicle", checked)}
               />
-              J’ai un véhicule
-            </label>
-          </ProfileSection>
+            </ProfileSection>
+          </form>
 
-          <ProfileSection
-            id="recherche"
-            title="Votre recherche"
-            icon={<Search size={18} />}
-            className="profile-section--wide profile-section--search"
-            hint="Mettez votre recherche en pause sans perdre votre profil."
+          {/* Les disponibilités s'enregistrent seules, créneau par créneau :
+              elles gardent leur propre formulaire, placé ici, juste après la
+              mobilité, car c'est le dernier prérequis. */}
+          <AvailabilitySection
+            slots={slots}
+            missing={missingIn(user.missing_requirements, "Vos disponibilités")}
+          />
+
+          {/* Formulaire 2 : les rubriques facultatives. Même enregistrement
+              que le formulaire 1 (la barre du bas enregistre tout). */}
+          <form
+            className="profile-editor"
+            onSubmit={(event) => void saveProfile(event)}
           >
-            <label className="profile-search-toggle">
-              <input
-                type="checkbox"
-                name="open_to_missions"
-                checked={draft.open_to_missions}
-                onChange={(event) =>
-                  update("open_to_missions", event.target.checked)
+            <ProfileSection
+              id="experiences"
+              title="Vos expériences"
+              icon={<BriefcaseBusiness size={18} />}
+              className="profile-section--records"
+              hint="Facultatif, mais une expérience détaillée renforce votre profil."
+            >
+              <div className="profile-repeat-list">
+                {draft.experiences.map((experience, index) => (
+                  <div className="profile-repeat" key={index}>
+                    <div className="profile-repeat__head">
+                      <strong>Expérience {index + 1}</strong>
+                      <button
+                        type="button"
+                        className="icon-button"
+                        aria-label={`Retirer l’expérience ${index + 1}`}
+                        onClick={() =>
+                          update(
+                            "experiences",
+                            draft.experiences.filter((_, item) => item !== index),
+                          )
+                        }
+                      >
+                        <Trash2 size={16} aria-hidden="true" />
+                      </button>
+                    </div>
+                    <label className="profile-repeat__primary">
+                      Poste
+                      <input
+                        value={experience.job_title}
+                        maxLength={120}
+                        onChange={(event) =>
+                          update(
+                            "experiences",
+                            draft.experiences.map((item, itemIndex) =>
+                              itemIndex === index
+                                ? { ...item, job_title: event.target.value }
+                                : item,
+                            ),
+                          )
+                        }
+                      />
+                    </label>
+                    <label>
+                      Établissement
+                      <input
+                        value={experience.employer}
+                        maxLength={120}
+                        onChange={(event) =>
+                          update(
+                            "experiences",
+                            draft.experiences.map((item, itemIndex) =>
+                              itemIndex === index
+                                ? { ...item, employer: event.target.value }
+                                : item,
+                            ),
+                          )
+                        }
+                      />
+                    </label>
+                    <label>
+                      Années
+                      <input
+                        type="number"
+                        min={0}
+                        max={60}
+                        step="0.5"
+                        value={experience.years}
+                        onChange={(event) =>
+                          update(
+                            "experiences",
+                            draft.experiences.map((item, itemIndex) =>
+                              itemIndex === index
+                                ? { ...item, years: Number(event.target.value) }
+                                : item,
+                            ),
+                          )
+                        }
+                      />
+                    </label>
+                  </div>
+                ))}
+              </div>
+              <button
+                type="button"
+                className="secondary-button compact-button"
+                onClick={() =>
+                  update("experiences", [
+                    ...draft.experiences,
+                    { job_title: "", employer: "", years: 0 },
+                  ])
                 }
-              />
-              <span>
-                <strong>Je recherche des missions</strong>
-                <small>
-                  Votre profil peut être rapproché des besoins publiés.
-                </small>
-              </span>
-              <span
-                className={
-                  draft.open_to_missions
-                    ? "profile-search-status is-active"
-                    : "profile-search-status"
-                }
-                aria-hidden="true"
               >
-                {draft.open_to_missions ? "Recherche active" : "En pause"}
-              </span>
-            </label>
-          </ProfileSection>
-        </div>
+                <Plus size={16} aria-hidden="true" /> Ajouter une expérience
+              </button>
+            </ProfileSection>
 
-        <div
-          className={`profile-savebar${dirty ? " is-dirty" : ""}`}
-        >
-          <div className="profile-savebar__message" aria-live="polite">
-            <strong>Modifications du profil</strong>
-            {saveError && (
-              <p className="form-error" role="alert">
-                {saveError}
-              </p>
-            )}
-            {saved && !dirty && (
-              <p className="form-success" role="status">
-                <Check size={16} aria-hidden="true" /> Profil enregistré.
-              </p>
-            )}
-            {!saveError && !saved && dirty && (
-              <p className="quiet">Des changements restent à enregistrer.</p>
-            )}
-            {!saveError && !saved && !dirty && (
-              <p className="quiet">Votre profil est à jour.</p>
-            )}
+            <ProfileSection
+              id="diplomes"
+              title="Vos diplômes et certifications"
+              icon={<Award size={18} />}
+              className="profile-section--records"
+              hint="Facultatif · HACCP, permis d’exploitation, mention complémentaire…"
+            >
+              <div className="profile-repeat-list">
+                {draft.certifications.map((certification, index) => (
+                  <div className="profile-repeat" key={index}>
+                    <div className="profile-repeat__head">
+                      <strong>Certification {index + 1}</strong>
+                      <button
+                        type="button"
+                        className="icon-button"
+                        aria-label={`Retirer la certification ${index + 1}`}
+                        onClick={() =>
+                          update(
+                            "certifications",
+                            draft.certifications.filter(
+                              (_, item) => item !== index,
+                            ),
+                          )
+                        }
+                      >
+                        <Trash2 size={16} aria-hidden="true" />
+                      </button>
+                    </div>
+                    <label className="profile-repeat__primary">
+                      Intitulé
+                      <input
+                        value={certification.name}
+                        maxLength={120}
+                        onChange={(event) =>
+                          update(
+                            "certifications",
+                            draft.certifications.map((item, itemIndex) =>
+                              itemIndex === index
+                                ? { ...item, name: event.target.value }
+                                : item,
+                            ),
+                          )
+                        }
+                      />
+                    </label>
+                    <label>
+                      Organisme
+                      <input
+                        value={certification.issuer}
+                        maxLength={120}
+                        onChange={(event) =>
+                          update(
+                            "certifications",
+                            draft.certifications.map((item, itemIndex) =>
+                              itemIndex === index
+                                ? { ...item, issuer: event.target.value }
+                                : item,
+                            ),
+                          )
+                        }
+                      />
+                    </label>
+                    <label>
+                      Obtenu le
+                      <input
+                        type="date"
+                        value={certification.obtained_on ?? ""}
+                        onChange={(event) =>
+                          update(
+                            "certifications",
+                            draft.certifications.map((item, itemIndex) =>
+                              itemIndex === index
+                                ? {
+                                    ...item,
+                                    obtained_on: event.target.value || null,
+                                  }
+                                : item,
+                            ),
+                          )
+                        }
+                      />
+                    </label>
+                  </div>
+                ))}
+              </div>
+              <button
+                type="button"
+                className="secondary-button compact-button"
+                onClick={() =>
+                  update("certifications", [
+                    ...draft.certifications,
+                    { name: "", issuer: "", obtained_on: null },
+                  ])
+                }
+              >
+                <Plus size={16} aria-hidden="true" /> Ajouter une certification
+              </button>
+            </ProfileSection>
+
+          </form>
+
+          {/* Barre d'enregistrement collée en bas de l'écran : visible quelle
+              que soit la rubrique. Le bouton vise le formulaire 1 (attribut
+              form), qui enregistre toutes les rubriques modifiées. */}
+          <div
+            className={`profile-savebar${dirty ? " is-dirty" : ""}`}
+          >
+            <div className="profile-savebar__message" aria-live="polite">
+              <strong>Modifications du profil</strong>
+              {saveError && (
+                <p className="form-error" role="alert">
+                  {saveError}
+                </p>
+              )}
+              {saved && !dirty && (
+                <p className="form-success" role="status">
+                  <Check size={16} aria-hidden="true" /> Profil enregistré.
+                </p>
+              )}
+              {!saveError && !saved && dirty && (
+                <p className="quiet">Des changements restent à enregistrer.</p>
+              )}
+              {!saveError && !saved && !dirty && (
+                <p className="quiet">Votre profil est à jour.</p>
+              )}
+            </div>
+            <button
+              className="button"
+              form="worker-profile-form"
+              disabled={!dirty || busy}
+            >
+              {busy ? "Enregistrement…" : "Enregistrer les modifications"}
+            </button>
           </div>
-          <button className="button" disabled={!dirty || busy}>
-            {busy ? "Enregistrement…" : "Enregistrer les modifications"}
-          </button>
         </div>
-      </form>
-
-      <AvailabilitySection
-        slots={slots}
-        missing={missingIn(user.missing_requirements, "Vos disponibilités")}
-      />
+      </div>
     </section>
   );
 }

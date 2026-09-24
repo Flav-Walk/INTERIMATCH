@@ -13,6 +13,8 @@ import {
   type Mission,
   type MissionTab,
 } from "../services/missions";
+import { EmptyState } from "../components/da/EmptyState";
+import { usePageSeo } from "../hooks/usePageSeo";
 
 function MissionsSkeleton() {
   return (
@@ -29,6 +31,12 @@ function MissionsSkeleton() {
  * La recherche de l'en-tête arrive par `?q=` et filtre les missions chargées.
  */
 export function CompanyMissions() {
+  // Titre d'onglet propre à la page (RGAA 8.6) ; espace privé non indexé.
+  usePageSeo({
+    title: "Mes missions · Espace entreprise · InteriMatch",
+    description: "Missions publiées et brouillons de l’établissement.",
+    robots: "noindex,nofollow",
+  });
   const { revision } = useAuth();
   const [params, setParams] = useSearchParams();
   const query = params.get("q") ?? "";
@@ -154,8 +162,7 @@ export function CompanyMissions() {
               </div>
             </section>
           ) : query ? (
-            <div className="empty">
-              <SearchX aria-hidden="true" />
+            <EmptyState icon={SearchX}>
               <h2>Aucune mission ne correspond</h2>
               <p>
                 Essayez un autre intitulé, une autre ville ou un autre métier.
@@ -167,10 +174,9 @@ export function CompanyMissions() {
               >
                 Effacer la recherche
               </button>
-            </div>
+            </EmptyState>
           ) : (
-            <div className="empty">
-              <BriefcaseBusiness aria-hidden="true" />
+            <EmptyState icon={BriefcaseBusiness}>
               <h2>
                 {tab === "all"
                   ? "Votre première mission commence ici"
@@ -184,7 +190,7 @@ export function CompanyMissions() {
                 Créer une mission
                 <ArrowRight size={16} aria-hidden="true" />
               </Link>
-            </div>
+            </EmptyState>
           ))}
       </div>
     </div>
