@@ -15,8 +15,6 @@ import {
 } from "../services/publicOffers";
 import { PublicOfferCard } from "../components/public-offers/PublicOfferCard";
 import { HeroBanner } from "../components/HeroBanner";
-import { EmptyState } from "../components/da/EmptyState";
-import { usePageSeo } from "../hooks/usePageSeo";
 
 function SkeletonGrid() {
   return (
@@ -29,12 +27,6 @@ function SkeletonGrid() {
 }
 
 export function WorkerPublicOffers() {
-  // Titre d'onglet propre à la page (RGAA 8.6) ; espace privé non indexé.
-  usePageSeo({
-    title: "Offres France Travail · InteriMatch",
-    description: "Offres publiques du référentiel France Travail, à titre informatif.",
-    robots: "noindex,nofollow",
-  });
   const { user } = useAuth();
   const [offers, setOffers] = useState<PublicJobOffer[]>([]);
   const [total, setTotal] = useState(0);
@@ -223,7 +215,8 @@ export function WorkerPublicOffers() {
               )}
             </>
           ) : (
-            <EmptyState icon={BriefcaseBusiness}>
+            <div className="empty">
+              <BriefcaseBusiness aria-hidden="true" />
               {/* Sans critère saisi, parler de « critères » ferait porter le
                   vide à une recherche qui n'a pas eu lieu : le catalogue est
                   simplement vide, et l'écran doit le dire tel quel. */}
@@ -242,7 +235,7 @@ export function WorkerPublicOffers() {
                   Voir toutes les offres France Travail
                 </button>
               )}
-            </EmptyState>
+            </div>
           ))}
       </div>
     </div>

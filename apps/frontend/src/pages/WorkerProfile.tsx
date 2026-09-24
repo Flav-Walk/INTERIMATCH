@@ -55,7 +55,6 @@ import {
 } from "../services/profile";
 import { useUnsavedChanges } from "../components/form/Field";
 import "../styles/profile.css";
-import { usePageSeo } from "../hooks/usePageSeo";
 
 type DraftExperience = Omit<Experience, "id">;
 type DraftCertification = Omit<Certification, "id">;
@@ -268,11 +267,6 @@ function toggle(values: string[], value: string, checked: boolean) {
 }
 
 export function WorkerProfile() {
-  usePageSeo({
-    title: "Mon profil · InteriMatch",
-    description: "Gestion de mon profil intérimaire InteriMatch.",
-    robots: "noindex,nofollow",
-  });
   const { user, setUser } = useAuth();
   const { hash } = useLocation();
   const [skills, setSkills] = useState<Skill[]>([]);

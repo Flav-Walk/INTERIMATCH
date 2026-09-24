@@ -1,5 +1,11 @@
 import { useEffect, useState } from "react";
-import { RefreshCw } from "lucide-react";
+import {
+  BriefcaseBusiness,
+  CheckCircle2,
+  MapPin,
+  RefreshCw,
+  Sparkles,
+} from "lucide-react";
 import { ApiError } from "../../services/api";
 import { errorMessage } from "../../services/session";
 import {
@@ -187,9 +193,17 @@ function CandidateRow({
             <h3 id={`candidate-${candidate.id}`}>{candidateName(candidate)}</h3>
             <div className="matched-profile-meta">
               {candidate.main_job && (
-                <span>{readableJob(candidate.main_job)}</span>
+                <span>
+                  <BriefcaseBusiness size={15} aria-hidden="true" />
+                  {readableJob(candidate.main_job)}
+                </span>
               )}
-              {candidate.city && <span>{candidate.city}</span>}
+              {candidate.city && (
+                <span>
+                  <MapPin size={15} aria-hidden="true" />
+                  {candidate.city}
+                </span>
+              )}
               {candidate.years_experience !== null && (
                 <span>
                   {candidate.years_experience} an
@@ -257,6 +271,7 @@ export function MatchedProfilesView({
       aria-labelledby="matched-profiles-title"
     >
       <div className="rail-head">
+        <Sparkles size={18} aria-hidden="true" />
         <h2 id="matched-profiles-title">Profils correspondants</h2>
       </div>
       <p className="quiet matched-profiles-intro">
@@ -330,6 +345,7 @@ export function MatchedProfilesView({
         selection.candidates.length > 0 && (
           <>
             <p className="matched-profiles-summary">
+              <CheckCircle2 size={17} aria-hidden="true" />
               {selectionSummary(selection)}
             </p>
             <ol className="matched-profile-list">

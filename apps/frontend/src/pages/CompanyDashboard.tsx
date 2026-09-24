@@ -1,4 +1,3 @@
-import { motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
@@ -22,8 +21,6 @@ import {
   type Mission,
   type MissionTab,
 } from "../services/missions";
-import { EmptyState } from "../components/da/EmptyState";
-import { usePageSeo } from "../hooks/usePageSeo";
 
 function MissionsSkeleton() {
   return (
@@ -44,12 +41,6 @@ function MissionsSkeleton() {
  * aucun bouton factice ne doit figurer dans le produit.
  */
 export function CompanyDashboard() {
-  // Titre d'onglet propre à la page (RGAA 8.6) ; espace privé non indexé.
-  usePageSeo({
-    title: "Tableau de bord · Espace entreprise · InteriMatch",
-    description: "Missions, candidatures et documents de l’établissement.",
-    robots: "noindex,nofollow",
-  });
   const { user, revision } = useAuth();
   // Les candidatures viennent du fournisseur partagé : la même lecture sert le
   // badge de navigation, cette page et l'écran Candidatures.
@@ -136,19 +127,7 @@ export function CompanyDashboard() {
                     aria-pressed={tab === entry.key}
                     onClick={() => setTab(entry.key)}
                   >
-                    {/* Même principe qu'Animated Tabs (SmoothUI, variante
-                        « underline ») : le trait orange est UN élément qui
-                        glisse d'un onglet à l'autre (layoutId). Les boutons
-                        et aria-pressed restent : les tests e2e s'en servent. */}
-                    {tab === entry.key && (
-                      <motion.span
-                        layoutId="dashboard-tab-pill"
-                        className="dashboard-tab__pill"
-                        aria-hidden="true"
-                        transition={{ type: "spring", bounce: 0.05, duration: 0.3 }}
-                      />
-                    )}
-                    <span className="dashboard-tab__label">{entry.label}</span>
+                    {entry.label}
                     <span className="dashboard-tab__count">
                       {counts[entry.key] ?? 0}
                     </span>
@@ -180,7 +159,8 @@ export function CompanyDashboard() {
                     ))}
                   </div>
                 ) : (
-                  <EmptyState icon={BriefcaseBusiness}>
+                  <div className="empty">
+                    <BriefcaseBusiness aria-hidden="true" />
                     <h3>Aucune mission dans cet onglet</h3>
                     <p>
                       Créez une mission pour commencer à recevoir des candidats
@@ -189,7 +169,7 @@ export function CompanyDashboard() {
                     <Link className="button" to="/company/missions/new">
                       Créer une mission
                     </Link>
-                  </EmptyState>
+                  </div>
                 ))}
             </section>
 

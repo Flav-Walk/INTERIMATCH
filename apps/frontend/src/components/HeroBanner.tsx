@@ -1,175 +1,92 @@
-import type { MouseEvent, ReactNode } from "react";
-import { useLocation } from "react-router-dom";
-import { motion, useReducedMotion, type Variants } from "motion/react";
-import { heroImageFor } from "../lib/hero-images";
-import { PhotoBackdrop } from "./PhotoBackdrop";
+import type { ReactNode } from "react";
+import { MatchyMascot } from "./MatchyMascot";
+import { cn } from "../lib/cn";
 
-interface HeroBannerProps {
-  eyeline?: string;
-  title: string;
-  subtitle?: string;
-  /** Conservé pour ne pas modifier les pages : Matchy n'est plus affiché
-   *  dans le bandeau. */
-  mascotPose?: "dashboard" | "missions" | "profile";
-  action?: ReactNode;
-  gauge?: ReactNode;
-  compact?: boolean;
-}
-
-/*
- * Bandeau en haut des pages (utilisé sur 8 pages, AUCUNE n'a été modifiée :
- * les props restent les mêmes).
+/**
+ * En-tête d'accueil d'un espace.
  *
- * Ce qui bouge, dans l'ordre d'apparition :
- * 1. La photo de fond (composant PhotoBackdrop) arrive avec un zoom lent,
- *    puis descend un peu moins vite que la page au scroll (parallaxe).
- * 2. Le titre apparaît mot par mot, chaque mot sortant d'un flou (même
- *    principe que le Blur Fade de Magic UI, appliqué mot à mot).
- * 3. Le sous-titre, le bouton et la jauge suivent en fondu.
- * 4. Sur le grand bandeau (pas en mode compact), le slogan manuscrit se
- *    dévoile de gauche à droite, puis son trait de soulignement se dessine.
- * 5. Un halo lumineux suit la souris sur tout le bandeau (même idée que le
- *    Spotlight d'Aceternity UI), sans re-render React : on met à jour deux
- *    variables CSS (--mx, --my) lues par un dégradé dans brand.css.
+ * CE QU'IL ÉTAIT. Un pavé vert à coins très arrondis, avec un dégradé radial,
+ * un anneau décoratif de 390 px positionné en négatif — qui débordait la page
+ * sur mobile — et une mascotte de 158 px. Il cohabitait avec `PageHeader` sur
+ * les écrans repris : deux en-têtes pour un même produit, deux hauteurs, deux
+ * échelles de titre.
  *
- * Matchy n'est plus dans le bandeau : le bandeau photo se suffit à lui-même.
+ * CE QU'IL EST. La MÊME composition que `PageHeader` — surtitre, titre,
+ * accroche, actions, filet de clôture — avec la mascotte ramenée au rang de
+ * signature, à droite et en petit. Les deux en-têtes du produit sont désormais
+ * le même objet, à un détail près, et ce détail a une raison : c'est l'ACCUEIL
+ * d'un espace, le seul écran où souhaiter la bienvenue a du sens.
  *
- * « Réduire les animations » activé : tout est affiché directement, fixe.
+ * LES CLASSES SONT CONSERVÉES. `brand-hero`, `brand-hero__eyeline` et
+ * `brand-hero__mascot` sont interrogées par la recette navigateur — l'intitulé
+ * de l'établissement, la présence d'une seule mascotte. Elles ne portent plus
+ * aucun style : la couche `components` neutralise l'ancien habillage, et la
+ * mise en forme passe par les utilitaires posés ici.
  */
-
-// Courbe d'accélération douce utilisée partout dans le bandeau.
-const EASE = [0.22, 1, 0.36, 1] as const;
-
-// Le titre : un conteneur qui lance ses mots l'un après l'autre (stagger).
-const titleVariants: Variants = {
-  hidden: {},
-  visible: { transition: { staggerChildren: 0.06, delayChildren: 0.15 } },
-};
-
-// Chaque mot : flou et un peu plus bas au départ, net et à sa place à la fin.
-const wordVariants: Variants = {
-  hidden: { opacity: 0, y: 10, filter: "blur(8px)" },
-  visible: {
-    opacity: 1,
-    y: 0,
-    filter: "blur(0px)",
-    transition: { duration: 0.5, ease: EASE },
-  },
-};
-
 export function HeroBanner({
   eyeline,
   title,
   subtitle,
+  mascotPose = "dashboard",
   action,
   gauge,
   compact = false,
-}: HeroBannerProps) {
-  const reduceMotion = useReducedMotion();
-  const { pathname } = useLocation();
-  const image = heroImageFor(pathname);
-
-  // Petit utilitaire : fondu qui démarre après `delay` secondes.
-  const fadeIn = (delay: number) =>
-    reduceMotion
-      ? {}
-      : {
-          initial: { opacity: 0, y: 8 },
-          animate: { opacity: 1, y: 0 },
-          transition: { duration: 0.5, delay, ease: EASE },
-        };
-
-  // 5. Halo qui suit la souris : on écrit la position dans deux variables CSS.
-  const handleMouseMove = (e: MouseEvent<HTMLElement>) => {
-    if (reduceMotion) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    e.currentTarget.style.setProperty("--mx", `${e.clientX - rect.left}px`);
-    e.currentTarget.style.setProperty("--my", `${e.clientY - rect.top}px`);
-  };
-
-  const words = title.split(" ");
-  const afterTitle = 0.2 + words.length * 0.06;
-
+}: {
+  eyeline?: string;
+  title: string;
+  subtitle?: string;
+  mascotPose?: "dashboard" | "missions" | "profile";
+  action?: ReactNode;
+  gauge?: ReactNode;
+  /** Écran de liste : mêmes proportions, mascotte un cran plus discrète. */
+  compact?: boolean;
+}) {
   return (
-    <section
-      onMouseMove={handleMouseMove}
-      className={`brand-hero brand-hero--photo${compact ? " brand-hero--compact" : ""}`}
+    <header
+      className={cn(
+        "brand-hero im-page border-rule border-b bg-surface",
+        compact && "brand-hero--compact",
+      )}
     >
-      {/* 1. Photo de fond + voile vert (décoratifs). La clé force une
-          nouvelle photo quand on change de rubrique. */}
-      <PhotoBackdrop key={image.src} src={image.src} position={image.position} />
-
-      <div className="brand-hero__copy">
-        {/* Étiquette : un trait orange puis le texte (voir brand.css). Plus de
-            pilule ni de pastille qui pulse : retour de revue « trop IA ». */}
-        {eyeline && (
-          <motion.span className="brand-hero__eyeline" {...fadeIn(0)}>
-            {eyeline}
-          </motion.span>
-        )}
-
-        {/* 2. Titre mot par mot. aria-label garde une phrase entière pour
-            les lecteurs d'écran, les mots découpés sont masqués. */}
-        <motion.h1
-          aria-label={title}
-          variants={titleVariants}
-          initial={reduceMotion ? false : "hidden"}
-          animate="visible"
-        >
-          {words.map((word, i) => (
-            <motion.span
-              key={`${word}-${i}`}
-              aria-hidden="true"
-              className="brand-hero__word"
-              variants={wordVariants}
-            >
-              {word}
-              {i < words.length - 1 ? " " : ""}
-            </motion.span>
-          ))}
-        </motion.h1>
-
-        {/* 3. Le reste suit le titre. */}
-        {subtitle && <motion.p {...fadeIn(afterTitle)}>{subtitle}</motion.p>}
-        {action && (
-          <motion.div className="brand-hero__action" {...fadeIn(afterTitle + 0.1)}>
-            {action}
-          </motion.div>
-        )}
-      </div>
-
-      {gauge && (
-        <motion.div className="brand-hero__gauge" {...fadeIn(afterTitle + 0.15)}>
-          {gauge}
-        </motion.div>
-      )}
-
-      {/* 4. Slogan manuscrit, seulement sur le grand bandeau. */}
-      {!compact && (
-        <div className="brand-hero__slogan" aria-hidden="true">
-          <motion.span
-            initial={reduceMotion ? false : { clipPath: "inset(0 100% 0 0)" }}
-            animate={{ clipPath: "inset(0 0% 0 0)" }}
-            transition={{ duration: 1.4, delay: 0.7, ease: "easeInOut" }}
+      <div className="im-shell im-shell--wide flex flex-col gap-6 py-8 lg:flex-row lg:items-center lg:justify-between lg:py-11">
+        <div className="brand-hero__copy min-w-0 max-w-2xl">
+          {eyeline && <p className="brand-hero__eyeline im-eyebrow">{eyeline}</p>}
+          <h1
+            className={cn(
+              "text-ink text-[clamp(1.625rem,1.3rem+1.3vw,2.25rem)]",
+              eyeline && "mt-3",
+            )}
           >
-            Les bonnes personnes,
-            <br />
-            au bon moment.
-          </motion.span>
-          <svg viewBox="0 0 120 14" className="brand-hero__swoosh">
-            <motion.path
-              d="M2 10 C 30 3, 70 2, 118 6"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              initial={reduceMotion ? false : { pathLength: 0 }}
-              animate={{ pathLength: 1 }}
-              transition={{ duration: 0.6, delay: 2.1, ease: "easeOut" }}
-            />
-          </svg>
+            {title}
+          </h1>
+          {subtitle && (
+            <p className="mt-3 text-[0.9375rem] text-ink-soft leading-relaxed">
+              {subtitle}
+            </p>
+          )}
+          {action && (
+            <div className="brand-hero__action mt-6 flex flex-wrap gap-2">
+              {action}
+            </div>
+          )}
         </div>
-      )}
-    </section>
+
+        <div className="flex shrink-0 items-center gap-6 self-start lg:self-center">
+          {gauge && <div className="brand-hero__gauge">{gauge}</div>}
+          {/*
+           * Matchy reste, et reste petit. Sur l'accueil d'un espace de travail,
+           * un personnage de 158 px décide du registre de l'écran ; à 96 px, il
+           * accompagne sans parler plus fort que le titre. Il est présent sur
+           * tous les écrans d'espace — c'est l'identité du produit, et la
+           * recette navigateur vérifie qu'il y en a exactement un.
+           */}
+          <MatchyMascot
+            className="brand-hero__mascot hidden shrink-0 sm:block"
+            pose={mascotPose}
+            size={compact ? 80 : 96}
+          />
+        </div>
+      </div>
+    </header>
   );
 }

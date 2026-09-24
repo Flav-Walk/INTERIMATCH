@@ -1,8 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import {
   applyPageSeo,
-  applyPublicTags,
-  SITE_URL,
   DEFAULT_SEO,
   type MinimalDocument,
   type MinimalMetaElement,
@@ -161,59 +159,5 @@ describe("usePageSeo / applyPageSeo", () => {
 
     expect(emptyDoc.querySelector('meta[name="description"]')).toBeNull();
     expect(emptyDoc.querySelector('meta[name="robots"]')).toBeNull();
-  });
-});
-/** Faux Document minimal pour applyPublicTags (balises link, meta, script). */
-class FakeElement {
-  attributes = new Map<string, string>();
-  textContent = "";
-  constructor(
-    public tag: string,
-    private owner: FakeDocument,
-  ) {}
-  setAttribute(name: string, value: string) {
-    this.attributes.set(name, value);
-  }
-  getAttribute(name: string) {
-    return this.attributes.get(name) ?? null;
-  }
-  remove() {
-    this.owner.nodes = this.owner.nodes.filter((node) => node !== this);
-  }
-}
-class FakeDocument {
-  nodes: FakeElement[] = [];
-  head = { appendChild: (node: FakeElement) => this.nodes.push(node) };
-  createElement(tag: string) {
-    return new FakeElement(tag, this);
-  }
-}
-
-describe("applyPublicTags (pages publiques)", () => {
-  it("pose l'URL canonique, l'Open Graph et le JSON-LD, puis les retire", () => {
-    const doc = new FakeDocument();
-    const cleanup = applyPublicTags(
-      {
-        path: "/accessibilite",
-        title: "Déclaration d’accessibilité · InteriMatch",
-        description: "Déclaration d’accessibilité.",
-        jsonLd: { "@context": "https://schema.org", "@type": "WebSite" },
-      },
-      doc as unknown as Document,
-    );
-    const canonical = doc.nodes.find((n) => n.getAttribute("rel") === "canonical");
-    expect(canonical?.getAttribute("href")).toBe(`${SITE_URL}/accessibilite`);
-    const og = (property: string) =>
-      doc.nodes.find((n) => n.getAttribute("property") === property)?.getAttribute("content");
-    expect(og("og:url")).toBe(`${SITE_URL}/accessibilite`);
-    expect(og("og:title")).toBe("Déclaration d’accessibilité · InteriMatch");
-    expect(og("og:locale")).toBe("fr_FR");
-    const script = doc.nodes.find((n) => n.tag === "script");
-    expect(JSON.parse(script!.textContent)["@type"]).toBe("WebSite");
-
-    // En quittant la page, plus rien : une page privée n'hérite jamais du
-    // canonical d'une page publique.
-    cleanup();
-    expect(doc.nodes).toHaveLength(0);
   });
 });

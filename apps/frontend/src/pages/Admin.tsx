@@ -10,7 +10,6 @@ import {
   type AdminUser,
 } from "../services/admin";
 import "../styles/admin.css";
-import { usePageSeo } from "../hooks/usePageSeo";
 
 interface TableProps {
   users: AdminUser[];
@@ -124,12 +123,6 @@ export function AdminLoading() {
 }
 
 export function AdminPage() {
-  // Titre d'onglet propre à la page (RGAA 8.6) ; espace privé non indexé.
-  usePageSeo({
-    title: "Administration · InteriMatch",
-    description: "Gestion des comptes et des rôles.",
-    robots: "noindex,nofollow",
-  });
   const { user } = useAuth();
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [drafts, setDrafts] = useState<Record<string, Role>>({});

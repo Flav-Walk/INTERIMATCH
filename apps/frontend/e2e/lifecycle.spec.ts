@@ -417,6 +417,7 @@ test("l’entreprise distingue statut de recrutement et temporalité", async ({
 
   const expected = [
     ["Brouillon banquet", "Brouillon"],
+    ["Service à venir", "À pourvoir"],
     ["Service pourvu", "Pourvue"],
     ["Service en cours", "En cours"],
     ["Service terminé", "Terminée"],
@@ -426,13 +427,6 @@ test("l’entreprise distingue statut de recrutement et temporalité", async ({
     const card = page.getByRole("link").filter({ hasText: title });
     await expect(card).toContainText(status);
   }
-  // Mission ouverte = état normal : sa carte n'affiche aucun badge.
-  await expect(
-    page
-      .getByRole("link")
-      .filter({ hasText: "Service à venir" })
-      .locator(".mission-status"),
-  ).toHaveCount(0);
   await expect(
     page.getByRole("link").filter({ hasText: "Service à venir" }),
   ).toContainText("À venir");
@@ -491,8 +485,7 @@ test("l’entreprise voit la fin du cycle primer sur la capacite pleine", async 
 
   // CAS D : publiee, a venir, de la place => presentation normale.
   await page.goto("/company/missions/future");
-  // Mission ouverte = état normal : plus de badge.
-  await expect(badge()).toHaveCount(0);
+  await expect(badge()).toHaveText("À pourvoir");
 
   await page.screenshot({
     path: testInfo.outputPath("company-full-vs-closed.png"),
